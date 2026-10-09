@@ -61,7 +61,10 @@ public struct CatalogView: View {
             .frame(minWidth: 640, minHeight: 480)
         }
         .onChange(of: selection) { _, _ in Task { await reload() } }
-        .task { await reload() }
+        .task {
+            GatewayController.shared.start()
+            await reload()
+        }
         .sheet(item: $selected) { drama in
             DetailSheet(drama: drama, onPlay: { d in
                 selected = nil

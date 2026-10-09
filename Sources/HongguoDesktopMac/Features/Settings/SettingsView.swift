@@ -1,4 +1,5 @@
 import SwiftUI
+import HongguoCore
 
 /// 设置面板（符合 macOS 设置窗口规范）。
 public struct SettingsView: View {

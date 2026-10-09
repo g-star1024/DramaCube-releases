@@ -8,6 +8,7 @@ let package = Package(
     ],
     products: [
         .library(name: "HongguoCore", targets: ["HongguoCore"]),
+        .library(name: "HongguoGatewayCore", targets: ["HongguoGatewayCore"]),
         .library(name: "HongguoDesktopMac", targets: ["HongguoDesktopMac"]),
         .executable(name: "HongguoGateway", targets: ["HongguoGateway"]),
     ],
@@ -22,17 +23,24 @@ let package = Package(
                 .product(name: "SwiftSoup", package: "SwiftSoup")
             ]
         ),
-        .executableTarget(
-            name: "HongguoGateway",
+        .target(
+            name: "HongguoGatewayCore",
             dependencies: [
                 .target(name: "HongguoCore"),
                 .product(name: "Hummingbird", package: "hummingbird"),
             ]
         ),
+        .executableTarget(
+            name: "HongguoGateway",
+            dependencies: [
+                .target(name: "HongguoGatewayCore")
+            ]
+        ),
         .target(
             name: "HongguoDesktopMac",
             dependencies: [
-                .target(name: "HongguoCore")
+                .target(name: "HongguoCore"),
+                .target(name: "HongguoGatewayCore")
             ]
         ),
         .testTarget(
