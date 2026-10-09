@@ -16,18 +16,30 @@ public final class CatalogService: ObservableObject {
     private init() {}
 
     /// 把网关响应统一解包；对连接类错误重试以覆盖网关冷启动。
+    /// JSON 解码放后台线程（v1.0.5 卡死修复）：列表/详情 payload 可达数百 KB，
+    /// JSONDecoder 在主线程执行会造成可感知的掉帧。
     private func decode<T: Codable & Sendable>(_ url: URL, retries: Int = 3) async throws -> T {
         var lastError: Error?
+        let tag = url.path + (url.query.map { "?\($0)" } ?? "")
         for attempt in 0..<max(1, retries) {
+            let t0 = Date()
             do {
-                let (data, _) = try await URLSession.shared.data(from: url)
-                let env = try JSONDecoder().decode(GatewayEnvelope<T>.self, from: data)
+                let (data, resp) = try await URLSession.shared.data(from: url)
+                let code = (resp as? HTTPURLResponse)?.statusCode ?? -1
+                let env = try await Task.detached(priority: .userInitiated) {
+                    try JSONDecoder().decode(GatewayEnvelope<T>.self, from: data)
+                }.value
+                AppLog.log(.net, "GET \(tag) → \(code) \(data.count >> 10)KB \(Int(Date().timeIntervalSince(t0) * 1000))ms")
                 if let e = env.error { throw HongguoParseError.fieldMissing(e) }
                 guard let d = env.data else { throw HongguoParseError.fieldMissing("data") }
                 return d
-            } catch is URLError {
+            } catch let e as URLError {
+                AppLog.log(.net, "GET \(tag) ✗ 网络错误(\(e.code.rawValue)) 第\(attempt + 1)次")
                 lastError = URLError(.cannotConnectToHost)
                 if attempt < retries - 1 { try? await Task.sleep(nanoseconds: 1_000_000_000) }
+            } catch {
+                AppLog.log(.error, "GET \(tag) ✗ \(error.localizedDescription)")
+                throw error
             }
         }
         throw lastError ?? HongguoParseError.fieldMissing("network")

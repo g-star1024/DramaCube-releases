@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import AppKit
+import HongguoCore
 
 /// 应用根。注意：作为 SPM 库不携带 @main；
 /// 在 Xcode 新建的 macOS App Target 中用一个单行 @main 入口引用 `HongguoApp().body` 即可。
@@ -12,6 +13,13 @@ public struct HongguoApp: App {
             CatalogView()
                 .frame(minWidth: 1024, minHeight: 640)
                 .modelContainer(PersistenceController.shared.container)
+                .task {
+                    AppLog.log(.app, "App 启动，版本 \(AppConfig.appVersion)，macOS \(ProcessInfo.processInfo.operatingSystemVersionString)")
+                    Watchdog.start()
+                }
+                .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
+                    AppLog.log(.app, "App 即将退出")
+                }
         }
         .windowResizability(.contentSize)
         .defaultSize(width: 1280, height: 800)

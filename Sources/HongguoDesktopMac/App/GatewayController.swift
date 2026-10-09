@@ -19,11 +19,13 @@ public final class GatewayController: ObservableObject {
     public func start() {
         guard runTask == nil else { return }
         let port = AppSettings.shared.gatewayPort
+        AppLog.log(.app, "网关启动中 127.0.0.1:\(port)")
         runTask = Task { [weak self] in
             await MainActor.run { self?.isRunning = true }
             // app.run() 阻塞，直到进程退出或 Task 取消。
             try? await GatewayServer.run(port: port)
             await MainActor.run { self?.isRunning = false }
+            AppLog.log(.app, "网关已停止")
         }
     }
 

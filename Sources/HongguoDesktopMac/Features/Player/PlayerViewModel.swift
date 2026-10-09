@@ -59,6 +59,7 @@ public final class PlayerViewModel: ObservableObject, ActivePlayer {
     nonisolated(unsafe) private var endObserver: NSObjectProtocol?
     private var statusObserver: NSKeyValueObservation?
     private var pendingSeek: Double?
+    private var episodeLoadStart: Date?
     private var lastSaved = Date.distantPast
     nonisolated(unsafe) private var notifObservers: [NSObjectProtocol] = []
     private var wasPlayingBeforeBoss = false
@@ -70,6 +71,7 @@ public final class PlayerViewModel: ObservableObject, ActivePlayer {
         self.rate = AppSettings.shared.defaultPlaybackRate
         self.player = AVPlayer()
         self.player.volume = 1.0
+        AppLog.log(.player, "打开播放器《\(detail.drama.title)》共\(detail.episodes.count)集，从第\(idx + 1)集起播")
         setupPeriodicObserver()
         loadEpisode(idx, autoplay: true)
         NowPlayingManager.shared.bind(self)
@@ -79,8 +81,12 @@ public final class PlayerViewModel: ObservableObject, ActivePlayer {
     deinit {
         if let token = timeObserverToken { player.removeTimeObserver(token) }
         if let e = endObserver { NotificationCenter.default.removeObserver(e) }
+        statusObserver?.invalidate()
+        player.pause()
+        player.replaceCurrentItem(with: nil)
         for o in notifObservers { NotificationCenter.default.removeObserver(o) }
         NowPlayingManager.clearNowPlaying()
+        AppLog.log(.player, "播放器已销毁（资源释放：observer/item/AVPlayer 全部清理）")
     }
 
     private func observeRemoteAndBoss() {
@@ -119,6 +125,8 @@ public final class PlayerViewModel: ObservableObject, ActivePlayer {
         saveProgress(force: true)
         currentIndex = index
         let ep = episodes[index]
+        AppLog.log(.player, "选集 第\(ep.index)集(\(ep.id)) autoplay=\(autoplay)")
+        episodeLoadStart = Date()
         let item: AVPlayerItem
         if let url = ep.playURL, !url.isEmpty {
             item = AVPlayerItem(url: hongguoGatewayMediaURL(url))
@@ -160,6 +168,10 @@ public final class PlayerViewModel: ObservableObject, ActivePlayer {
             guard let self else { return }
             Task { @MainActor in
                 if observed.status == .readyToPlay {
+                    if let t0 = self.episodeLoadStart {
+                        AppLog.log(.player, "第\(self.currentEpisode?.index ?? 0)集就绪，起播耗时 \(Int(Date().timeIntervalSince(t0) * 1000))ms")
+                        self.episodeLoadStart = nil
+                    }
                     if let seek = self.pendingSeek, seek > 0.5 {
                         self.isResuming = true
                         self.player.seek(to: CMTime(seconds: seek, preferredTimescale: 600)) { _ in
@@ -170,7 +182,9 @@ public final class PlayerViewModel: ObservableObject, ActivePlayer {
                     if observed.duration.seconds.isFinite { self.duration = observed.duration.seconds }
                     self.isBuffering = false
                 } else if observed.status == .failed {
-                    self.error = observed.error?.localizedDescription ?? "该集无法播放"
+                    let msg = observed.error?.localizedDescription ?? "该集无法播放"
+                    AppLog.log(.error, "第\(self.currentEpisode?.index ?? 0)集播放失败：\(msg)")
+                    self.error = msg
                     self.isBuffering = false
                 }
             }
@@ -241,10 +255,17 @@ public final class PlayerViewModel: ObservableObject, ActivePlayer {
         return (ep.id, ep.title, currentTime, duration)
     }
 
+    /// 进度持久化。
+    ///
+    /// 节流 5 秒（v1.0.5 卡死修复）：周期观察器每 0.5s 触发一次，此前每次都走
+    /// SwiftData fetch + save（主线程 SQLite 事务），播放期间持续打断主线程；
+    /// UI 的 currentTime 仍然 0.5s 刷新（纯内存赋值，开销可忽略），仅落盘节流。
     public func saveProgress(force: Bool = false) {
         guard let t = currentProgressTuple() else { return }
+        // 未开播（尚未拿到时长）不写，避免写垃圾行
+        guard t.dur > 0 else { return }
         let now = Date()
-        if !force, now.timeIntervalSince(lastSaved) < 1.0 { return }
+        if !force, now.timeIntervalSince(lastSaved) < 5.0 { return }
         lastSaved = now
         Repository.shared.saveProgress(
             dramaId: dramaId, episodeId: t.episodeId,

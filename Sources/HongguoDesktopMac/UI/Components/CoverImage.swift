@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import ImageIO
 
 /// 全局封面下载闸门：限制并发请求数，避免开局几十张封面同时请求
 /// 打爆网络与主线程（App 卡死的根因之一）。
@@ -28,7 +29,13 @@ actor CoverGate {
 }
 
 /// 封面图组件：并发限流 + URLCache 磁盘缓存 + 失败占位。
-/// 替代裸 AsyncImage（无并发控制、无重试、失败即灰）。
+///
+/// 性能关键（v1.0.5 卡死修复）：
+///  - 缓存查询、网络下载、位图解码**全部在后台线程**执行——
+///    此前 `load()` 因 View 协议 @MainActor 推断跑在主线程，
+///    URLCache 磁盘 I/O + 全分辨率解码串行阻塞主线程，是滚动/加载时卡死的元凶；
+///  - 解码用 ImageIO 下采样（上限 640px）：海报展示宽度 ~200pt(2x=400px)，
+///    全尺寸位图每张数 MB，几十张即可拖垮内存。
 public struct CoverImage: View {
     let url: URL?
 
@@ -74,16 +81,33 @@ public struct CoverImage: View {
         }
     }
 
+    /// 主线程只做状态赋值，重活全在 `fetchAndDecode`（nonisolated，后台执行）。
     private func load() async {
         failed = false
         image = nil
         guard let url else { failed = true; return }
+        let img = await Self.fetchAndDecode(url).image
+        // task 可能已因 url 变化被取消，取消后不再写状态
+        guard !Task.isCancelled else { return }
+        if let img {
+            image = img
+        } else {
+            failed = true
+        }
+    }
+
+    /// NSImage 非 Sendable，用只读盒子跨隔离域传递（内容构造后不再变更，安全）。
+    private struct DecodedImage: @unchecked Sendable {
+        let image: NSImage?
+    }
+
+    /// 后台执行：URLCache 查询 → 过闸门下载 → ImageIO 下采样解码。
+    nonisolated private static func fetchAndDecode(_ url: URL) async -> DecodedImage {
         let req = URLRequest(url: url, cachePolicy: .returnCacheDataElseLoad, timeoutInterval: 20)
         // 1) 命中磁盘/内存缓存直接出图（不占并发名额）
         if let cached = URLCache.shared.cachedResponse(for: req),
-           let img = Self.decode(cached.data) {
-            image = img
-            return
+           let img = decodeDownsampled(cached.data) {
+            return DecodedImage(image: img)
         }
         // 2) 过闸门再联网（最多 5 并发）
         await CoverGate.shared.acquire()
@@ -93,19 +117,26 @@ public struct CoverImage: View {
             if let http = resp as? HTTPURLResponse, http.statusCode == 200 {
                 URLCache.shared.storeCachedResponse(CachedURLResponse(response: http, data: data), for: req)
             }
-            guard let img = Self.decode(data) else {
-                failed = true
-                return
-            }
-            image = img
+            return DecodedImage(image: decodeDownsampled(data))
         } catch {
-            failed = true
+            return DecodedImage(image: nil)
         }
     }
 
-    /// 位图解码放后台线程，避免批量封面解码阻塞主线程。
-    nonisolated private static func decode(_ data: Data) -> NSImage? {
+    /// ImageIO 下采样解码：按 640px 上限生成缩略位图，内存占用降一个数量级。
+    /// 解码失败的兜底走 NSImage(data:)（图较小或非标准格式时仍可显示）。
+    nonisolated private static func decodeDownsampled(_ data: Data) -> NSImage? {
         guard !data.isEmpty else { return nil }
-        return NSImage(data: data)
+        let opts: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceShouldCacheImmediately: true,
+            kCGImageSourceThumbnailMaxPixelSize: 640,
+        ]
+        guard let src = CGImageSourceCreateWithData(data as CFData, nil),
+              let cg = CGImageSourceCreateThumbnailAtIndex(src, 0, opts as CFDictionary) else {
+            return NSImage(data: data)
+        }
+        return NSImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height))
     }
 }

@@ -80,7 +80,10 @@ public struct HeroCarousel: View {
                     }
                     .padding(.top, 2)
                 }
-                .padding(Spacing.xl)
+                // 左侧留白 68pt：避开 44pt 切换按钮 + 两侧 padding，标题不与箭头堆叠
+                .padding(.leading, 68)
+                .padding(.trailing, Spacing.xl)
+                .padding(.vertical, Spacing.xl)
             }
         }
         .frame(height: 320)

@@ -157,6 +157,15 @@ public struct CatalogView: View {
             EmptyState("未找到相关短剧", systemImage: "magnifyingglass", description: "换个关键词试试")
         } else if let results = searchResults {
             PosterGrid(results, onSelect: openDetail)
+                .task(id: results) {
+                    // 搜索页是 DOM 卡片解析，源数据无集数，后台懒回填
+                    await CountBackfiller.shared.backfill(results) { id, count in
+                        guard var list = searchResults,
+                              let i = list.firstIndex(where: { $0.id == id }) else { return }
+                        list[i] = list[i].withEpisodeCount(count)
+                        searchResults = list
+                    }
+                }
         }
     }
 
@@ -209,6 +218,7 @@ final class PlayerWindowManager {
 
     func show(detail: DramaDetail, startIndex: Int) {
         close()
+        AppLog.log(.player, "播放窗口创建《\(detail.drama.title)》")
         let root = PlayerView(detail: detail, startIndex: startIndex) { [weak self] in
             self?.close()
         }
@@ -298,6 +308,7 @@ final class PlayerWindowManager {
         window?.delegate = nil
         window?.close()
         window = nil
+        AppLog.log(.player, "播放窗口已关闭")
     }
 }
 

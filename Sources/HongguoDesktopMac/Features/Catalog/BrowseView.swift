@@ -79,6 +79,8 @@ public struct BrowseView: View {
         .background(Brand.background)
         .navigationTitle(config.title)
         .task { await initialLoad() }
+        // 集数懒回填：渲染窗口扩大时补当前可见卡片缺失的集数（榜单/搜索/首页精选源数据无集数）
+        .task(id: renderCount) { await backfillCounts() }
         .onChange(of: selectedChip) { _, _ in Task { await load(reset: true) } }
     }
 
@@ -105,6 +107,13 @@ public struct BrowseView: View {
     }
 
     // MARK: 非 Lazy 网格（分行 HStack，杜绝 LazyVGrid 上滚空白；配合渐进渲染控制开销）
+    //
+    // ⚠️ 硬上限：非 Lazy 布局会把全部行都建进视图树，卡片无限增长 = 内存/布局爆炸。
+    // v1.0.5 实测无人操作自动连刷 31 页（1100+ 卡）直接卡死。因此 items 最多保留
+    // 240 部（40 行）；更早的被裁掉后如需回看，靠「回到顶部」重新加载第一页即可
+    //（CoverImage 走磁盘缓存，重载图片毫秒级出图）。
+    private let maxWindowItems = 240
+
     @ViewBuilder
     private var posterGrid: some View {
         let visible = Array(items.prefix(renderCount))
@@ -125,6 +134,9 @@ public struct BrowseView: View {
     }
 
     /// 触底触发器：先扩渲染窗口，全部渲完后再拉下一页。
+    /// 注意：非 Lazy 网格会把「已经到底啦」等尾部元素也提前排版，
+    /// 仅用 onAppear 会在首屏就连续触发（v1.0.5 无人操作自动连刷 31 页的根因），
+    /// 因此必须用 GeometryReader 判断哨兵真正进入可视区才触发。
     @ViewBuilder
     private var bottomTrigger: some View {
         if isLoading {
@@ -134,14 +146,13 @@ public struct BrowseView: View {
             }
             .frame(maxWidth: .infinity)
             .padding(Spacing.md)
-        } else if renderCount < items.count {
-            Color.clear
-                .frame(height: 1)
-                .onAppear { Task { await renderMore() } }
-        } else if hasMore {
-            Color.clear
-                .frame(height: 1)
-                .onAppear { Task { await load(reset: false) } }
+        } else if renderCount < items.count || hasMore {
+            GeometryReader { geo in
+                Color.clear
+                    .onAppear { checkSentinel(geo) }
+                    .onChange(of: geo.frame(in: .global).minY) { _, _ in checkSentinel(geo) }
+            }
+            .frame(height: 1)
         } else if !items.isEmpty {
             Text("已经到底啦 · 共 \(items.count) 部")
                 .font(Typography.caption)
@@ -151,10 +162,38 @@ public struct BrowseView: View {
         }
     }
 
+    /// 哨兵进入可视区（屏幕高度 + 600pt 预取余量）才推进渲染/加载。
+    private func checkSentinel(_ geo: GeometryProxy) {
+        let y = geo.frame(in: .global).minY
+        let screenH = NSScreen.main?.visibleFrame.height ?? 900
+        guard y < screenH + 600, y > -2000 else { return }
+        Task {
+            if renderCount < items.count {
+                await renderMore()
+            } else if hasMore {
+                await load(reset: false)
+            }
+        }
+    }
+
     private func renderMore() async {
         guard renderCount < items.count else { return }
         try? await Task.sleep(nanoseconds: 100_000_000) // 让一帧先落地
         renderCount = min(items.count, renderCount + renderChunk)
+    }
+
+    /// 集数回填：只补当前渲染窗口 + 轮播（不回填未加载的条目，控制流量）。
+    private func backfillCounts() async {
+        var candidates = Array(items.prefix(max(renderCount, renderChunk)))
+        candidates.append(contentsOf: featured.prefix(6))
+        await CountBackfiller.shared.backfill(candidates) { id, count in
+            if let i = items.firstIndex(where: { $0.id == id }) {
+                items[i] = items[i].withEpisodeCount(count)
+            }
+            if let i = featured.firstIndex(where: { $0.id == id }) {
+                featured[i] = featured[i].withEpisodeCount(count)
+            }
+        }
     }
 
     // MARK: 数据加载
@@ -193,9 +232,14 @@ public struct BrowseView: View {
                 renderCount = renderChunk
             } else {
                 items.append(contentsOf: fresh)
+                // 窗口硬上限：超出后从顶部裁掉最旧的，保证视图树规模可控
+                if items.count > maxWindowItems {
+                    items.removeFirst(items.count - maxWindowItems)
+                }
             }
             page = target + 1
             hasMore = fresh.count >= 12
+            AppLog.log(.app, "列表[\(config.title)] 第\(target)页 +\(fresh.count)部，窗口 \(items.count) 部")
             await DiskCache.shared.write(items, key: cacheKey)
         } catch {
             if reset { self.error = "加载失败：\(error.localizedDescription)" }

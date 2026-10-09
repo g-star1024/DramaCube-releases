@@ -42,6 +42,8 @@ public struct LibraryView: View {
 /// 收藏列表。
 struct FavoriteListView: View {
     @State private var items: [FavoriteItem] = []
+    /// 集数懒回填结果（收藏存储无集数字段，后台经详情接口补全）
+    @State private var counts: [String: Int] = [:]
 
     var body: some View {
         VStack(spacing: 0) {
@@ -56,7 +58,9 @@ struct FavoriteListView: View {
                         spacing: Spacing.md
                     ) {
                         ForEach(items) { item in
-                            PosterCard(Drama(id: item.dramaId, title: item.title, coverURL: item.coverURL))
+                            PosterCard(Drama(id: item.dramaId, title: item.title,
+                                             coverURL: item.coverURL,
+                                             episodeCount: counts[item.dramaId]))
                                 .onTapGesture { open(item) }
                                 .contextMenu {
                                     Button("查看详情") { open(item) }
@@ -71,9 +75,17 @@ struct FavoriteListView: View {
         .frame(minWidth: 640, minHeight: 480)
         .onAppear { reload() }
         .onReceive(NotificationCenter.default.publisher(for: .hongguoLibraryChanged)) { _ in reload() }
+        .task(id: items) { await backfillCounts() }
     }
 
     private func reload() { items = Repository.shared.favorites() }
+
+    private func backfillCounts() async {
+        let dramas = items.map { Drama(id: $0.dramaId, title: $0.title, coverURL: $0.coverURL) }
+        await CountBackfiller.shared.backfill(dramas) { id, count in
+            counts[id] = count
+        }
+    }
 
     private func open(_ item: FavoriteItem) {
         NotificationCenter.default.post(

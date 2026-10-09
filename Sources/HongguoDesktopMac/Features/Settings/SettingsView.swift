@@ -235,6 +235,23 @@ public struct SettingsView: View {
                         }
                     }
                 }
+                sectionCard("运行日志") {
+                    row("日志文件") {
+                        Text(AppLog.currentLogFile.lastPathComponent)
+                            .font(.system(size: 12, design: .monospaced))
+                            .foregroundStyle(Brand.secondaryLabel)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                    }
+                    row("打开目录") {
+                        Button("在 Finder 中显示日志") {
+                            NSWorkspace.shared.open(AppLog.logDirectory)
+                        }
+                    }
+                    Text("遇到卡死/异常时，把最新一份日志发给开发者即可定位问题（含主线程卡顿记录与内存曲线）。")
+                        .font(Typography.caption)
+                        .foregroundStyle(Brand.secondaryLabel)
+                }
             }
             .padding(Spacing.xl)
         }
