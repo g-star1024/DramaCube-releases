@@ -30,6 +30,13 @@ public actor TVBoxEngine {
         public let error: String?
     }
 
+    /// 站点频道（maccms class 分类，type_id → type_name）。
+    public struct Category: Codable, Sendable, Identifiable {
+        public let typeId: Int
+        public let name: String
+        public var id: Int { typeId }
+    }
+
     struct Subscription: Codable, Sendable {
         var sites: [Site]
     }
@@ -149,10 +156,40 @@ public actor TVBoxEngine {
 
     // MARK: - 列表 / 搜索 / 详情
 
-    /// 最新列表：`?ac=list&pg=n`。
-    public func latest(siteKey: String, page: Int) async throws -> [Drama] {
+    /// 最新列表：`?ac=list&pg=n`，可选 `typeId` 频道过滤（t 参数）。
+    public func latest(siteKey: String, page: Int, typeId: Int? = nil) async throws -> [Drama] {
         let s = try await site(key: siteKey)
-        return try await fetchList(site: s, page: page).map { Self.toDrama($0, siteKey: s.key) }
+        return try await fetchList(site: s, page: page, typeId: typeId).map { Self.toDrama($0, siteKey: s.key) }
+    }
+
+    // MARK: - 频道分类（class）
+
+    /// 每站频道缓存（type_id 与站点的对应关系不变，进程内永久缓存即可）。
+    private var classCache: [String: [Category]] = [:]
+    private var classFetchedAt: [String: Date] = [:]
+
+    /// 站点频道列表：部分站点 ac=list 不返回 class（实测 360zy），
+    /// 因此用 ac=videolist 连续翻页收集全量 vod 的 type_id+type_name 归并得出。
+    /// 最多翻 10 页（约 200 条），拿到 ≥8 个频道或列表耗尽即停。
+    public func categories(siteKey: String) async -> [Category] {
+        if let cached = classCache[siteKey], !cached.isEmpty { return cached }
+        guard let s = try? await site(key: siteKey) else { return [] }
+        var seen: [Int: String] = [:]
+        for page in 1...10 {
+            guard let vods = try? await fetchVodListFull(site: s, page: page), !vods.isEmpty else { break }
+            for v in vods {
+                if let tid = v.type_id?.intValue, let name = v.type_name, !name.isEmpty, seen[tid] == nil {
+                    seen[tid] = name
+                }
+            }
+            if seen.count >= 8 || vods.count < 20 { break }
+        }
+        let cats = seen.map { Category(typeId: $0.key, name: $0.value) }.sorted { $0.typeId < $1.typeId }
+        if !cats.isEmpty {
+            classCache[siteKey] = cats
+            classFetchedAt[siteKey] = Date()
+        }
+        return cats
     }
 
     /// 搜索：`?ac=videolist&wd=q&pg=n`。
@@ -216,6 +253,7 @@ public actor TVBoxEngine {
         let vod_pic: String?
         let vod_remarks: String?
         let vod_total: JSONValue?
+        let type_id: JSONValue?
         let type_name: String?
         let vod_year: String?
         let vod_area: String?
@@ -254,10 +292,23 @@ public actor TVBoxEngine {
         let list: [Vod]?
     }
 
-    private func fetchList(site s: Site, page: Int) async throws -> [Vod] {
+    private func fetchList(site s: Site, page: Int, typeId: Int? = nil) async throws -> [Vod] {
+        var comps = URLComponents(string: s.api)
+        var items = [
+            URLQueryItem(name: "ac", value: "list"),
+            URLQueryItem(name: "pg", value: String(page)),
+        ]
+        if let t = typeId { items.append(URLQueryItem(name: "t", value: String(t))) }
+        comps?.queryItems = items
+        guard let u = comps?.url else { throw TVBoxError.badURL }
+        return try await fetchVods(u)
+    }
+
+    /// ac=videolist 全量字段拉取（含 type_id/type_name），供频道归并。
+    private func fetchVodListFull(site s: Site, page: Int) async throws -> [Vod] {
         var comps = URLComponents(string: s.api)
         comps?.queryItems = [
-            URLQueryItem(name: "ac", value: "list"),
+            URLQueryItem(name: "ac", value: "videolist"),
             URLQueryItem(name: "pg", value: String(page)),
         ]
         guard let u = comps?.url else { throw TVBoxError.badURL }

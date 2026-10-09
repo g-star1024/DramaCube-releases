@@ -43,11 +43,12 @@ public struct CatalogView: View {
 
     // 各分区浏览配置
     private var discoverConfig: BrowseConfig {
+        // 发现页直接展示 tag 标签分类（爱情/年代/逆袭…），无「全部」入口
         BrowseConfig(
             title: "发现",
-            chips: BrowseCategory.allCases.map { BrowseChip(id: $0.id, title: $0.title) },
-            defaultPath: "/",
-            chipPath: { BrowseCategory(rawValue: $0.id)?.path ?? "/" },
+            chips: DramaTag.allCases.map { BrowseChip(id: $0.id, title: $0.title) },
+            defaultPath: DramaTag.romance.path,
+            chipPath: { DramaTag(rawValue: $0.id)?.path ?? DramaTag.romance.path },
             featuredPath: "/rank/hot-drama"
         )
     }

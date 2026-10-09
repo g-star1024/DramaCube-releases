@@ -55,6 +55,8 @@ public struct BrowseView: View {
     public init(config: BrowseConfig, onSelect: @escaping (Drama) -> Void) {
         self.config = config
         self.onSelect = onSelect
+        // 默认选中第一个芯片（发现页 tag 分类直接展示，不再停留「全部」）
+        _selectedChip = State(initialValue: config.chips.first)
     }
 
     public var body: some View {
@@ -64,7 +66,8 @@ public struct BrowseView: View {
                     HStack(spacing: Spacing.sm) {
                         ForEach(config.chips) { chip in
                             CategoryChip(chip.title, isSelected: selectedChip?.id == chip.id) {
-                                selectedChip = (selectedChip?.id == chip.id) ? nil : chip
+                                // 发现页 tag 分类：始终选中其一，不允许取消回「全部」
+                                if selectedChip?.id != chip.id { selectedChip = chip }
                             }
                         }
                     }

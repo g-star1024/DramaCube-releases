@@ -91,14 +91,24 @@ public enum GatewayServer {
             return Self.json(GatewayEnvelope(ok: true, data: results))
         }
 
-        // 站点最新列表：/api/tvbox/latest/:siteKey?page=n
+        // 站点最新列表：/api/tvbox/latest/:siteKey?page=n&t=typeId
         router.get("api/tvbox/latest/:site") { request, ctx async throws -> Response in
             guard let key = ctx.parameters.get("site", as: String.self), !key.isEmpty else {
                 throw HTTPError(.badRequest, message: "missing site")
             }
             let page = Int(Self.queryValue(request, name: "page") ?? "1") ?? 1
-            let items = try await TVBoxEngine.shared.latest(siteKey: key, page: page)
+            let typeId = Self.queryValue(request, name: "t").flatMap { Int($0) }
+            let items = try await TVBoxEngine.shared.latest(siteKey: key, page: page, typeId: typeId)
             return Self.json(GatewayEnvelope(ok: true, data: items))
+        }
+
+        // 站点频道分类：/api/tvbox/categories/:site
+        router.get("api/tvbox/categories/:site") { request, ctx async throws -> Response in
+            guard let key = ctx.parameters.get("site", as: String.self), !key.isEmpty else {
+                throw HTTPError(.badRequest, message: "missing site")
+            }
+            let cats = await TVBoxEngine.shared.categories(siteKey: key)
+            return Self.json(GatewayEnvelope(ok: true, data: cats))
         }
 
         // 站点搜索：/api/tvbox/search/:site?q=xx&page=n

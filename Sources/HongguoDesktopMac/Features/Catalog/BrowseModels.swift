@@ -33,6 +33,46 @@ public enum BrowseCategory: String, CaseIterable, Identifiable {
     }
 }
 
+/// 发现页 tag 标签分类（与站点 /category/real-drama/<slug> 路由一一对应）。
+/// 站点结构实测：/category/real-drama 下的 tag 筛选共 24 个（去掉「全部」）。
+public enum DramaTag: String, CaseIterable, Identifiable {
+    case romance, period, comeback, legend, growth, family, clan, cuteKids = "cute-kids",
+         suspense, thriller, horror, supernatural, costume, fantasy, wonder, urban, youth,
+         comedy, sciFi = "sci-fi", disaster, actionAdventure = "action-adventure", war,
+         variety, drama
+    public var id: String { rawValue }
+    public var title: String {
+        switch self {
+        case .romance: return "爱情"
+        case .period: return "年代"
+        case .comeback: return "逆袭"
+        case .legend: return "传奇"
+        case .growth: return "成长"
+        case .family: return "家庭"
+        case .clan: return "家族"
+        case .cuteKids: return "萌宝"
+        case .suspense: return "悬疑"
+        case .thriller: return "惊悚"
+        case .horror: return "恐怖"
+        case .supernatural: return "志怪"
+        case .costume: return "古装"
+        case .fantasy: return "玄幻"
+        case .wonder: return "奇幻"
+        case .urban: return "都市"
+        case .youth: return "青春"
+        case .comedy: return "喜剧"
+        case .sciFi: return "科幻"
+        case .disaster: return "灾难"
+        case .actionAdventure: return "动作冒险"
+        case .war: return "战争"
+        case .variety: return "综艺"
+        case .drama: return "剧情"
+        }
+    }
+    /// 对应站点相对路径。
+    public var path: String { "/category/real-drama/\(rawValue)" }
+}
+
 /// 排行榜子榜单（站点真实路由，支持 ?page= 分页）。
 public enum RankTab: String, CaseIterable, Identifiable {
     case hot, real, comic, ai

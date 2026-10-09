@@ -58,22 +58,47 @@ struct SourceSettingsView: View {
 
     // MARK: 连通性测试
     private var testCard: some View {
-        HStack(spacing: Spacing.md) {
-            Button(sm.isTesting ? "测试中…（\(sm.sites.count) 源）" : "全部连通性测试") {
-                Task { await sm.testAll() }
+        VStack(spacing: Spacing.sm) {
+            HStack(spacing: Spacing.md) {
+                Button(sm.isTesting ? "测试中…（\(sm.sites.count) 源）" : "全部连通性测试") {
+                    Task { await sm.testAll() }
+                }
+                .disabled(sm.isTesting)
+                if sm.isTesting { ProgressView().controlSize(.small) }
+                Spacer()
+                let okCount = sm.testResults.values.filter(\.ok).count
+                if !sm.testResults.isEmpty {
+                    Text("上次测试：\(okCount)/\(sm.testResults.count) 可用")
+                        .font(Typography.caption)
+                        .foregroundStyle(Brand.secondaryLabel)
+                    Toggle("只看失败", isOn: $showOnlyFailed)
+                        .toggleStyle(.checkbox)
+                        .font(Typography.caption)
+                }
             }
-            .disabled(sm.isTesting)
-            if sm.isTesting { ProgressView().controlSize(.small) }
-            Spacer()
-            let okCount = sm.testResults.values.filter(\.ok).count
-            if !sm.testResults.isEmpty {
-                Text("上次测试：\(okCount)/\(sm.testResults.count) 可用")
-                    .font(Typography.caption)
-                    .foregroundStyle(Brand.secondaryLabel)
-                Toggle("只看失败", isOn: $showOnlyFailed)
-                    .toggleStyle(.checkbox)
-                    .font(Typography.caption)
+            HStack(spacing: Spacing.sm) {
+                Text("自动测速").font(Typography.caption).foregroundStyle(Brand.secondaryLabel)
+                Picker("", selection: Binding(
+                    get: { sm.autoTestIntervalHours },
+                    set: { sm.autoTestIntervalHours = $0 }
+                )) {
+                    Text("关闭").tag(0.0)
+                    Text("每 6 小时").tag(6.0)
+                    Text("每 12 小时").tag(12.0)
+                    Text("每 24 小时").tag(24.0)
+                }
+                .pickerStyle(.segmented)
+                .frame(maxWidth: 320)
+                Spacer()
+                if let last = sm.lastAutoTest, sm.autoTestIntervalHours > 0 {
+                    Text("上次自动：\(last.formatted(date: .omitted, time: .shortened))")
+                        .font(Typography.caption)
+                        .foregroundStyle(Brand.secondaryLabel)
+                }
             }
+            Text("测速完成后自动禁用失败源，成功源按延迟从低到高排序（视频源页默认展示最快源）。")
+                .font(Typography.caption)
+                .foregroundStyle(Brand.secondaryLabel)
         }
         .padding(Spacing.lg)
         .background(RoundedRectangle(cornerRadius: Radius.md).fill(Brand.chipFill))
@@ -83,12 +108,12 @@ struct SourceSettingsView: View {
     // MARK: 站点列表
     private var siteListCard: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("站点（\(sm.sites.count) 个，启用 \(sm.enabledSites.count)）")
+            Text("站点（\(sm.sites.count) 个，启用 \(sm.enabledSites.count)，按延迟排序）")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(Brand.secondaryLabel)
                 .padding(.bottom, Spacing.sm)
 
-            let shown = sm.sites.filter { s in
+            let shown = sm.sortedSites.filter { s in
                 !showOnlyFailed || (sm.testResults[s.key].map { !$0.ok } ?? false)
             }
             ForEach(shown) { s in

@@ -1,41 +1,66 @@
 import SwiftUI
 import HongguoCore
 
-/// TVBox 视频源浏览页：顶部源选择 chips + 当前源最新列表（分页）。
+/// TVBox 视频源浏览页：源 chips + 源切换弹层 + 轮播大图 + 频道分类 + 分页网格。
 ///
-/// 点选卡片走统一 openDetail；Drama.id 为 `tvbox|<site>|<vodId>`，
-/// 详情/播放在 DetailView / CatalogView 中按前缀分流到 SourceManager。
+/// 默认展示延迟最低的可用源（无测速结果时为订阅第一个启用源）；
+/// 列表走 cache-then-network（启动秒开，再后台刷新回写）。
+/// Drama.id 为 `tvbox|<site>|<vodId>`，详情/播放在 DetailView / CatalogView 中按前缀分流。
 struct TVBoxBrowseView: View {
     @ObservedObject var sm: SourceManager
     let onSelect: (Drama) -> Void
 
     @State private var items: [Drama] = []
+    @State private var featured: [Drama] = []
     @State private var page = 1
     @State private var isLoading = false
     @State private var hasMore = true
     @State private var error: String?
+    @State private var showSourcePicker = false
+    @State private var selectedTypeId: Int? // nil = 最新（不区分频道）
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: Spacing.md), count: 6)
 
     var body: some View {
         VStack(spacing: 0) {
             sourceBar
+            if !sm.enabledSites.isEmpty, sm.currentSource != "hongguo" {
+                categoryBar
+            }
             Divider()
             content
         }
         .background(Brand.background)
-        .task { await load(reset: true) }
-        .onChange(of: sm.currentSource) { _, _ in Task { await load(reset: true) } }
+        .task { await initialLoad() }
+        .onChange(of: sm.currentSource) { _, _ in
+            selectedTypeId = nil
+            Task { await load(reset: true) }
+        }
+        .onChange(of: selectedTypeId) { _, _ in Task { await load(reset: true) } }
+        .onChange(of: sm.sites) { _, _ in ensureDefaultSource() }
+        .popover(isPresented: $showSourcePicker, arrowEdge: .top) {
+            sourcePicker
+        }
     }
 
-    // MARK: 源切换条
+    // MARK: 源切换条（不含红果；末尾圆形切换按钮弹全源列表）
     private var sourceBar: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: Spacing.sm) {
-                // 内置红果固定在最前
-                sourceChip(id: "hongguo", name: "红果短剧", builtin: true)
                 ForEach(sm.enabledSites) { s in
-                    sourceChip(id: s.key, name: s.name, builtin: false)
+                    sourceChip(id: s.key, name: s.name)
+                }
+                if sm.hasSubscription {
+                    Button { showSourcePicker = true } label: {
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(Brand.label)
+                            .frame(width: 28, height: 28)
+                            .background(Circle().fill(Brand.chipFill))
+                            .overlay(Circle().strokeBorder(Brand.separator.opacity(0.6), lineWidth: 0.5))
+                    }
+                    .buttonStyle(.plain)
+                    .help("切换视频源")
                 }
             }
             .padding(.horizontal, Spacing.lg)
@@ -43,24 +68,97 @@ struct TVBoxBrowseView: View {
         }
     }
 
-    private func sourceChip(id: String, name: String, builtin: Bool) -> some View {
+    private func sourceChip(id: String, name: String) -> some View {
         let active = sm.currentSource == id
         return Button {
             sm.currentSource = id
         } label: {
-            HStack(spacing: 4) {
-                if builtin { Image(systemName: "flame.fill").font(.system(size: 10)) }
-                Text(name).font(Typography.caption)
+            Text(name).font(Typography.caption)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(Capsule().fill(active ? Brand.accent : Brand.chipFill))
+                .foregroundStyle(active ? .white : Brand.label)
+                .overlay(Capsule().strokeBorder(active ? Color.clear : Brand.separator.opacity(0.6), lineWidth: 0.5))
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// 全源切换弹层（含延迟与状态）。
+    private var sourcePicker: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("选择视频源")
+                .font(.system(size: 13, weight: .semibold))
+                .padding(.horizontal, Spacing.md)
+                .padding(.vertical, Spacing.sm)
+            Divider()
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    ForEach(sm.sortedSites) { s in
+                        let off = sm.disabled.contains(s.key)
+                        Button {
+                            if !off {
+                                sm.currentSource = s.key
+                                showSourcePicker = false
+                            }
+                        } label: {
+                            HStack(spacing: Spacing.sm) {
+                                Image(systemName: sm.currentSource == s.key ? "checkmark.circle.fill" : "circle")
+                                    .foregroundStyle(sm.currentSource == s.key ? Brand.accent : Brand.secondaryLabel)
+                                Text(s.name).font(Typography.body).lineLimit(1)
+                                Spacer()
+                                if let r = sm.testResults[s.key] {
+                                    Text(r.ok ? "\(r.latencyMs)ms" : "失败")
+                                        .font(.system(size: 11, design: .monospaced))
+                                        .foregroundStyle(r.ok ? .green : .red)
+                                }
+                                if off {
+                                    Text("已禁用")
+                                        .font(.system(size: 11))
+                                        .foregroundStyle(Brand.secondaryLabel)
+                                }
+                            }
+                            .padding(.horizontal, Spacing.md)
+                            .padding(.vertical, 8)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(off)
+                        .opacity(off ? 0.5 : 1)
+                    }
+                }
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(
-                Capsule().fill(active ? Brand.accent : Brand.chipFill)
-            )
-            .foregroundStyle(active ? .white : Brand.label)
-            .overlay(
-                Capsule().strokeBorder(active ? Color.clear : Brand.separator.opacity(0.6), lineWidth: 0.5)
-            )
+        }
+        .frame(width: 320, height: 420)
+    }
+
+    // MARK: 频道分类条（maccms class）
+    @ViewBuilder
+    private var categoryBar: some View {
+        let cats = sm.categories[sm.currentSource] ?? []
+        if !cats.isEmpty {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: Spacing.sm) {
+                    catChip(id: nil, name: "最新")
+                    ForEach(cats) { c in
+                        catChip(id: c.typeId, name: c.name)
+                    }
+                }
+                .padding(.horizontal, Spacing.lg)
+                .padding(.vertical, Spacing.xs)
+            }
+        }
+    }
+
+    private func catChip(id: Int?, name: String) -> some View {
+        let active = selectedTypeId == id
+        return Button { selectedTypeId = id } label: {
+            Text(name)
+                .font(.system(size: 12))
+                .padding(.horizontal, 10)
+                .padding(.vertical, 4)
+                .background(Capsule().fill(active ? Brand.label : Color.clear))
+                .foregroundStyle(active ? Brand.background : Brand.secondaryLabel)
+                .overlay(Capsule().strokeBorder(active ? Color.clear : Brand.separator.opacity(0.6), lineWidth: 0.5))
         }
         .buttonStyle(.plain)
     }
@@ -68,11 +166,28 @@ struct TVBoxBrowseView: View {
     // MARK: 内容
     @ViewBuilder
     private var content: some View {
-        if sm.currentSource == "hongguo" {
-            // 红果源由发现/排行榜/探索页承载，这里给引导
-            EmptyState("红果源请在「发现 / 排行榜 / 探索」中浏览",
-                       systemImage: "flame",
-                       description: "此处展示 TVBox 订阅源内容；选择上方任意站点开始浏览")
+        if !sm.hasSubscription {
+            VStack(spacing: Spacing.sm) {
+                Image(systemName: "antenna.radiowaves.left.and.right")
+                    .font(.system(size: 34))
+                    .foregroundStyle(Brand.secondaryLabel)
+                Text("尚未导入视频源订阅").font(Typography.body)
+                Text("请到「设置 → 视频源」粘贴 TVBox 订阅地址一键导入")
+                    .font(Typography.caption)
+                    .foregroundStyle(Brand.secondaryLabel)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if sm.enabledSites.isEmpty {
+            VStack(spacing: Spacing.sm) {
+                Image(systemName: "exclamationmark.triangle")
+                    .font(.system(size: 34))
+                    .foregroundStyle(.orange)
+                Text("所有视频源均已禁用").font(Typography.body)
+                Text("请到「设置 → 视频源」重新启用，或执行一次连通性测试")
+                    .font(Typography.caption)
+                    .foregroundStyle(Brand.secondaryLabel)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if let error {
             ErrorView(error, retry: { Task { await load(reset: true) } })
         } else if items.isEmpty && isLoading {
@@ -86,10 +201,15 @@ struct TVBoxBrowseView: View {
 
     private var grid: some View {
         ScrollView {
-            LazyVGrid(columns: columns, spacing: Spacing.md) {
-                ForEach(items) { d in
-                    PosterCard(d)
-                        .onTapGesture { onSelect(d) }
+            VStack(spacing: Spacing.lg) {
+                if !featured.isEmpty {
+                    HeroCarousel(items: Array(featured.prefix(6)), onSelect: onSelect)
+                }
+                LazyVGrid(columns: columns, spacing: Spacing.md) {
+                    ForEach(items) { d in
+                        PosterCard(d)
+                            .onTapGesture { onSelect(d) }
+                    }
                 }
             }
             .padding(Spacing.lg)
@@ -114,19 +234,58 @@ struct TVBoxBrowseView: View {
     }
 
     // MARK: 加载
-    private func load(reset: Bool) async {
+    /// 默认源：当前源不可用（未导入/被禁用/还是 hongguo）时，切到最快可用源。
+    private func ensureDefaultSource() {
+        guard sm.hasSubscription else { return }
+        if sm.currentSource == "hongguo" || sm.disabled.contains(sm.currentSource)
+            || !sm.sites.contains(where: { $0.key == sm.currentSource }) {
+            if let fast = sm.fastestEnabledSite {
+                sm.currentSource = fast.key
+            }
+        }
+    }
+
+    private var cacheKey: String { "tvbox:\(sm.currentSource):t\(selectedTypeId ?? 0)" }
+    private var featuredCacheKey: String { "tvbox:featured:\(sm.currentSource)" }
+
+    private func initialLoad() async {
+        ensureDefaultSource()
         let src = sm.currentSource
-        guard src != "hongguo" else { return }
-        if isLoading { return }
+        guard src != "hongguo", sm.enabledSites.contains(where: { $0.key == src }) else { return }
+        isLoading = true
+        // 缓存秒开
+        if let cached: [Drama] = await DiskCache.shared.read([Drama].self, key: cacheKey), !cached.isEmpty {
+            items = cached
+        }
+        if let cf: [Drama] = await DiskCache.shared.read([Drama].self, key: featuredCacheKey), !cf.isEmpty {
+            featured = cf
+        }
+        // 频道懒加载
+        Task { _ = await sm.tvboxCategories(siteKey: src) }
+        await load(reset: true, force: true)
+        // 轮播 = 最新第一页前 6 部（与当前频道独立，始终取站点最新）
+        if featured.isEmpty {
+            if let f = try? await sm.tvboxLatest(siteKey: src, page: 1), !f.isEmpty {
+                featured = Array(f.prefix(6))
+                await DiskCache.shared.write(Array(f.prefix(6)), key: featuredCacheKey)
+            }
+        }
+    }
+
+    private func load(reset: Bool, force: Bool = false) async {
+        let src = sm.currentSource
+        guard src != "hongguo", sm.enabledSites.contains(where: { $0.key == src }) else { isLoading = false; return }
+        if isLoading, !force { return }
         isLoading = true
         if reset { page = 1; hasMore = true; error = nil }
         let target = reset ? 1 : page
         do {
-            let fresh = try await sm.tvboxLatest(siteKey: src, page: target)
+            let fresh = try await sm.tvboxLatest(siteKey: src, page: target, typeId: selectedTypeId)
             if reset { items = fresh } else { items.append(contentsOf: fresh) }
             page = target + 1
             hasMore = fresh.count >= 12
-            AppLog.log(.app, "视频源 \(src) 第 \(target) 页：\(fresh.count) 部")
+            AppLog.log(.app, "视频源 \(src) 第 \(target) 页（频道 \(selectedTypeId ?? -1)）：\(fresh.count) 部")
+            if reset { await DiskCache.shared.write(items, key: cacheKey) }
         } catch {
             if reset { self.error = "加载失败：\(error.localizedDescription)" }
             AppLog.log(.error, "视频源 \(src) 加载失败：\(error.localizedDescription)")
