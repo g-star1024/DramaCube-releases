@@ -49,7 +49,7 @@ public struct EpisodeGrid: View {
                 .background(chipBackground(isCurrent: isCurrent, isPlayed: isPlayed))
                 .foregroundStyle(chipForeground(isCurrent: isCurrent, isPlayed: isPlayed))
                 .clipShape(Capsule())
-                .overlay(Capsule().strokeBorder(isCurrent ? Color.clear : Brand.separator.opacity(0.6), lineWidth: 0.5))
+                .overlay(Capsule().strokeBorder(isCurrent ? Color.clear : Brand.separator.opacity(0.8), lineWidth: 0.5))
                 .contentShape(Capsule())
         }
         .buttonStyle(.plain)
@@ -60,7 +60,7 @@ public struct EpisodeGrid: View {
     private func chipBackground(isCurrent: Bool, isPlayed: Bool) -> Color {
         if isCurrent { return Brand.accent }
         if isPlayed { return Brand.accent.opacity(0.12) }
-        return Brand.secondaryBackground
+        return Brand.chipFill
     }
 
     private func chipForeground(isCurrent: Bool, isPlayed: Bool) -> Color {

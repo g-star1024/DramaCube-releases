@@ -1,6 +1,9 @@
 import SwiftUI
 
-/// 设计系统 —— 红果品牌与 macOS HIG 对齐的视觉令牌。
+/// 设计系统 —— 剧立方品牌与 macOS HIG 对齐的视觉令牌。
+///
+/// 2026-10 视觉升级：由系统灰切换为「暖阳奶油」色系，
+/// 深色外观下自动回落到对应的暗色调（保持系统外观自适应）。
 public enum Brand {
     /// 主品牌色（红果粉 #FF2D55）。
     public static let pink = Color(red: 1.0, green: 0.176, blue: 0.333)
@@ -12,11 +15,27 @@ public enum Brand {
             ? NSColor(red: 1.0, green: 0.36, blue: 0.53, alpha: 1)
             : NSColor(red: 1.0, green: 0.176, blue: 0.333, alpha: 1)
     })
-    /// 图片加载占位 / 失败底色（自适应外观）。
-    public static let placeholder = Color(nsColor: .placeholderTextColor)
-    public static let background = Color(nsColor: .windowBackgroundColor)
-    public static let secondaryBackground = Color(nsColor: .underPageBackgroundColor)
-    public static let separator = Color(nsColor: .separatorColor)
+
+    // MARK: 暖阳色板（浅色 / 深色自适应）
+
+    private static func warm(light: (Double, Double, Double), dark: (Double, Double, Double)) -> Color {
+        Color(nsColor: NSColor(name: nil) { appearance in
+            let (r, g, b) = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? dark : light
+            return NSColor(red: r, green: g, blue: b, alpha: 1)
+        })
+    }
+
+    /// 窗口底色：暖米白（深色：暖炭黑）。
+    public static let background = warm(light: (0.992, 0.984, 0.965), dark: (0.11, 0.10, 0.09))
+    /// 次级面板底：奶油色（深色：略亮暖黑）。
+    public static let secondaryBackground = warm(light: (0.965, 0.941, 0.898), dark: (0.16, 0.145, 0.13))
+    /// 图片加载占位 / 失败底色：暖沙色（不再是灰）。
+    public static let placeholder = warm(light: (0.949, 0.914, 0.855), dark: (0.22, 0.20, 0.18))
+    /// 胶囊 / 卡片填充：近白暖色（在米白底上有轻微层次）。
+    public static let chipFill = warm(light: (1.0, 0.996, 0.988), dark: (0.24, 0.22, 0.20))
+    /// 分隔线：暖褐。
+    public static let separator = warm(light: (0.89, 0.855, 0.80), dark: (0.28, 0.26, 0.24))
+
     public static let label = Color(nsColor: .labelColor)
     public static let secondaryLabel = Color(nsColor: .secondaryLabelColor)
 }

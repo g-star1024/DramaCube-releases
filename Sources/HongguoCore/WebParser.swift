@@ -90,9 +90,11 @@ public struct WebParser {
         return nil
     }
 
-    /// 标题合理性：过滤 SEO/配置类杂项（如 "www.hongguoduanju.com"）。
+    /// 标题合理性：过滤 SEO/配置类杂项（如 "www.hongguoduanju.com"）与演员条目（如 "饰 陈玉壶"）。
     private static func isPlausibleTitle(_ t: String) -> Bool {
-        !t.isEmpty && !t.contains("www.") && !t.hasPrefix("http") && t.range(of: #"^\d+$"#, options: .regularExpression) == nil
+        !t.isEmpty && !t.contains("www.") && !t.hasPrefix("http")
+            && t.range(of: #"^\d+$"#, options: .regularExpression) == nil
+            && !t.hasPrefix("饰") && !t.contains("饰 ")
     }
 
     /// 递归收集所有「剧集条目字典」（含 series_id 且含标题键）。

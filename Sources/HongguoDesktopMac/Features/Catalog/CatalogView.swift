@@ -35,7 +35,6 @@ public struct CatalogView: View {
     @State private var searchError: String?
 
     @State private var selected: Drama?
-    @State private var playerDetail: PlayerPayload?
 
     public init() {}
 
@@ -88,6 +87,13 @@ public struct CatalogView: View {
             .navigationTitle(showTitle)
         }
         .task {
+            // 封面图磁盘缓存：AsyncImage 走 URLSession.shared → URLCache.shared，
+            // 扩容后海报/剧照自动落盘，二次打开离线可显。
+            if URLCache.shared.memoryCapacity < 64 << 20 {
+                URLCache.shared = URLCache(memoryCapacity: 64 << 20,
+                                           diskCapacity: 512 << 20,
+                                           diskPath: "dramacube-images")
+            }
             GatewayController.shared.start()
             BossKeyManager.shared.start()
         }
@@ -97,17 +103,15 @@ public struct CatalogView: View {
         .onReceive(NotificationCenter.default.publisher(for: .hongguoPlayDetail)) { note in
             if let payload = note.object as? PlayerPayload {
                 selected = nil
-                playerDetail = payload
+                // 播放器用独立窗口呈现（sheet 不支持全屏）
+                PlayerWindowManager.shared.show(detail: payload.detail, startIndex: payload.index)
             }
         }
         .sheet(item: $selected) { drama in
             DetailView(drama: drama) { detail, idx in
                 selected = nil
-                playerDetail = PlayerPayload(id: detail.drama.id, detail: detail, index: idx)
+                PlayerWindowManager.shared.show(detail: detail, startIndex: idx)
             }
-        }
-        .sheet(item: $playerDetail) { payload in
-            PlayerView(detail: payload.detail, startIndex: payload.index)
         }
     }
 
@@ -167,4 +171,59 @@ struct PlayerPayload: Identifiable {
     let id: String
     let detail: DramaDetail
     let index: Int
+}
+
+extension Notification.Name {
+    /// 播放器独立窗口被关闭（红 × / ⌘W），PlayerView 收到后停播存进度。
+    static let hongguoPlayerWindowClosed = Notification.Name("hongguoPlayerWindowClosed")
+}
+
+/// 播放器独立窗口管理器。
+///
+/// 播放器不再以 sheet 弹出（sheet 挂在主窗口上无法进入全屏），
+/// 而是创建带 `.fullScreen` 样式掩码的独立 NSWindow，
+/// 「全屏」按钮与绿色交通灯均可用；关闭时回调 PlayerView 停播存进度。
+@MainActor
+final class PlayerWindowManager {
+    static let shared = PlayerWindowManager()
+    private var window: NSWindow?
+    private let closeDelegate = WindowCloseDelegate()
+
+    func show(detail: DramaDetail, startIndex: Int) {
+        close()
+        let root = PlayerView(detail: detail, startIndex: startIndex) { [weak self] in
+            self?.close()
+        }
+        let w = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 960, height: 620),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullScreen],
+            backing: .buffered, defer: false
+        )
+        w.title = detail.drama.title
+        w.contentView = NSHostingView(rootView: root)
+        w.center()
+        w.isReleasedWhenClosed = false
+        w.titlebarAppearsTransparent = false
+        w.tabbingMode = .disallowed
+        // 点标题栏红色 × 关闭时，也要通知 PlayerView 停播 + 存进度
+        closeDelegate.onClose = {
+            NotificationCenter.default.post(name: .hongguoPlayerWindowClosed, object: nil)
+        }
+        w.delegate = closeDelegate
+        w.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        window = w
+    }
+
+    func close() {
+        window?.delegate = nil
+        window?.close()
+        window = nil
+    }
+}
+
+/// 窗口关闭转发（NSWindowDelegate 弱持有由 window 管理）。
+final class WindowCloseDelegate: NSObject, NSWindowDelegate {
+    var onClose: (() -> Void)?
+    func windowWillClose(_ notification: Notification) { onClose?() }
 }

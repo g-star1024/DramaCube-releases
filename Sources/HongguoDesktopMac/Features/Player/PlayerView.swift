@@ -4,9 +4,14 @@ import AppKit
 import HongguoCore
 
 /// 播放器界面（完整控制条 + 选集 + 倍速 + 画中画 + 全屏 + 查找其他季）。
+///
+/// 支持两种呈现方式：
+///  - 独立窗口（PlayerWindowManager，支持全屏）：传 `onClose`；
+///  - sheet 弹出（旧路径）：不传 `onClose`，走环境 dismiss。
 public struct PlayerView: View {
     let detail: DramaDetail
     let startIndex: Int
+    var onClose: (() -> Void)?
 
     @StateObject private var vm: PlayerViewModel
     @Environment(\.dismiss) private var dismiss
@@ -17,9 +22,10 @@ public struct PlayerView: View {
 
     private let rateOptions: [Double] = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0]
 
-    public init(detail: DramaDetail, startIndex: Int = 0) {
+    public init(detail: DramaDetail, startIndex: Int = 0, onClose: (() -> Void)? = nil) {
         self.detail = detail
         self.startIndex = startIndex
+        self.onClose = onClose
         _vm = StateObject(wrappedValue: PlayerViewModel(detail: detail, startIndex: startIndex))
     }
 
@@ -78,6 +84,11 @@ public struct PlayerView: View {
         .onReceive(NotificationCenter.default.publisher(for: .hongguoBossKeyShow)) { _ in
             if wasPlaying { vm.play() }
         }
+        // 独立窗口被红 × / ⌘W 关闭时停播 + 存进度
+        .onReceive(NotificationCenter.default.publisher(for: .hongguoPlayerWindowClosed)) { _ in
+            vm.pause()
+            vm.saveProgress(force: true)
+        }
         .task { refreshPlayed() }
         .sheet(isPresented: $vm.showOtherSeasons) { otherSeasonsSheet }
     }
@@ -109,11 +120,15 @@ public struct PlayerView: View {
         .background(RoundedRectangle(cornerRadius: Radius.lg).fill(.black.opacity(0.65)))
     }
 
-    /// 关闭播放器：暂停 + 保存进度 + 关 sheet。
+    /// 关闭播放器：暂停 + 保存进度 + 关窗口 / sheet。
     private func closePlayer() {
         vm.pause()
         vm.saveProgress(force: true)
-        dismiss()
+        if let onClose {
+            onClose()
+        } else {
+            dismiss()
+        }
     }
 
     // MARK: 控制条
@@ -177,13 +192,14 @@ public struct PlayerView: View {
         .controlSize(.regular)
     }
 
-    // MARK: 选集面板
+    // MARK: 选集面板（全宽底部面板，随窗口宽度铺满）
     private var episodePanel: some View {
         VStack(alignment: .leading, spacing: 0) {
             EpisodePanelHeader(count: vm.episodes.count) {
                 vm.showEpisodes = false
             }
-            .padding(Spacing.md)
+            .padding(.horizontal, Spacing.lg)
+            .padding(.vertical, Spacing.sm)
             Divider()
             ScrollView {
                 ScrollViewReader { proxy in
@@ -194,7 +210,7 @@ public struct PlayerView: View {
                     ) { idx, _ in
                         vm.loadEpisode(idx)
                     }
-                    .padding(Spacing.md)
+                    .padding(Spacing.lg)
                     .onAppear {
                         proxy.scrollTo(vm.currentIndex, anchor: .center)
                     }
@@ -204,7 +220,8 @@ public struct PlayerView: View {
                 }
             }
         }
-        .frame(width: 360)
+        .frame(maxWidth: .infinity)
+        .frame(height: 280)
         .background(Brand.secondaryBackground)
     }
 

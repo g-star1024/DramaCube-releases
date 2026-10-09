@@ -28,6 +28,7 @@ public struct DetailView: View {
             Divider()
             content
         }
+        .background(Brand.background)
         .frame(minWidth: 680, minHeight: 520)
         .task { await load() }
     }
@@ -84,13 +85,7 @@ public struct DetailView: View {
         HStack(alignment: .top, spacing: Spacing.lg) {
             Group {
                 if let urlStr = drama.coverURL, let url = URL(string: urlStr) {
-                    AsyncImage(url: url) { phase in
-                        switch phase {
-                        case .success(let img): img.resizable().scaledToFill()
-                        case .failure: Brand.placeholder
-                        default: ProgressView()
-                        }
-                    }
+                    CoverImage(url)
                 } else { Brand.placeholder }
             }
             .frame(width: 150, height: 200)
@@ -223,19 +218,44 @@ public struct DetailView: View {
 
     private func load() async {
         isLoading = true; loadError = nil
+        let cacheKey = "detail:\(drama.id)"
+        // 1) 先用本地缓存秒开（封面走磁盘图缓）
+        if let cached: DramaDetail = await DiskCache.shared.read(DramaDetail.self, key: cacheKey) {
+            apply(cached)
+        }
+        // 2) 网络刷新并回写
         do {
             let d = try await CatalogService.shared.detail(id: drama.id)
-            detail = d
-            // 已播标记
-            let played = Repository.shared.history().filter { $0.dramaId == drama.id }.map(\.episodeId)
-            playedEpisodeIds = Set(played)
-            isFav = Repository.shared.isFavorite(dramaId: drama.id)
-            // 相关推荐（详情页数据自带，无额外请求）
-            related = d.related ?? []
+            apply(d)
+            await DiskCache.shared.write(d, key: cacheKey)
         } catch {
-            loadError = "详情加载失败：\(error.localizedDescription)"
+            // 已有缓存展示时不打断用户，仅无缓存才报错
+            if detail == nil {
+                loadError = "详情加载失败：\(error.localizedDescription)"
+            }
         }
         isLoading = false
+    }
+
+    private func apply(_ d: DramaDetail) {
+        detail = d
+        // 已播标记
+        let played = Repository.shared.history().filter { $0.dramaId == drama.id }.map(\.episodeId)
+        playedEpisodeIds = Set(played)
+        isFav = Repository.shared.isFavorite(dramaId: drama.id)
+        // 相关推荐：详情数据自带；站点未返回时回退到首页热播（排除自身）
+        if let rel = d.related, !rel.isEmpty {
+            related = rel
+        } else if related.isEmpty {
+            Task { await loadRelatedFallback() }
+        }
+    }
+
+    /// 猜你喜欢回退：用首页热播列表顶替（排除当前剧）。
+    private func loadRelatedFallback() async {
+        if let home = try? await CatalogService.shared.catalog(path: "/") {
+            related = Array(home.filter { $0.id != drama.id }.prefix(12))
+        }
     }
 }
 

@@ -27,7 +27,7 @@ public struct HeroCarousel: View {
                 .transition(.opacity)
 
             LinearGradient(
-                colors: [.clear, .black.opacity(0.35), .black.opacity(0.78)],
+                colors: [.clear, .black.opacity(0.30), .black.opacity(0.72)],
                 startPoint: .top, endPoint: .bottom
             )
             .allowsHitTesting(false)
@@ -50,16 +50,19 @@ public struct HeroCarousel: View {
                                 .background(Capsule().fill(.white.opacity(0.18)))
                         }
                     }
+                    // 剧名：左下角大字 + 阴影，保证任何封面上都清晰可读
                     Text(drama.title)
-                        .font(.system(size: 26, weight: .bold))
+                        .font(.system(size: 30, weight: .heavy))
                         .foregroundStyle(.white)
                         .lineLimit(1)
+                        .shadow(color: .black.opacity(0.65), radius: 5, y: 2)
                     if let desc = drama.description, !desc.isEmpty {
                         Text(desc)
                             .font(.system(size: 12))
-                            .foregroundStyle(.white.opacity(0.85))
+                            .foregroundStyle(.white.opacity(0.9))
                             .lineLimit(2)
                             .frame(maxWidth: 560, alignment: .leading)
+                            .shadow(color: .black.opacity(0.5), radius: 3, y: 1)
                     }
                     HStack(spacing: Spacing.sm) {
                         Label("立即观看", systemImage: "play.fill")
@@ -101,13 +104,7 @@ public struct HeroCarousel: View {
     @ViewBuilder
     private var bannerImage: some View {
         if let drama = current, let urlStr = drama.coverURL, let url = URL(string: urlStr) {
-            AsyncImage(url: url) { phase in
-                switch phase {
-                case .success(let img): img.resizable().scaledToFill()
-                case .failure: heroPlaceholder
-                default: heroPlaceholder
-                }
-            }
+            CoverImage(url)
         } else {
             heroPlaceholder
         }
@@ -115,24 +112,30 @@ public struct HeroCarousel: View {
 
     private var heroPlaceholder: some View {
         Rectangle()
-            .fill(LinearGradient(colors: [Brand.accent.opacity(0.6), .purple.opacity(0.5)],
+            .fill(LinearGradient(colors: [Brand.accent.opacity(0.6), .orange.opacity(0.45)],
                                  startPoint: .topLeading, endPoint: .bottomTrailing))
     }
 
+    /// 左右切换按钮：44pt 大热区 + 半透明底，未悬停时也保持可见（更易点中）。
     private func chevron(forward: Bool) -> some View {
         Button {
             withAnimation(.easeInOut(duration: 0.35)) { advance(by: forward ? 1 : -1) }
         } label: {
             Image(systemName: forward ? "chevron.right" : "chevron.left")
-                .font(.system(size: 15, weight: .bold))
+                .font(.system(size: 18, weight: .heavy))
                 .foregroundStyle(.white)
-                .frame(width: 30, height: 30)
-                .background(Circle().fill(.black.opacity(0.35)))
+                .frame(width: 44, height: 44)
+                .background(Circle().fill(.black.opacity(0.40)))
+                .overlay(Circle().strokeBorder(.white.opacity(0.55), lineWidth: 1.5))
+                .contentShape(Circle())
         }
         .buttonStyle(.plain)
-        .opacity(isHovering ? 1 : 0)
-        .padding(.horizontal, Spacing.md)
+        .opacity(isHovering ? 1.0 : 0.65)
+        .scaleEffect(isHovering ? 1.05 : 1.0)
+        .animation(.easeOut(duration: 0.15), value: isHovering)
+        .padding(.horizontal, Spacing.lg)
         .disabled(items.count < 2)
+        .help(forward ? "下一张" : "上一张")
     }
 
     private var dots: some View {
