@@ -89,6 +89,7 @@ public struct CatalogView: View {
         }
         .task {
             GatewayController.shared.start()
+            BossKeyManager.shared.start()
         }
         .onReceive(NotificationCenter.default.publisher(for: .hongguoOpenDrama)) { note in
             if let d = note.object as? Drama { selected = d }
