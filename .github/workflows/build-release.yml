@@ -1,12 +1,16 @@
 # 线上打包：GitHub Actions macOS(Apple Silicon) runner
 #
 # 手动触发（workflow_dispatch）：
-#   gh workflow run build-release.yml -f arch=universal -f version=1.0.0
+#   gh workflow run build-release.yml -f arch=arm64 -f version=1.0.0
 # 或在 Actions 页面点 Run workflow。
 #
 # 说明：
-# - macos-14 runner 为 arm64 机器，可构建 arm64 / universal；
-#   构建纯 x86_64 请在 Intel 本机跑 Scripts/build-app-bundle.sh。
+# - macos-14 runner 为 arm64 机器，arch=arm64 为原生构建（推荐）；
+# - arch=universal（--arch arm64 --arch x86_64 交叉构建）在 Swift 6.0.x SwiftPM
+#   存在已知 bug：多 --arch destination 下评估依赖包 swiftLanguageVersions 报
+#   "Some of the Swift language versions ... (given: [5])" 而失败，故默认不用；
+#   universal 待 SwiftPM 修复后恢复。
+# - 构建纯 x86_64 请在 Intel 本机跑 Scripts/build-app-bundle.sh。
 # - 产物以 artifact 名 dist-<arch> 上传，30 天有效；
 #   发布到公开仓 g-star1024/hongguo-mac 由本地脚本或维护者手动完成。
 
@@ -16,9 +20,9 @@ on:
   workflow_dispatch:
     inputs:
       arch:
-        description: "构建架构 (arm64 / universal)"
+        description: "构建架构 (arm64 原生推荐；universal 受 SwiftPM bug 限制暂不可用)"
         required: false
-        default: "universal"
+        default: "arm64"
       version:
         description: "版本号"
         required: false
