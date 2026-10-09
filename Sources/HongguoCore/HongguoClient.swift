@@ -65,9 +65,11 @@ public actor HongguoClient {
     }
 
     /// 通用列表页（榜单 / 最新 / 分类）：传入相对路径，如 "/rank" 或 "/latest"。
-    public func catalog(path: String) async throws -> [Drama] {
+    /// `page` 透传为分页参数（站点不支持时静默忽略，仍返回首屏结果）。
+    public func catalog(path: String, page: Int = 1) async throws -> [Drama] {
         let safe = path.hasPrefix("/") ? path : "/" + path
-        guard let url = URL(string: "https://\(host)\(safe)") else {
+        let pageSuffix = page > 1 ? "?page=\(page)" : ""
+        guard let url = URL(string: "https://\(host)\(safe)\(pageSuffix)") else {
             throw HongguoParseError.fieldMissing("path")
         }
         let html = try await getHTML(url)

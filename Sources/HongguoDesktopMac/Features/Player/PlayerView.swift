@@ -11,11 +11,17 @@ public struct PlayerView: View {
     @State private var player: AVPlayer?
     @State private var current: Episode?
 
-    public init(detail: DramaDetail) {
+    public init(detail: DramaDetail, startIndex: Int = 0) {
         self.detail = detail
-        let first = detail.episodes.first
-        _current = State(initialValue: first)
-        if let url = first?.playURL {
+        let ep: Episode?
+        if detail.episodes.isEmpty {
+            ep = nil
+        } else {
+            let clamped = min(max(startIndex, 0), detail.episodes.count - 1)
+            ep = detail.episodes[clamped]
+        }
+        _current = State(initialValue: ep)
+        if let url = ep?.playURL {
             _player = State(initialValue: AVPlayer(url: Self.gatewayURL(for: url)))
         }
     }

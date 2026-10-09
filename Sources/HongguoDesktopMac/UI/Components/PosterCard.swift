@@ -35,6 +35,6 @@ public struct PosterCard: View {
                     .foregroundStyle(Brand.secondaryLabel)
             }
         }
-        .frame(width: 150)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

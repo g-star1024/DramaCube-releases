@@ -24,26 +24,47 @@ public enum SidebarItem: String, CaseIterable, Identifiable {
         case .settings: return "gearshape"
         }
     }
-    /// 对应网关 catalog 路径（收藏/历史在 M4 接入本地库，此处先走 Web 列表）。
-    var catalogPath: String? {
-        switch self {
-        case .discover: return "/"
-        case .rank: return "/rank"
-        case .explore: return "/explore"
-        default: return nil
-        }
-    }
 }
 
 public struct CatalogView: View {
     @StateObject private var service = CatalogService.shared
     @State private var selection: SidebarItem = .discover
     @State private var query = ""
+    @State private var searchResults: [Drama]?
+    @State private var isSearching = false
+    @State private var searchError: String?
+
     @State private var selected: Drama?
-    @State private var detail: DramaDetail?
-    @State private var showPlayer = false
+    @State private var playerDetail: PlayerPayload?
 
     public init() {}
+
+    // 各分区浏览配置
+    private var discoverConfig: BrowseConfig {
+        BrowseConfig(
+            title: "发现",
+            chips: BrowseCategory.allCases.map { BrowseChip(id: $0.id, title: $0.title) },
+            defaultPath: "/",
+            chipPath: { BrowseCategory(rawValue: $0.id)?.path ?? "/" },
+            featuredPath: "/hot"
+        )
+    }
+    private var rankConfig: BrowseConfig {
+        BrowseConfig(
+            title: "排行榜",
+            chips: RankTab.allCases.map { BrowseChip(id: $0.id, title: $0.title) },
+            defaultPath: RankTab.hot.path,
+            chipPath: { RankTab(rawValue: $0.id)?.path ?? "/rank" }
+        )
+    }
+    private var exploreConfig: BrowseConfig {
+        BrowseConfig(
+            title: "探索",
+            chips: BrowseCategory.allCases.map { BrowseChip(id: $0.id, title: $0.title) },
+            defaultPath: "/explore",
+            chipPath: { BrowseCategory(rawValue: $0.id)?.path ?? "/explore" }
+        )
+    }
 
     public var body: some View {
         NavigationSplitView {
@@ -53,95 +74,102 @@ public struct CatalogView: View {
             .navigationTitle("红果短剧")
             .navigationSplitViewColumnWidth(min: 200, ideal: 220)
         } detail: {
-            VStack(spacing: 0) {
-                searchBar
-                content
+            Group {
+                if searchResults != nil || isSearching {
+                    searchContent
+                } else {
+                    sectionContent
+                }
             }
-            .navigationTitle(selection.title)
             .frame(minWidth: 640, minHeight: 480)
+            .searchable(text: $query, prompt: "搜索短剧、剧名")
+            .onSubmit(of: .search) { Task { await runSearch() } }
+            .onChange(of: query) { _, new in if new.isEmpty { searchResults = nil } }
+            .navigationTitle(showTitle)
         }
-        .onChange(of: selection) { _, _ in Task { await reload() } }
         .task {
             GatewayController.shared.start()
-            await reload()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .hongguoOpenDrama)) { note in
+            if let d = note.object as? Drama { selected = d }
         }
         .sheet(item: $selected) { drama in
-            DetailSheet(drama: drama, onPlay: { d in
+            DetailView(drama: drama) { detail, idx in
                 selected = nil
-                Task { detail = await service.detail(id: d.id) }
-                showPlayer = true
-            })
+                playerDetail = PlayerPayload(id: detail.drama.id, detail: detail, index: idx)
+            }
         }
-        .sheet(isPresented: $showPlayer) {
-            if let detail { PlayerView(detail: detail) }
+        .sheet(item: $playerDetail) { payload in
+            PlayerView(detail: payload.detail, startIndex: payload.index)
         }
     }
 
-    private var searchBar: some View {
-        HStack {
-            Image(systemName: "magnifyingglass")
-            TextField("搜索短剧", text: $query)
-                .textFieldStyle(.roundedBorder)
-                .onSubmit { Task { await service.search(query) } }
-            Button("搜索") { Task { await service.search(query) } }
-            if service.isLoading { ProgressView().controlSize(.small) }
-        }
-        .padding(.horizontal, Spacing.md)
-        .padding(.vertical, Spacing.sm)
+    private var showTitle: String {
+        if searchResults != nil || isSearching { return "搜索" }
+        return selection.title
     }
 
     @ViewBuilder
-    private var content: some View {
-        if let err = service.errorMessage {
-            VStack { Image(systemName: "exclamationmark.triangle").foregroundStyle(.orange); Text(err) }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else if service.items.isEmpty && !service.isLoading {
-            ContentUnavailableView("暂无内容", systemImage: "tray", description: Text("换个分类或搜索试试"))
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else {
-            ScrollView {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 160), spacing: Spacing.md)], spacing: Spacing.md) {
-                    ForEach(service.items) { drama in
-                        PosterCard(drama)
-                            .onTapGesture { selected = drama }
-                            .contextMenu { Button("详情") { selected = drama } }
-                    }
-                }
-                .padding(Spacing.md)
-            }
+    private var sectionContent: some View {
+        switch selection {
+        case .discover:
+            BrowseView(config: discoverConfig, onSelect: openDetail)
+        case .rank:
+            BrowseView(config: rankConfig, onSelect: openDetail)
+        case .explore:
+            BrowseView(config: exploreConfig, onSelect: openDetail)
+        case .favorite:
+            LibraryPlaceholder(kind: .favorite)
+        case .history:
+            LibraryPlaceholder(kind: .history)
+        case .settings:
+            SettingsView()
         }
     }
 
-    private func reload() async {
-        if let path = selection.catalogPath {
-            await service.loadCatalog(path: path)
+    @ViewBuilder
+    private var searchContent: some View {
+        if isSearching {
+            LoadingView("搜索中…")
+        } else if let error = searchError {
+            ErrorView(error, retry: { Task { await runSearch() } })
+        } else if let results = searchResults, results.isEmpty {
+            EmptyState("未找到相关短剧", systemImage: "magnifyingglass", description: "换个关键词试试")
+        } else if let results = searchResults {
+            PosterGrid(results, onSelect: openDetail)
         }
+    }
+
+    private func openDetail(_ drama: Drama) { selected = drama }
+
+    private func runSearch() async {
+        let q = query.trimmingCharacters(in: .whitespaces)
+        guard !q.isEmpty else { searchResults = nil; return }
+        isSearching = true; searchError = nil
+        do {
+            searchResults = try await service.search(query: q)
+        } catch {
+            searchError = "搜索失败：\(error.localizedDescription)"
+        }
+        isSearching = false
     }
 }
 
-/// 详情弹窗（M5 接入播放器）。
-struct DetailSheet: View {
-    let drama: Drama
-    let onPlay: (Drama) -> Void
+/// 个人库占位（M4 接入真实收藏/历史视图）。
+struct LibraryPlaceholder: View {
+    enum Kind { case favorite, history }
+    let kind: Kind
     var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.md) {
-            HStack {
-                Text(drama.title).font(Typography.title)
-                Spacer()
-                Button("关闭") { /* sheet 由父级控制 */ }
-            }
-            if let desc = drama.description {
-                Text(desc).font(Typography.body).foregroundStyle(Brand.secondaryLabel)
-            }
-            if let cnt = drama.episodeCount { Text("共 \(cnt) 集").font(Typography.caption) }
-            Button { onPlay(drama) } label: {
-                Label("立即播放", systemImage: "play.fill").frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(Brand.pink)
-            Spacer()
-        }
-        .padding(Spacing.lg)
-        .frame(width: 480, height: 360)
+        EmptyState(kind == .favorite ? "还没有收藏" : "还没有观看记录",
+                   systemImage: kind == .favorite ? "heart" : "clock",
+                   description: "在详情页点击收藏，或播放后自动记录")
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
+}
+
+/// 播放器入参包装（Identifiable 以便 sheet）。
+struct PlayerPayload: Identifiable {
+    let id: String
+    let detail: DramaDetail
+    let index: Int
 }

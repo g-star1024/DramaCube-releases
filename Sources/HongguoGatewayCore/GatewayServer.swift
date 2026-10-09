@@ -38,10 +38,11 @@ public enum GatewayServer {
             return json(GatewayEnvelope(ok: true, data: items))
         }
 
-        // 列表：/api/catalog?path=/rank
+        // 列表：/api/catalog?path=/rank&page=2
         router.get("api/catalog") { request, _ async throws -> Response in
             let path = queryValue(request, name: "path") ?? "/"
-            let items = try await HongguoClient.shared.catalog(path: path)
+            let page = Int(queryValue(request, name: "page") ?? "1") ?? 1
+            let items = try await HongguoClient.shared.catalog(path: path, page: page)
             return json(GatewayEnvelope(ok: true, data: items))
         }
 
