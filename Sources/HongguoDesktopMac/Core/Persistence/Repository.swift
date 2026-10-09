@@ -77,4 +77,17 @@ public final class Repository {
         for i in all { context.delete(i) }
         try? context.save()
     }
+
+    /// 删除单条历史。
+    public func removeHistory(_ item: HistoryItem) {
+        context.delete(item)
+        try? context.save()
+    }
+
+    /// 读取单条播放进度（续播用）。
+    public func progress(dramaId: String, episodeId: String) -> HistoryItem? {
+        let key = "\(dramaId):\(episodeId)"
+        let pd = FetchDescriptor<HistoryItem>(predicate: #Predicate { $0.key == key })
+        return (try? context.fetch(pd))?.first
+    }
 }

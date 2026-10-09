@@ -151,6 +151,7 @@ public struct DetailView: View {
     private func toggleFav() {
         Repository.shared.toggleFavorite(dramaId: drama.id, title: drama.title, coverURL: drama.coverURL)
         isFav = Repository.shared.isFavorite(dramaId: drama.id)
+        NotificationCenter.default.post(name: .hongguoLibraryChanged, object: nil)
     }
 
     private func load() async {

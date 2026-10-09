@@ -17,6 +17,10 @@ public final class FavoriteItem {
     }
 }
 
+extension FavoriteItem: Identifiable {
+    public var id: String { dramaId }
+}
+
 /// 历史 / 播放进度条目（看过哪些 + 每集看到哪）。
 @Model
 public final class HistoryItem {
@@ -46,4 +50,8 @@ public final class HistoryItem {
         self.duration = duration
         self.updatedAt = updatedAt
     }
+}
+
+extension HistoryItem: Identifiable {
+    public var id: String { key }
 }

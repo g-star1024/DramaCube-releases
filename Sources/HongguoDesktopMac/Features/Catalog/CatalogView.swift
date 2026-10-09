@@ -93,6 +93,12 @@ public struct CatalogView: View {
         .onReceive(NotificationCenter.default.publisher(for: .hongguoOpenDrama)) { note in
             if let d = note.object as? Drama { selected = d }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .hongguoPlayDetail)) { note in
+            if let payload = note.object as? PlayerPayload {
+                selected = nil
+                playerDetail = payload
+            }
+        }
         .sheet(item: $selected) { drama in
             DetailView(drama: drama) { detail, idx in
                 selected = nil
@@ -119,9 +125,9 @@ public struct CatalogView: View {
         case .explore:
             BrowseView(config: exploreConfig, onSelect: openDetail)
         case .favorite:
-            LibraryPlaceholder(kind: .favorite)
+            LibraryView(initial: .favorite)
         case .history:
-            LibraryPlaceholder(kind: .history)
+            LibraryView(initial: .history)
         case .settings:
             SettingsView()
         }
@@ -152,18 +158,6 @@ public struct CatalogView: View {
             searchError = "搜索失败：\(error.localizedDescription)"
         }
         isSearching = false
-    }
-}
-
-/// 个人库占位（M4 接入真实收藏/历史视图）。
-struct LibraryPlaceholder: View {
-    enum Kind { case favorite, history }
-    let kind: Kind
-    var body: some View {
-        EmptyState(kind == .favorite ? "还没有收藏" : "还没有观看记录",
-                   systemImage: kind == .favorite ? "heart" : "clock",
-                   description: "在详情页点击收藏，或播放后自动记录")
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
