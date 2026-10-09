@@ -1,0 +1,21 @@
+# Swift / SPM
+.build/
+.swiftpm/
+Packages/
+xcuserdata/
+DerivedData/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+
+# 本地令牌（绝不提交）
+.workbuddy/github_token
+
+# 产物
+*.dmg
+*.zip
+release/
+dist/
+
+# 系统
+.DS_Store
+*.swp
