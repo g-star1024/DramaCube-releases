@@ -225,7 +225,15 @@ public struct DetailView: View {
         }
         // 2) 网络刷新并回写
         do {
-            let d = try await CatalogService.shared.detail(id: drama.id)
+            let d: DramaDetail
+            if drama.id.hasPrefix("tvbox|") {
+                // TVBox 源：id = tvbox|<siteKey>|<vodId>
+                let parts = drama.id.split(separator: "|").map(String.init)
+                guard parts.count == 3 else { throw HongguoParseError.fieldMissing("tvbox id") }
+                d = try await SourceManager.shared.tvboxDetail(siteKey: parts[1], vodId: parts[2])
+            } else {
+                d = try await CatalogService.shared.detail(id: drama.id)
+            }
             apply(d)
             await DiskCache.shared.write(d, key: cacheKey)
         } catch {
@@ -244,9 +252,10 @@ public struct DetailView: View {
         playedEpisodeIds = Set(played)
         isFav = Repository.shared.isFavorite(dramaId: drama.id)
         // 相关推荐：详情数据自带；站点未返回时回退到首页热播（排除自身）
+        // TVBox 源不做回退（跨源推荐意义不大且流量浪费）
         if let rel = d.related, !rel.isEmpty {
             related = rel
-        } else if related.isEmpty {
+        } else if related.isEmpty, !drama.id.hasPrefix("tvbox|") {
             Task { await loadRelatedFallback() }
         }
     }

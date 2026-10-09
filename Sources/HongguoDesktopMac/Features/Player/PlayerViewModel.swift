@@ -46,6 +46,8 @@ public final class PlayerViewModel: ObservableObject, ActivePlayer {
     @Published public var showOtherSeasons = false
     @Published public var otherSeasons: [Drama] = []
     @Published public var isResuming = false
+    /// 视频画面是否为竖版（高 > 宽），窗口自适应用。
+    @Published public private(set) var isPortraitVideo = false
 
     public var dramaId: String { detail.drama.id }
     public var currentEpisode: Episode? { episodes.indices.contains(currentIndex) ? episodes[currentIndex] : nil }
@@ -129,7 +131,16 @@ public final class PlayerViewModel: ObservableObject, ActivePlayer {
         episodeLoadStart = Date()
         let item: AVPlayerItem
         if let url = ep.playURL, !url.isEmpty {
-            item = AVPlayerItem(url: hongguoGatewayMediaURL(url))
+            if url.lowercased().contains(".m3u8") {
+                // m3u8（TVBox 源主流）：AVPlayer 原生 HLS 直接播，不走网关。
+                // 原因：部分资源 CDN（lz-cdn 等）按 TLS/HTTP2 指纹拦截裸 URLSession
+                // （实测 curl 200 而 URLSession 404），网关代理会 404；
+                // AVPlayer 走 AppleCoreMedia 栈，是播放器标准指纹，CDN 全部放行。
+                item = AVPlayerItem(url: URL(string: url)!)
+            } else {
+                // mp4 等直链（红果源）：经网关剥离 Referer + Range 透传。
+                item = AVPlayerItem(url: hongguoGatewayMediaURL(url))
+            }
         } else {
             // 新站点选集无预置直链：经网关 /api/stream/<sid>/<vid> 即时解析 main_url 并代理。
             let stream = URL(string: "\(AppConfig.gatewayBaseURL)/api/stream/\(detail.drama.id)/\(ep.id)")!
@@ -181,6 +192,7 @@ public final class PlayerViewModel: ObservableObject, ActivePlayer {
                     self.pendingSeek = nil
                     if observed.duration.seconds.isFinite { self.duration = observed.duration.seconds }
                     self.isBuffering = false
+                    self.detectVideoOrientation(observed)
                 } else if observed.status == .failed {
                     let msg = observed.error?.localizedDescription ?? "该集无法播放"
                     AppLog.log(.error, "第\(self.currentEpisode?.index ?? 0)集播放失败：\(msg)")
@@ -198,6 +210,21 @@ public final class PlayerViewModel: ObservableObject, ActivePlayer {
             forName: .AVPlayerItemDidPlayToEndTime, object: item, queue: .main
         ) { [weak self] _ in
             Task { @MainActor in self?.playNext() }
+        }
+    }
+
+    /// 读取视频轨道 naturalSize（应用 display transform 后），判断竖版并通知窗口自适应。
+    /// 竖版短剧（9:16）用横版窗口播放会留两条大黑边 —— 窗口自动收窄到竖屏比例。
+    private func detectVideoOrientation(_ item: AVPlayerItem) {
+        guard let track = item.tracks.first(where: { $0.assetTrack?.mediaType == .video })?.assetTrack else { return }
+        let raw = track.naturalSize.applying(track.preferredTransform)
+        let size = CGSize(width: abs(raw.width), height: abs(raw.height))
+        guard size.width > 0, size.height > 0 else { return }
+        let portrait = size.height > size.width
+        if portrait != isPortraitVideo {
+            isPortraitVideo = portrait
+            AppLog.log(.player, "视频画面 \(Int(size.width))x\(Int(size.height)) → \(portrait ? "竖版，窗口自适应" : "横版")")
+            PlayerWindowManager.shared.adaptToVideo(portrait: portrait)
         }
     }
 

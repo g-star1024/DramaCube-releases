@@ -65,6 +65,74 @@ public enum GatewayServer {
             return try await Self.proxyMedia(request, sourceURL: mainURL)
         }
 
+        // MARK: TVBox 视频源（maccms 聚合）
+        // 订阅下载/解析/搜索/详情/播放代理由本机网关统一收口，前端不直连外网。
+
+        // 导入订阅：/api/tvbox/import?url=<订阅地址> → {ok, data:{count}}
+        router.get("api/tvbox/import") { request, _ async throws -> Response in
+            guard let url = Self.queryValue(request, name: "url"), !url.isEmpty else {
+                throw HTTPError(.badRequest, message: "missing url")
+            }
+            let count = try await TVBoxEngine.shared.importSubscription(url: url)
+            return Self.json(GatewayEnvelope(ok: true, data: ["count": count]))
+        }
+
+        // 站点列表：/api/tvbox/sites
+        router.get("api/tvbox/sites") { _, _ async throws -> Response in
+            let sites = await TVBoxEngine.shared.allSites()
+            return Self.json(GatewayEnvelope(ok: true, data: sites))
+        }
+
+        // 连通性测试：/api/tvbox/test?keys=a,b,c（无 keys 则全量）
+        router.get("api/tvbox/test") { request, _ async throws -> Response in
+            let keys = Self.queryValue(request, name: "keys")?
+                .split(separator: ",").map { String($0) }.filter { !$0.isEmpty }
+            let results = await TVBoxEngine.shared.testAll(keys: keys)
+            return Self.json(GatewayEnvelope(ok: true, data: results))
+        }
+
+        // 站点最新列表：/api/tvbox/latest/:siteKey?page=n
+        router.get("api/tvbox/latest/:site") { request, ctx async throws -> Response in
+            guard let key = ctx.parameters.get("site", as: String.self), !key.isEmpty else {
+                throw HTTPError(.badRequest, message: "missing site")
+            }
+            let page = Int(Self.queryValue(request, name: "page") ?? "1") ?? 1
+            let items = try await TVBoxEngine.shared.latest(siteKey: key, page: page)
+            return Self.json(GatewayEnvelope(ok: true, data: items))
+        }
+
+        // 站点搜索：/api/tvbox/search/:site?q=xx&page=n
+        router.get("api/tvbox/search/:site") { request, ctx async throws -> Response in
+            guard let key = ctx.parameters.get("site", as: String.self), !key.isEmpty else {
+                throw HTTPError(.badRequest, message: "missing site")
+            }
+            let q = Self.queryValue(request, name: "q") ?? ""
+            let page = Int(Self.queryValue(request, name: "page") ?? "1") ?? 1
+            let items = try await TVBoxEngine.shared.search(siteKey: key, query: q, page: page)
+            return Self.json(GatewayEnvelope(ok: true, data: items))
+        }
+
+        // 站点详情：/api/tvbox/detail/:site/:id（含分集直链）
+        router.get("api/tvbox/detail/:site/:id") { request, ctx async throws -> Response in
+            guard let key = ctx.parameters.get("site", as: String.self), !key.isEmpty,
+                  let id = ctx.parameters.get("id", as: String.self), !id.isEmpty else {
+                throw HTTPError(.badRequest, message: "missing site/id")
+            }
+            let detail = try await TVBoxEngine.shared.detail(siteKey: key, vodId: id)
+            return Self.json(GatewayEnvelope(ok: true, data: detail))
+        }
+
+        // 播放代理（解析模式）：/api/tvbox/play/:site/:id/:ep —— 重取详情选 m3u8 线路后代理
+        router.get("api/tvbox/play/:site/:id/:ep") { request, ctx async throws -> Response in
+            guard let key = ctx.parameters.get("site", as: String.self), !key.isEmpty,
+                  let id = ctx.parameters.get("id", as: String.self), !id.isEmpty,
+                  let ep = ctx.parameters.get("ep", as: Int.self) else {
+                throw HTTPError(.badRequest, message: "missing site/id/ep")
+            }
+            let mainURL = try await TVBoxEngine.shared.resolvePlayURL(siteKey: key, vodId: id, episodeIndex: ep)
+            return try await Self.proxyMedia(request, sourceURL: mainURL)
+        }
+
         return router
     }
 

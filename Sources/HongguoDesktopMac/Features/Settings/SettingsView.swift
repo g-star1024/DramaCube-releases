@@ -21,12 +21,67 @@ public struct SettingsView: View {
 
     public var body: some View {
         TabView {
+            generalTab.tabItem { Label("通用", systemImage: "gearshape") }
             playbackTab.tabItem { Label("播放", systemImage: "play.circle") }
             browseTab.tabItem { Label("浏览", systemImage: "square.grid.2x2") }
-            serviceTab.tabItem { Label("服务", systemImage: "antenna.radiowaves.left.and.right") }
+            sourcesTab.tabItem { Label("视频源", systemImage: "antenna.radiowaves.left.and.right") }
+            serviceTab.tabItem { Label("服务", systemImage: "stethoscope") }
             aboutTab.tabItem { Label("关于", systemImage: "info.circle") }
         }
-        .frame(width: 560, height: 420)
+        .frame(width: 600, height: 480)
+    }
+
+    // MARK: - 通用（菜单栏 / Dock / 窗口行为）
+
+    @State private var hideDockIcon = UserDefaults.standard.bool(forKey: "ui.hideDockIcon")
+    @State private var closeToTray = UserDefaults.standard.object(forKey: "ui.closeToTray") == nil
+        ? true : UserDefaults.standard.bool(forKey: "ui.closeToTray")
+
+    private var generalTab: some View {
+        ScrollView {
+            VStack(spacing: Spacing.lg) {
+                sectionCard("菜单栏托盘") {
+                    row("关闭主窗口时") {
+                        Toggle("", isOn: $closeToTray)
+                            .labelsHidden().toggleStyle(.switch)
+                        Text(closeToTray ? "最小化到菜单栏（⌘Q 退出）" : "直接退出应用")
+                            .font(Typography.caption)
+                            .foregroundStyle(Brand.secondaryLabel)
+                    }
+                    row("隐藏 Dock 图标") {
+                        Toggle("", isOn: $hideDockIcon)
+                            .labelsHidden().toggleStyle(.switch)
+                        Text(hideDockIcon ? "仅显示菜单栏图标" : "Dock 与菜单栏同时显示")
+                            .font(Typography.caption)
+                            .foregroundStyle(Brand.secondaryLabel)
+                    }
+                }
+                sectionCard("播放窗口") {
+                    row("竖版视频") {
+                        Text("自动收窄窗口消除黑边（无需设置）")
+                            .font(Typography.caption)
+                            .foregroundStyle(Brand.secondaryLabel)
+                    }
+                }
+            }
+            .padding(Spacing.xl)
+        }
+        .background(Brand.background)
+        .onChange(of: hideDockIcon) { _, v in
+            UserDefaults.standard.set(v, forKey: "ui.hideDockIcon")
+            // 即时生效：通过通知让托盘控制器重读
+            MenuBarController.shared.start()
+        }
+        .onChange(of: closeToTray) { _, v in
+            UserDefaults.standard.set(v, forKey: "ui.closeToTray")
+            MenuBarController.shared.start()
+        }
+    }
+
+    // MARK: - 视频源
+
+    private var sourcesTab: some View {
+        SourceSettingsView()
     }
 
     // MARK: 行布局原语（标签固定宽度左对齐，控件右贴齐）

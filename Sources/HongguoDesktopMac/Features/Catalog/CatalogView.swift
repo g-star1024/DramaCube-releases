@@ -2,13 +2,14 @@ import SwiftUI
 import HongguoCore
 
 public enum SidebarItem: String, CaseIterable, Identifiable {
-    case discover, rank, explore, favorite, history, settings
+    case discover, rank, explore, tvbox, favorite, history, settings
     public var id: String { rawValue }
     public var title: String {
         switch self {
         case .discover: return "发现"
         case .rank: return "排行榜"
         case .explore: return "探索"
+        case .tvbox: return "视频源"
         case .favorite: return "收藏"
         case .history: return "历史"
         case .settings: return "设置"
@@ -19,6 +20,7 @@ public enum SidebarItem: String, CaseIterable, Identifiable {
         case .discover: return "sparkles"
         case .rank: return "chart.bar.fill"
         case .explore: return "compass"
+        case .tvbox: return "antenna.radiowaves.left.and.right"
         case .favorite: return "heart"
         case .history: return "clock"
         case .settings: return "gearshape"
@@ -97,6 +99,8 @@ public struct CatalogView: View {
             }
             GatewayController.shared.start()
             BossKeyManager.shared.start()
+            SourceManager.shared.load()
+            MenuBarController.shared.start()
         }
         .onReceive(NotificationCenter.default.publisher(for: .hongguoOpenDrama)) { note in
             if let d = note.object as? Drama { selected = d }
@@ -138,6 +142,8 @@ public struct CatalogView: View {
             BrowseView(config: rankConfig, onSelect: openDetail)
         case .explore:
             BrowseView(config: exploreConfig, onSelect: openDetail)
+        case .tvbox:
+            TVBoxBrowseView(sm: SourceManager.shared, onSelect: openDetail)
         case .favorite:
             LibraryView(initial: .favorite)
         case .history:
@@ -154,12 +160,14 @@ public struct CatalogView: View {
         } else if let error = searchError {
             ErrorView(error, retry: { Task { await runSearch() } })
         } else if let results = searchResults, results.isEmpty {
-            EmptyState("未找到相关短剧", systemImage: "magnifyingglass", description: "换个关键词试试")
+            EmptyState("未找到相关内容", systemImage: "magnifyingglass", description: "换个关键词试试")
         } else if let results = searchResults {
             PosterGrid(results, onSelect: openDetail)
                 .task(id: results) {
-                    // 搜索页是 DOM 卡片解析，源数据无集数，后台懒回填
-                    await CountBackfiller.shared.backfill(results) { id, count in
+                    // 红果源搜索页是 DOM 卡片解析，源数据无集数，后台懒回填；
+                    // tvbox 卡片 id 带前缀，跳过（maccms 自带集数）。
+                    let hongguoOnly = results.filter { !$0.id.hasPrefix("tvbox|") }
+                    await CountBackfiller.shared.backfill(hongguoOnly) { id, count in
                         guard var list = searchResults,
                               let i = list.firstIndex(where: { $0.id == id }) else { return }
                         list[i] = list[i].withEpisodeCount(count)
@@ -176,7 +184,22 @@ public struct CatalogView: View {
         guard !q.isEmpty else { searchResults = nil; return }
         isSearching = true; searchError = nil
         do {
-            searchResults = try await service.search(query: q)
+            let sm = SourceManager.shared
+            if sm.currentSource == "hongguo" {
+                // 红果 +（有启用源时）聚合全部启用源
+                if sm.enabledSites.isEmpty {
+                    searchResults = try await service.search(query: q)
+                } else {
+                    async let hongguo = (try? service.search(query: q)) ?? []
+                    async let tvbox = sm.aggregateSearch(query: q)
+                    let (h, t) = await (hongguo, tvbox)
+                    var seen = Set<String>()
+                    searchResults = (h + t).filter { seen.insert($0.title).inserted }
+                }
+            } else {
+                // 单一 TVBox 源
+                searchResults = try await sm.tvboxSearch(siteKey: sm.currentSource, query: q)
+            }
         } catch {
             searchError = "搜索失败：\(error.localizedDescription)"
         }
@@ -267,6 +290,27 @@ final class PlayerWindowManager {
 
     /// 当前处于手动全屏。
     var isManuallyFullscreen: Bool { savedFrame != nil }
+
+    /// 竖版视频窗口自适应：9:16 短剧收窄窗口消除左右黑边。
+    /// 竖版 → 高 780、宽按 9:16 比例（约 440）；横版 → 恢复 960×620。
+    /// 全屏中不动（全屏本身铺满，由 AVLayer gravity 处理）。
+    func adaptToVideo(portrait: Bool) {
+        guard let w = window, w.isVisible, savedFrame == nil else { return }
+        let target: NSSize = portrait ? NSSize(width: 480, height: 800) : NSSize(width: 960, height: 620)
+        // 尺寸已接近就不动（避免每集切换抖动）
+        if abs(w.frame.width - target.width) < 8 && abs(w.frame.height - target.height) < 8 { return }
+        var f = w.frame
+        f.size = target
+        f.origin.x += (w.frame.width - target.width) / 2
+        f.origin.y += (w.frame.height - target.height) / 2
+        // 防止超出屏幕
+        if let screen = w.screen {
+            f.origin.x = max(screen.visibleFrame.minX, min(f.origin.x, screen.visibleFrame.maxX - target.width))
+            f.origin.y = max(screen.visibleFrame.minY, min(f.origin.y, screen.visibleFrame.maxY - target.height))
+        }
+        w.setFrame(f, display: true, animate: true)
+        AppLog.log(.player, "播放窗口自适应：\(portrait ? "竖版" : "横版") \(Int(target.width))x\(Int(target.height))")
+    }
 
     /// 切换播放器窗口全屏。
     ///
