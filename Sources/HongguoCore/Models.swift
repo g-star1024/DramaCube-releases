@@ -44,13 +44,16 @@ public struct Episode: Codable, Identifiable, Hashable, Sendable {
     }
 }
 
-/// 详情页：剧集 + 分集列表。
+/// 详情页：剧集 + 分集列表 + 相关推荐。
 public struct DramaDetail: Codable, Sendable {
-    public let drama: Drama
+    public var drama: Drama
     public let episodes: [Episode]
-    public init(drama: Drama, episodes: [Episode]) {
+    /// 相关推荐（站点 recommendations；可选，旧数据无此字段）。
+    public var related: [Drama]?
+    public init(drama: Drama, episodes: [Episode], related: [Drama]? = nil) {
         self.drama = drama
         self.episodes = episodes
+        self.related = related
     }
 }
 

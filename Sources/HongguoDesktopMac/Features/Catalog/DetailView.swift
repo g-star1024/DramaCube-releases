@@ -163,8 +163,8 @@ public struct DetailView: View {
             let played = Repository.shared.history().filter { $0.dramaId == drama.id }.map(\.episodeId)
             playedEpisodeIds = Set(played)
             isFav = Repository.shared.isFavorite(dramaId: drama.id)
-            // 相关推荐
-            related = (try? await CatalogService.shared.catalog(path: "/")) ?? []
+            // 相关推荐（详情页数据自带，无额外请求）
+            related = d.related ?? []
         } catch {
             loadError = "详情加载失败：\(error.localizedDescription)"
         }

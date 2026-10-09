@@ -46,12 +46,26 @@ public enum GatewayServer {
             return json(GatewayEnvelope(ok: true, data: items))
         }
 
-        // 播放代理：/api/play?url=<CDN直链> —— 剥离 Referer 请求
+        // 播放代理（直链模式）：/api/play?url=<CDN直链> —— 剥离 Referer 请求
         router.get("api/play") { request, _ async throws -> Response in
             guard let url = queryValue(request, name: "url"), !url.isEmpty else {
                 throw HTTPError(.badRequest, message: "missing url")
             }
             let (data, ct) = try await HongguoClient.shared.fetchMedia(url)
+            var headers = HTTPFields()
+            headers[.contentType] = ct
+            return Response(status: .ok, headers: headers, body: .init(byteBuffer: ByteBuffer(data: data)))
+        }
+
+        // 播放代理（解析模式）：/api/stream/<seriesId>/<vid>
+        // 先解析 /player/<sid>/<vid> 拿 main_url，再代理 CDN（剥离 Referer）。
+        router.get("api/stream/:sid/:vid") { _, ctx async throws -> Response in
+            guard let sid = ctx.parameters.get("sid", as: String.self), !sid.isEmpty,
+                  let vid = ctx.parameters.get("vid", as: String.self), !vid.isEmpty else {
+                throw HTTPError(.badRequest, message: "missing sid/vid")
+            }
+            let mainURL = try await HongguoClient.shared.resolvePlayURL(seriesId: sid, vid: vid)
+            let (data, ct) = try await HongguoClient.shared.fetchMedia(mainURL)
             var headers = HTTPFields()
             headers[.contentType] = ct
             return Response(status: .ok, headers: headers, body: .init(byteBuffer: ByteBuffer(data: data)))

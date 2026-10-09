@@ -123,7 +123,9 @@ public final class PlayerViewModel: ObservableObject, ActivePlayer {
         if let url = ep.playURL, !url.isEmpty {
             item = AVPlayerItem(url: hongguoGatewayMediaURL(url))
         } else {
-            item = AVPlayerItem(url: URL(string: "about:blank")!)
+            // 新站点选集无预置直链：经网关 /api/stream/<sid>/<vid> 即时解析 main_url 并代理。
+            let stream = URL(string: "\(AppConfig.gatewayBaseURL)/api/stream/\(detail.drama.id)/\(ep.id)")!
+            item = AVPlayerItem(url: stream)
         }
         player.replaceCurrentItem(with: item)
         currentTime = 0

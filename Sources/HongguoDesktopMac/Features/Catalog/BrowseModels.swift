@@ -10,61 +10,69 @@ public struct BrowseChip: Identifiable, Hashable {
     }
 }
 
-/// 发现页分类（站点路径为最佳努力猜测，解析失败优雅返回空）。
+/// 发现页分类（2026-10 站点改版后的真实路由）。
 public enum BrowseCategory: String, CaseIterable, Identifiable {
-    case recommend, hot, new, sweet, boss, suspense, costume, urban, revenge, mystery
+    case recommend, real, comic, ai
     public var id: String { rawValue }
     public var title: String {
         switch self {
         case .recommend: return "推荐"
-        case .hot: return "热播"
-        case .new: return "最新"
-        case .sweet: return "甜宠"
-        case .boss: return "霸总"
-        case .suspense: return "悬疑"
-        case .costume: return "古装"
-        case .urban: return "都市"
-        case .revenge: return "逆袭"
-        case .mystery: return "奇幻"
+        case .real: return "真人剧"
+        case .comic: return "漫剧"
+        case .ai: return "AI剧"
         }
     }
     /// 对应站点相对路径。
     public var path: String {
         switch self {
         case .recommend: return "/"
-        case .hot: return "/hot"
-        case .new: return "/latest"
-        case .sweet: return "/sweet"
-        case .boss: return "/boss"
-        case .suspense: return "/suspense"
-        case .costume: return "/costume"
-        case .urban: return "/urban"
-        case .revenge: return "/revenge"
-        case .mystery: return "/mystery"
+        case .real: return "/category/real-drama"
+        case .comic: return "/category/comic-drama"
+        case .ai: return "/category/ai-drama"
         }
     }
 }
 
-/// 排行榜子榜单。
+/// 排行榜子榜单（站点真实路由，支持 ?page= 分页）。
 public enum RankTab: String, CaseIterable, Identifiable {
-    case hot, `new`, week, month, ending
+    case hot, real, comic, ai
     public var id: String { rawValue }
     public var title: String {
         switch self {
-        case .hot: return "热门榜"
-        case .new: return "最新榜"
-        case .week: return "周榜"
-        case .month: return "月榜"
-        case .ending: return "收官榜"
+        case .hot: return "热播榜"
+        case .real: return "真人剧榜"
+        case .comic: return "漫剧榜"
+        case .ai: return "AI剧榜"
         }
     }
     public var path: String {
         switch self {
-        case .hot: return "/rank"
-        case .new: return "/rank/new"
-        case .week: return "/rank/week"
-        case .month: return "/rank/month"
-        case .ending: return "/rank/ending"
+        case .hot: return "/rank/hot-drama"
+        case .real: return "/rank/hot-real-drama"
+        case .comic: return "/rank/hot-comic-drama"
+        case .ai: return "/rank/hot-ai-drama"
+        }
+    }
+}
+
+/// 探索页全量类目（分类页带筛选与分页）。
+public enum ExploreTab: String, CaseIterable, Identifiable {
+    case short, real, comic, ai
+    public var id: String { rawValue }
+    public var title: String {
+        switch self {
+        case .short: return "短剧"
+        case .real: return "真人剧"
+        case .comic: return "漫剧"
+        case .ai: return "AI剧"
+        }
+    }
+    public var path: String {
+        switch self {
+        case .short: return "/category?tab=1&sort_type=1"
+        case .real: return "/category/real-drama"
+        case .comic: return "/category/comic-drama"
+        case .ai: return "/category/ai-drama"
         }
     }
 }

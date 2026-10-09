@@ -46,7 +46,7 @@ public struct CatalogView: View {
             chips: BrowseCategory.allCases.map { BrowseChip(id: $0.id, title: $0.title) },
             defaultPath: "/",
             chipPath: { BrowseCategory(rawValue: $0.id)?.path ?? "/" },
-            featuredPath: "/hot"
+            featuredPath: "/rank/hot-drama"
         )
     }
     private var rankConfig: BrowseConfig {
@@ -54,15 +54,15 @@ public struct CatalogView: View {
             title: "排行榜",
             chips: RankTab.allCases.map { BrowseChip(id: $0.id, title: $0.title) },
             defaultPath: RankTab.hot.path,
-            chipPath: { RankTab(rawValue: $0.id)?.path ?? "/rank" }
+            chipPath: { RankTab(rawValue: $0.id)?.path ?? RankTab.hot.path }
         )
     }
     private var exploreConfig: BrowseConfig {
         BrowseConfig(
             title: "探索",
-            chips: BrowseCategory.allCases.map { BrowseChip(id: $0.id, title: $0.title) },
-            defaultPath: "/explore",
-            chipPath: { BrowseCategory(rawValue: $0.id)?.path ?? "/explore" }
+            chips: ExploreTab.allCases.map { BrowseChip(id: $0.id, title: $0.title) },
+            defaultPath: ExploreTab.short.path,
+            chipPath: { ExploreTab(rawValue: $0.id)?.path ?? ExploreTab.short.path }
         )
     }
 
