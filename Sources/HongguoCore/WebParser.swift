@@ -94,6 +94,7 @@ public struct WebParser {
     private static func isPlausibleTitle(_ t: String) -> Bool {
         !t.isEmpty && !t.contains("www.") && !t.hasPrefix("http")
             && t.range(of: #"^\d+$"#, options: .regularExpression) == nil
+            && t.range(of: #"^\d{1,3}(\.\d{1,3}){3}$"#, options: .regularExpression) == nil  // IP 地址样式的杂项卡
             && !t.hasPrefix("饰") && !t.contains("饰 ")
     }
 

@@ -35,6 +35,7 @@ public struct CatalogView: View {
     @State private var searchError: String?
 
     @State private var selected: Drama?
+    @State private var pendingPlay: PlayerPayload?
 
     public init() {}
 
@@ -103,14 +104,22 @@ public struct CatalogView: View {
         .onReceive(NotificationCenter.default.publisher(for: .hongguoPlayDetail)) { note in
             if let payload = note.object as? PlayerPayload {
                 selected = nil
-                // 播放器用独立窗口呈现（sheet 不支持全屏）
-                PlayerWindowManager.shared.show(detail: payload.detail, startIndex: payload.index)
+                pendingPlay = payload
             }
         }
         .sheet(item: $selected) { drama in
             DetailView(drama: drama) { detail, idx in
+                // 先收起 sheet，等收起动画完成后再开播放器窗口。
+                // 之前直接 show() 会打断 sheet 收起，sheet 残留并拦截全局鼠标事件。
+                pendingPlay = PlayerPayload(id: detail.drama.id, detail: detail, index: idx)
                 selected = nil
-                PlayerWindowManager.shared.show(detail: detail, startIndex: idx)
+            }
+        }
+        .onChange(of: pendingPlay) { _, payload in
+            guard let payload else { return }
+            pendingPlay = nil
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                PlayerWindowManager.shared.show(detail: payload.detail, startIndex: payload.index)
             }
         }
     }
@@ -167,10 +176,14 @@ public struct CatalogView: View {
 }
 
 /// 播放器入参包装（Identifiable 以便 sheet）。
-struct PlayerPayload: Identifiable {
+struct PlayerPayload: Identifiable, Equatable {
     let id: String
     let detail: DramaDetail
     let index: Int
+
+    static func == (lhs: PlayerPayload, rhs: PlayerPayload) -> Bool {
+        lhs.id == rhs.id && lhs.index == rhs.index
+    }
 }
 
 extension Notification.Name {
@@ -188,6 +201,11 @@ final class PlayerWindowManager {
     static let shared = PlayerWindowManager()
     private var window: NSWindow?
     private let closeDelegate = WindowCloseDelegate()
+    // 手动全屏状态（此环境原生 toggleFullScreen 无效，见验证记录）
+    private var savedFrame: NSRect?
+    private var savedStyleMask: NSWindow.StyleMask?
+    // 全屏中 Esc 退出（borderless 下 SwiftUI keyboardShortcut 不可靠，用 AppKit 监听兜底）
+    private var escMonitor: Any?
 
     func show(detail: DramaDetail, startIndex: Int) {
         close()
@@ -196,7 +214,7 @@ final class PlayerWindowManager {
         }
         let w = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 960, height: 620),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullScreen],
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered, defer: false
         )
         w.title = detail.drama.title
@@ -213,9 +231,70 @@ final class PlayerWindowManager {
         w.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
         window = w
+        installEscMonitor()
+    }
+
+    /// Esc 键监听：手动全屏中拦截并退出全屏；非全屏放行给 SwiftUI（× 按钮关闭）。
+    private func installEscMonitor() {
+        guard escMonitor == nil else { return }
+        escMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard event.keyCode == 53, self?.window?.isKeyWindow == true,
+                  self?.isManuallyFullscreen == true else { return event }
+            MainActor.assumeIsolated {
+                self?.toggleFullscreen()
+            }
+            return nil
+        }
+    }
+
+    private func removeEscMonitor() {
+        if let m = escMonitor { NSEvent.removeMonitor(m) }
+        escMonitor = nil
+    }
+
+    /// 播放器是否在前台（用于 PlayerView 判断走哪条全屏路径）。
+    var hasWindow: Bool { window?.isVisible == true }
+
+    /// 当前处于手动全屏。
+    var isManuallyFullscreen: Bool { savedFrame != nil }
+
+    /// 切换播放器窗口全屏。
+    ///
+    /// 注：原生 `toggleFullScreen` 在部分环境（共享屏幕/受限窗口服务器）会静默失效，
+    /// 已实测最小 AppKit 样例同样无效，因此这里用手动全屏：borderless 铺满屏幕 + 自动隐藏菜单栏。
+    func toggleFullscreen() {
+        guard let w = window, w.isVisible else { return }
+        if savedFrame != nil {
+            // 退出手动全屏
+            if let f = savedFrame {
+                w.styleMask = savedStyleMask ?? [.titled, .closable, .miniaturizable, .resizable]
+                w.titlebarAppearsTransparent = false
+                w.setFrame(f, display: true, animate: true)
+            }
+            savedFrame = nil
+            savedStyleMask = nil
+            NSApp.presentationOptions.remove(.autoHideMenuBar)
+        } else {
+            // 进入手动全屏
+            savedFrame = w.frame
+            savedStyleMask = w.styleMask
+            w.styleMask = [.borderless, .resizable]
+            w.titlebarAppearsTransparent = true
+            if let screen = w.screen ?? NSScreen.main {
+                w.setFrame(screen.frame, display: true, animate: true)
+            }
+            NSApp.presentationOptions.insert(.autoHideMenuBar)
+            w.makeKeyAndOrderFront(nil)
+        }
     }
 
     func close() {
+        if savedFrame != nil {
+            NSApp.presentationOptions.remove(.autoHideMenuBar)
+            savedFrame = nil
+            savedStyleMask = nil
+        }
+        removeEscMonitor()
         window?.delegate = nil
         window?.close()
         window = nil

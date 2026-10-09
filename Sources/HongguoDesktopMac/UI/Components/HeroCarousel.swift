@@ -22,7 +22,13 @@ public struct HeroCarousel: View {
 
     public var body: some View {
         ZStack(alignment: .bottomLeading) {
+            // 关键：给图片一个确定高度的 frame 并裁切。
+            // CoverImage 内部 scaledToFill 无约束会把 ZStack 撑到数千 pt 高，
+            // bottomLeading 对齐的标题会被排到可视区外（标题"消失"的根因）。
             bannerImage
+                .frame(height: 320)
+                .frame(maxWidth: .infinity)
+                .clipped()
                 .id(index)
                 .transition(.opacity)
 

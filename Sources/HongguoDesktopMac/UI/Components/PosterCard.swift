@@ -19,12 +19,13 @@ public struct PosterCard: View {
                 .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(Brand.separator.opacity(0.6), lineWidth: 0.5))
 
             Text(drama.title)
-                .font(Typography.caption)
+                .font(.system(size: 14, weight: .semibold))
                 .lineLimit(1)
                 .foregroundStyle(Brand.label)
+                .help(drama.title)
             if let cnt = drama.episodeCount {
                 Text("\(cnt) 集")
-                    .font(.caption2)
+                    .font(.system(size: 12))
                     .foregroundStyle(Brand.secondaryLabel)
             }
         }

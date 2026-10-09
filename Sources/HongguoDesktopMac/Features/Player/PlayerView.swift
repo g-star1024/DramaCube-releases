@@ -44,10 +44,10 @@ public struct PlayerView: View {
                 if let err = vm.error {
                     errorOverlay(err)
                 }
-                // 左上角悬浮控制：关闭 / 标题
+                // 左上角悬浮控制：关闭 / 标题（Esc 全屏中先退全屏，否则关闭）
                 HStack(spacing: Spacing.sm) {
                     Button {
-                        closePlayer()
+                        handleEsc()
                     } label: {
                         Image(systemName: "xmark")
                             .font(.system(size: 13, weight: .bold))
@@ -57,7 +57,7 @@ public struct PlayerView: View {
                     }
                     .buttonStyle(.plain)
                     .keyboardShortcut(.escape, modifiers: [])
-                    .help("关闭播放器 (Esc)")
+                    .help(PlayerWindowManager.shared.isManuallyFullscreen ? "退出全屏 (Esc)" : "关闭播放器 (Esc)")
 
                     Text("\(detail.drama.title) · 第 \(vm.currentEpisode?.index ?? 0) 集")
                         .font(Typography.caption)
@@ -69,6 +69,8 @@ public struct PlayerView: View {
                 }
                 .padding(Spacing.md)
             }
+            .onTapGesture(count: 2) { toggleFullscreen() }
+            .help("双击切换全屏")
             Divider()
             controlBar
             if vm.showEpisodes { episodePanel }
@@ -128,6 +130,15 @@ public struct PlayerView: View {
             onClose()
         } else {
             dismiss()
+        }
+    }
+
+    /// Esc：手动全屏中先退全屏，否则关闭播放器。
+    private func handleEsc() {
+        if PlayerWindowManager.shared.isManuallyFullscreen {
+            PlayerWindowManager.shared.toggleFullscreen()
+        } else {
+            closePlayer()
         }
     }
 
@@ -256,6 +267,12 @@ public struct PlayerView: View {
     }
 
     private func toggleFullscreen() {
+        // 独立窗口路径：直接用 PlayerWindowManager 持有的窗口引用（最可靠）
+        if PlayerWindowManager.shared.hasWindow {
+            PlayerWindowManager.shared.toggleFullscreen()
+            return
+        }
+        // sheet 兜底路径
         if let w = NSApp.keyWindow ?? NSApp.windows.first(where: { $0.isVisible }) {
             w.toggleFullScreen(nil)
         }
