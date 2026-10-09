@@ -1,0 +1,62 @@
+# 线上打包：GitHub Actions macOS(Apple Silicon) runner
+#
+# 手动触发（workflow_dispatch）：
+#   gh workflow run build-release.yml -f arch=universal -f version=1.0.0
+# 或在 Actions 页面点 Run workflow。
+#
+# 说明：
+# - macos-14 runner 为 arm64 机器，可构建 arm64 / universal；
+#   构建纯 x86_64 请在 Intel 本机跑 Scripts/build-app-bundle.sh。
+# - 产物以 artifact 名 dist-<arch> 上传，30 天有效；
+#   发布到公开仓 g-star1024/hongguo-mac 由本地脚本或维护者手动完成。
+
+name: build-release
+
+on:
+  workflow_dispatch:
+    inputs:
+      arch:
+        description: "构建架构 (arm64 / universal)"
+        required: false
+        default: "universal"
+      version:
+        description: "版本号"
+        required: false
+        default: "1.0.0"
+
+jobs:
+  build:
+    runs-on: macos-14
+    timeout-minutes: 40
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select latest stable Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Show toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+          uname -m
+
+      - name: Build app bundle
+        run: |
+          chmod +x Scripts/build-app-bundle.sh
+          ARCH="${{ github.event.inputs.arch }}" \
+          VERSION="${{ github.event.inputs.version }}" \
+          ./Scripts/build-app-bundle.sh
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ github.event.inputs.arch }}
+          path: |
+            .build/dist/*.zip
+            .build/dist/*.dmg
+            .build/dist/latest.json
+          retention-days: 30
+          if-no-files-found: error
