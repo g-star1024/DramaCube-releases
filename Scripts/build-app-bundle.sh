@@ -21,13 +21,13 @@ cd "$(dirname "$0")/.."
 VERSION="${VERSION:-1.0.0}"
 SIGN_IDENTITY="${SIGN_IDENTITY:--}"
 ARCH="${ARCH:-$(uname -m)}"
-APP_NAME="红果短剧"
-BUNDLE_ID="com.hongguo.desktop"
+APP_NAME="剧立方"
+BUNDLE_ID="com.dramacube.mac"
 EXEC_NAME="HongguoMacApp"
 BUILD_DIR=".build/dist"
 APP_PATH="$BUILD_DIR/$APP_NAME.app"
-ZIP_PATH="$BUILD_DIR/hongguo-macOS-$ARCH-$VERSION.zip"
-DMG_PATH="$BUILD_DIR/hongguo-macOS-$ARCH-$VERSION.dmg"
+ZIP_PATH="$BUILD_DIR/dramacube-macOS-$ARCH-$VERSION.zip"
+DMG_PATH="$BUILD_DIR/dramacube-macOS-$ARCH-$VERSION.dmg"
 
 echo "==> [1/6] Swift Release 构建 (arch: ${ARCH})"
 if [ "$ARCH" = "universal" ]; then
@@ -63,7 +63,7 @@ cat > "$APP_PATH/Contents/Info.plist" <<PLIST
     <key>LSApplicationCategoryType</key><string>public.app-category.entertainment</string>
     <key>NSHighResolutionCapable</key><true/>
     <key>NSSupportsAutomaticGraphicsSwitching</key><true/>
-    <key>NSHumanReadableCopyright</key><string>© 2026 hongguo-desktop</string>
+    <key>NSHumanReadableCopyright</key><string>© 2026 DramaCube</string>
 </dict>
 </plist>
 PLIST
@@ -96,7 +96,7 @@ codesign --verify --strict --verbose=1 "$APP_PATH"
 echo "==> [4/6] Zip 分发包"
 cd "$BUILD_DIR"
 rm -f "$ZIP_PATH"
-ditto -c -k --keepParent "$APP_NAME.app" "hongguo-macOS-$ARCH-$VERSION.zip"
+ditto -c -k --keepParent "$APP_NAME.app" "dramacube-macOS-$ARCH-$VERSION.zip"
 cd - > /dev/null
 
 echo "==> [5/6] DMG 镜像"
@@ -121,10 +121,10 @@ cat > "$BUILD_DIR/latest.json" <<JSON
   "version": "$VERSION",
   "date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
   "minOS": "14.0",
-  "arch": "$ARCH",
+  "architectures": ["$ARCH"],
   "downloads": {
-    "zip": "https://github.com/g-star1024/hongguo-desktop-releases/releases/download/v$VERSION/hongguo-macOS-$ARCH-$VERSION.zip",
-    "dmg": "https://github.com/g-star1024/hongguo-desktop-releases/releases/download/v$VERSION/hongguo-macOS-$ARCH-$VERSION.dmg"
+    "zip": "https://github.com/g-star1024/hongguo-mac/releases/download/v$VERSION/dramacube-macOS-$ARCH-$VERSION.zip",
+    "dmg": "https://github.com/g-star1024/hongguo-mac/releases/download/v$VERSION/dramacube-macOS-$ARCH-$VERSION.dmg"
   }
 }
 JSON

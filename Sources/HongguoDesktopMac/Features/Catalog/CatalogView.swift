@@ -71,7 +71,7 @@ public struct CatalogView: View {
             List(SidebarItem.allCases, selection: $selection) { item in
                 Label(item.title, systemImage: item.icon).tag(item)
             }
-            .navigationTitle("红果短剧")
+            .navigationTitle("剧立方")
             .navigationSplitViewColumnWidth(min: 200, ideal: 220)
         } detail: {
             Group {

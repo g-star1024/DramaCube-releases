@@ -114,7 +114,7 @@ public struct SettingsView: View {
 
     private var aboutTab: some View {
         Form {
-            Section("红果短剧 for Mac") {
+            Section("剧立方 DramaCube for Mac") {
                 LabeledContent("版本", value: AppConfig.appVersion)
                 LabeledContent("最低系统", value: "macOS " + AppConfig.minMacOS)
                 LabeledContent("内容来源", value: "公开网页解析（本地网关收口）")
