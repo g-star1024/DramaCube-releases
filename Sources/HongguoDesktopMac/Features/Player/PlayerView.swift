@@ -61,11 +61,17 @@ public struct PlayerView: View {
     private var controlBar: some View {
         HStack(spacing: Spacing.sm) {
             Button { vm.playPrevious() } label: { Image(systemName: "backward.fill") }
+                .keyboardShortcut(.leftArrow, modifiers: .command)
+                .help("上一集 (⌘←)")
             Button { vm.togglePlayPause() } label: {
                 Image(systemName: vm.isPlaying ? "pause.fill" : "play.fill")
             }
             .frame(width: 28, height: 28)
+            .keyboardShortcut(.space, modifiers: [])
+            .help("播放/暂停 (空格)")
             Button { vm.playNext() } label: { Image(systemName: "forward.fill") }
+                .keyboardShortcut(.rightArrow, modifiers: .command)
+                .help("下一集 (⌘→)")
 
             Text(HongguoFormat.duration(scrubValue)).monospacedDigit().font(Typography.caption)
                 .foregroundStyle(Brand.secondaryLabel)
@@ -103,6 +109,8 @@ public struct PlayerView: View {
                 .disabled(!PipCoordinator.shared.isPossible)
 
             Button { toggleFullscreen() } label: { Image(systemName: "arrow.up.left.and.arrow.down.right") }
+                .keyboardShortcut(.return, modifiers: .command)
+                .help("全屏 (⌘↩)")
         }
         .buttonStyle(.borderless)
         .padding(.horizontal, Spacing.md)

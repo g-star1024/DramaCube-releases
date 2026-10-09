@@ -6,6 +6,14 @@ public enum Brand {
     public static let pink = Color(red: 1.0, green: 0.176, blue: 0.333)
     /// 深色模式下更亮的粉。
     public static let pinkDark = Color(red: 1.0, green: 0.36, blue: 0.53)
+    /// 品牌强调色：自动随系统外观切换（浅色/深色）。
+    public static let accent = Color(nsColor: NSColor(name: nil) { appearance in
+        appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            ? NSColor(red: 1.0, green: 0.36, blue: 0.53, alpha: 1)
+            : NSColor(red: 1.0, green: 0.176, blue: 0.333, alpha: 1)
+    })
+    /// 图片加载占位 / 失败底色（自适应外观）。
+    public static let placeholder = Color(nsColor: .placeholderTextColor)
     public static let background = Color(nsColor: .windowBackgroundColor)
     public static let secondaryBackground = Color(nsColor: .underPageBackgroundColor)
     public static let separator = Color(nsColor: .separatorColor)

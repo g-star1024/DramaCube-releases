@@ -21,7 +21,7 @@ final class BossKeyManager {
         }
     }
 
-    private func toggle() {
+    func toggle() {
         if !hidden {
             NotificationCenter.default.post(name: .hongguoBossKeyHide, object: nil)
             for w in NSApp.windows where w.isVisible && w.level != .floating && w.level != .statusBar {

@@ -135,11 +135,11 @@ struct HistoryRow: View {
                         AsyncImage(url: url) { phase in
                             switch phase {
                             case .success(let img): img.resizable().scaledToFill()
-                            case .failure: Color.gray
+                            case .failure: Brand.placeholder
                             default: ProgressView()
                             }
                         }
-                    } else { Color.gray }
+                    } else { Brand.placeholder }
                 }
                 .frame(width: 60, height: 84)
                 .clipShape(RoundedRectangle(cornerRadius: Radius.sm, style: .continuous))

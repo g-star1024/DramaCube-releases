@@ -53,11 +53,11 @@ public struct DetailView: View {
                     AsyncImage(url: url) { phase in
                         switch phase {
                         case .success(let img): img.resizable().scaledToFill()
-                        case .failure: Color.gray
+                        case .failure: Brand.placeholder
                         default: ProgressView()
                         }
                     }
-                } else { Color.gray }
+                } else { Brand.placeholder }
             }
             .frame(width: 180, height: 240)
             .clipShape(RoundedRectangle(cornerRadius: Radius.md, style: .continuous))
