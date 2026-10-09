@@ -77,11 +77,15 @@ public struct BrowseView: View {
         } else {
             ScrollView {
                 if !featured.isEmpty {
-                    featuredRail
+                    // Hero 轮播：大图 + 自动轮换，与网格保持充足留白
+                    HeroCarousel(items: Array(featured.prefix(6)), onSelect: onSelect)
+                        .padding(.horizontal, Spacing.lg)
+                        .padding(.top, Spacing.md)
+                        .padding(.bottom, Spacing.lg)
                 }
                 LazyVGrid(
                     columns: [GridItem(.adaptive(minimum: 150, maximum: 180), spacing: Spacing.md)],
-                    spacing: Spacing.md
+                    spacing: Spacing.lg
                 ) {
                     ForEach(items) { drama in
                         PosterCard(drama)
@@ -91,7 +95,7 @@ public struct BrowseView: View {
                             }
                     }
                 }
-                .padding(Spacing.md)
+                .padding(.horizontal, Spacing.lg)
 
                 if isLoading {
                     ProgressView().controlSize(.small).padding(Spacing.md)
@@ -104,23 +108,6 @@ public struct BrowseView: View {
                 }
             }
         }
-    }
-
-    private var featuredRail: some View {
-        VStack(alignment: .leading, spacing: Spacing.xs) {
-            Text("正在热播").font(Typography.headline).padding(.horizontal, Spacing.md)
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: Spacing.md) {
-                    ForEach(featured) { drama in
-                        PosterCard(drama)
-                            .frame(width: 130)
-                            .onTapGesture { onSelect(drama) }
-                    }
-                }
-                .padding(.horizontal, Spacing.md)
-            }
-        }
-        .padding(.vertical, Spacing.sm)
     }
 
     private func initialLoad() async {

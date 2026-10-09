@@ -101,15 +101,35 @@ public actor HongguoClient {
         return mainURL
     }
 
-    /// 播放代理：请求 CDN 直链，**刻意不携带 Referer**。返回 (data, contentType)。
-    public func fetchMedia(_ urlString: String) async throws -> (Data, String) {
+    /// 播放代理（流式）：请求 CDN 直链，**刻意不携带 Referer**。
+    /// 支持透传 `Range` 请求头（CDN 返回 206 + Content-Range），供网关边收边发，
+    /// 避免 AVPlayer 的 `bytes=0-1` 探测收到全量 200 而无法 seek / 超时。
+    public func openMediaStream(_ urlString: String, range: String? = nil) async throws -> MediaStream {
         guard let url = URL(string: urlString) else { throw HongguoParseError.fieldMissing("url") }
         var req = URLRequest(url: url)
         req.httpMethod = "GET"
         req.setValue(userAgent, forHTTPHeaderField: "User-Agent")
         // 注意：不设置 Referer —— 字节 CDN 对带 Referer 的请求返回 403；直链本身免 Referer 可用。
-        let (data, resp) = try await session.data(for: req)
-        let ct = (resp as? HTTPURLResponse)?.value(forHTTPHeaderField: "Content-Type") ?? "application/octet-stream"
-        return (data, ct)
+        if let range, !range.isEmpty {
+            req.setValue(range, forHTTPHeaderField: "Range")
+        }
+        let (bytes, resp) = try await session.bytes(for: req)
+        let http = resp as? HTTPURLResponse
+        return MediaStream(
+            status: http?.statusCode ?? 200,
+            contentType: http?.value(forHTTPHeaderField: "Content-Type") ?? "video/mp4",
+            contentLength: http?.value(forHTTPHeaderField: "Content-Length"),
+            contentRange: http?.value(forHTTPHeaderField: "Content-Range"),
+            bytes: bytes
+        )
     }
+}
+
+/// 流式媒体响应（网关 Range 透传代理专用）。
+public struct MediaStream: Sendable {
+    public let status: Int
+    public let contentType: String
+    public let contentLength: String?
+    public let contentRange: String?
+    public let bytes: URLSession.AsyncBytes
 }

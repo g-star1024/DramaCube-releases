@@ -9,6 +9,7 @@ public struct PlayerView: View {
     let startIndex: Int
 
     @StateObject private var vm: PlayerViewModel
+    @Environment(\.dismiss) private var dismiss
     @State private var scrubValue: Double = 0
     @State private var isScrubbing = false
     @State private var playedIds: Set<String> = []
@@ -24,7 +25,7 @@ public struct PlayerView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            ZStack {
+            ZStack(alignment: .topLeading) {
                 VideoSurface(player: vm.player)
                     .frame(minHeight: 360)
                 if vm.isBuffering {
@@ -35,8 +36,32 @@ public struct PlayerView: View {
                         .padding(6).background(.black.opacity(0.5)).clipShape(RoundedRectangle(cornerRadius: 6))
                 }
                 if let err = vm.error {
-                    ErrorView(err) { vm.loadEpisode(vm.currentIndex) }
+                    errorOverlay(err)
                 }
+                // 左上角悬浮控制：关闭 / 标题
+                HStack(spacing: Spacing.sm) {
+                    Button {
+                        closePlayer()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(.white)
+                            .frame(width: 28, height: 28)
+                            .background(Circle().fill(.black.opacity(0.45)))
+                    }
+                    .buttonStyle(.plain)
+                    .keyboardShortcut(.escape, modifiers: [])
+                    .help("关闭播放器 (Esc)")
+
+                    Text("\(detail.drama.title) · 第 \(vm.currentEpisode?.index ?? 0) 集")
+                        .font(Typography.caption)
+                        .foregroundStyle(.white.opacity(0.9))
+                        .lineLimit(1)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Capsule().fill(.black.opacity(0.45)))
+                }
+                .padding(Spacing.md)
             }
             Divider()
             controlBar
@@ -55,6 +80,40 @@ public struct PlayerView: View {
         }
         .task { refreshPlayed() }
         .sheet(isPresented: $vm.showOtherSeasons) { otherSeasonsSheet }
+    }
+
+    /// 播放失败覆盖层：重试 / 换下一集 / 关闭，避免只能干瞪眼。
+    private func errorOverlay(_ message: String) -> some View {
+        VStack(spacing: Spacing.md) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 40))
+                .foregroundStyle(.orange)
+            Text("播放失败：\(message)")
+                .font(Typography.caption)
+                .foregroundStyle(.white)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: 420)
+            HStack(spacing: Spacing.sm) {
+                Button("重试") { vm.loadEpisode(vm.currentIndex) }
+                    .buttonStyle(.borderedProminent)
+                    .tint(Brand.accent)
+                if vm.episodes.indices.contains(vm.currentIndex + 1) {
+                    Button("换下一集") { vm.loadEpisode(vm.currentIndex + 1) }
+                        .buttonStyle(.bordered)
+                }
+                Button("返回") { closePlayer() }
+                    .buttonStyle(.bordered)
+            }
+        }
+        .padding(Spacing.lg)
+        .background(RoundedRectangle(cornerRadius: Radius.lg).fill(.black.opacity(0.65)))
+    }
+
+    /// 关闭播放器：暂停 + 保存进度 + 关 sheet。
+    private func closePlayer() {
+        vm.pause()
+        vm.saveProgress(force: true)
+        dismiss()
     }
 
     // MARK: 控制条
@@ -121,27 +180,31 @@ public struct PlayerView: View {
     // MARK: 选集面板
     private var episodePanel: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("选集（共 \(vm.episodes.count) 集）")
-                .font(Typography.headline)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(Spacing.md)
+            EpisodePanelHeader(count: vm.episodes.count) {
+                vm.showEpisodes = false
+            }
+            .padding(Spacing.md)
             Divider()
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 2) {
-                    ForEach(Array(vm.episodes.enumerated()), id: \.element.id) { idx, ep in
-                        EpisodeRow(
-                            episode: ep,
-                            isCurrent: idx == vm.currentIndex,
-                            isPlayed: playedIds.contains(ep.id)
-                        ) {
-                            vm.loadEpisode(idx)
-                        }
+                ScrollViewReader { proxy in
+                    EpisodeGrid(
+                        episodes: vm.episodes,
+                        currentIndex: vm.currentIndex,
+                        playedIds: playedIds
+                    ) { idx, _ in
+                        vm.loadEpisode(idx)
+                    }
+                    .padding(Spacing.md)
+                    .onAppear {
+                        proxy.scrollTo(vm.currentIndex, anchor: .center)
+                    }
+                    .onChange(of: vm.currentIndex) { _, new in
+                        withAnimation { proxy.scrollTo(new, anchor: .center) }
                     }
                 }
-                .padding(Spacing.sm)
             }
         }
-        .frame(width: 300)
+        .frame(width: 360)
         .background(Brand.secondaryBackground)
     }
 

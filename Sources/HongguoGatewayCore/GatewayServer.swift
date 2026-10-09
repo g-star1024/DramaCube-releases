@@ -46,32 +46,56 @@ public enum GatewayServer {
             return json(GatewayEnvelope(ok: true, data: items))
         }
 
-        // 播放代理（直链模式）：/api/play?url=<CDN直链> —— 剥离 Referer 请求
+        // 播放代理（直链模式）：/api/play?url=<CDN直链> —— Range 透传 + 流式转发
         router.get("api/play") { request, _ async throws -> Response in
             guard let url = queryValue(request, name: "url"), !url.isEmpty else {
                 throw HTTPError(.badRequest, message: "missing url")
             }
-            let (data, ct) = try await HongguoClient.shared.fetchMedia(url)
-            var headers = HTTPFields()
-            headers[.contentType] = ct
-            return Response(status: .ok, headers: headers, body: .init(byteBuffer: ByteBuffer(data: data)))
+            return try await Self.proxyMedia(request, sourceURL: url)
         }
 
         // 播放代理（解析模式）：/api/stream/<seriesId>/<vid>
-        // 先解析 /player/<sid>/<vid> 拿 main_url，再代理 CDN（剥离 Referer）。
-        router.get("api/stream/:sid/:vid") { _, ctx async throws -> Response in
+        // 先解析 /player/<sid>/<vid> 拿 main_url，再代理 CDN（剥离 Referer、Range 透传）。
+        router.get("api/stream/:sid/:vid") { request, ctx async throws -> Response in
             guard let sid = ctx.parameters.get("sid", as: String.self), !sid.isEmpty,
                   let vid = ctx.parameters.get("vid", as: String.self), !vid.isEmpty else {
                 throw HTTPError(.badRequest, message: "missing sid/vid")
             }
             let mainURL = try await HongguoClient.shared.resolvePlayURL(seriesId: sid, vid: vid)
-            let (data, ct) = try await HongguoClient.shared.fetchMedia(mainURL)
-            var headers = HTTPFields()
-            headers[.contentType] = ct
-            return Response(status: .ok, headers: headers, body: .init(byteBuffer: ByteBuffer(data: data)))
+            return try await Self.proxyMedia(request, sourceURL: mainURL)
         }
 
         return router
+    }
+
+    /// 媒体流式代理：透传客户端 Range 请求头，CDN 的 206/200、Content-Range、
+    /// Content-Length、Content-Type 原样回传，body 用 AsyncBytes 边收边发。
+    /// 这是 AVPlayer 能正常 seek / 秒开的关键（此前全量缓冲导致播放失败）。
+    private static func proxyMedia(_ request: Request, sourceURL: String) async throws -> Response {
+        let range = request.headers[.range].flatMap { $0.isEmpty ? nil : $0 }
+        let stream = try await HongguoClient.shared.openMediaStream(sourceURL, range: range)
+        var headers = HTTPFields()
+        headers[.contentType] = stream.contentType
+        if let cl = stream.contentLength { headers[.contentLength] = cl }
+        if let cr = stream.contentRange { headers[.contentRange] = cr }
+        headers[.acceptRanges] = "bytes"
+        let status: HTTPResponse.Status = stream.status == 206 ? .partialContent : .ok
+        // 64KB 缓冲批量写：URLSession.AsyncBytes 逐字节产出，直接转发会产生海量小包。
+        let body = ResponseBody { writer in
+            var buffer = [UInt8]()
+            buffer.reserveCapacity(65_536)
+            for try await byte in stream.bytes {
+                buffer.append(byte)
+                if buffer.count >= 65_536 {
+                    try await writer.write(ByteBuffer(bytes: buffer))
+                    buffer.removeAll(keepingCapacity: true)
+                }
+            }
+            if !buffer.isEmpty {
+                try await writer.write(ByteBuffer(bytes: buffer))
+            }
+        }
+        return Response(status: status, headers: headers, body: body)
     }
 
     /// 前台运行网关（阻塞直到 app 停止）。供独立可执行文件与 App 进程内调用。

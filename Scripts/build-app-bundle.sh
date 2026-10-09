@@ -32,10 +32,10 @@ DMG_PATH="$BUILD_DIR/dramacube-macOS-$ARCH-$VERSION.dmg"
 echo "==> [1/6] Swift Release 构建 (arch: ${ARCH})"
 if [ "$ARCH" = "universal" ]; then
     # 仅在 Apple Silicon 上可行（Intel 机无法出 arm64 切片）
-    swift build -c release --product "$EXEC_NAME" --arch arm64 --arch x86_64
+    swift build --disable-sandbox -c release --product "$EXEC_NAME" --arch arm64 --arch x86_64
     BIN_DIR=".build/apple/Products/Release"
 else
-    swift build -c release --product "$EXEC_NAME" --arch "$ARCH"
+    swift build --disable-sandbox -c release --product "$EXEC_NAME" --arch "$ARCH"
     BIN_DIR=".build/release"
 fi
 BIN="$BIN_DIR/$EXEC_NAME"

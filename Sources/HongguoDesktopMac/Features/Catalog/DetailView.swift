@@ -1,13 +1,15 @@
 import SwiftUI
 import HongguoCore
 
-/// 剧集详情页（真实渲染）：封面、标题、状态、选集、收藏、相关推荐。
+/// 剧集详情弹窗：标题栏（含关闭按钮）+ 头部信息 + 选集网格 + 相关推荐。
 ///
 /// 由 `CatalogView` 以 sheet 形式弹出；点击播放 / 选集回调给上层打开播放器。
+/// 关闭方式：右上角 × 按钮 / Esc 键（macOS sheet 自带 Esc 关闭，按钮兜底）。
 public struct DetailView: View {
     let drama: Drama
     let onPlay: (DramaDetail, Int) -> Void
 
+    @Environment(\.dismiss) private var dismiss
     @State private var detail: DramaDetail?
     @State private var isLoading = true
     @State private var loadError: String?
@@ -21,33 +23,65 @@ public struct DetailView: View {
     }
 
     public var body: some View {
-        ScrollView {
-            if let error = loadError {
-                ErrorView(error, retry: { Task { await load() } })
-                    .frame(maxHeight: .infinity)
-            } else if isLoading && detail == nil {
-                LoadingView("加载详情…").frame(maxHeight: .infinity)
-            } else {
-                bodyContent
-            }
+        VStack(spacing: 0) {
+            titleBar
+            Divider()
+            content
         }
-        .navigationTitle(drama.title)
-        .frame(minWidth: 560, minHeight: 480)
+        .frame(minWidth: 680, minHeight: 520)
         .task { await load() }
     }
 
-    @ViewBuilder
-    private var bodyContent: some View {
-        VStack(alignment: .leading, spacing: Spacing.lg) {
-            header
-            episodesSection
-            if !related.isEmpty { relatedSection }
+    // MARK: 标题栏（可关闭）
+    private var titleBar: some View {
+        HStack(spacing: Spacing.sm) {
+            Image(systemName: "play.rectangle.fill")
+                .foregroundStyle(Brand.accent)
+            Text(drama.title)
+                .font(Typography.headline)
+                .lineLimit(1)
+            Spacer()
+            Button {
+                dismiss()
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 20))
+                    .foregroundStyle(Brand.secondaryLabel)
+            }
+            .buttonStyle(.plain)
+            .keyboardShortcut(.escape, modifiers: [])
+            .help("关闭 (Esc)")
         }
-        .padding(Spacing.lg)
+        .padding(.horizontal, Spacing.lg)
+        .padding(.vertical, Spacing.sm)
+        .background(Brand.secondaryBackground)
     }
 
-    private var header: some View {
-        HStack(alignment: .top, spacing: Spacing.md) {
+    // MARK: 内容
+    @ViewBuilder
+    private var content: some View {
+        if let error = loadError {
+            ErrorView(error, retry: { Task { await load() } })
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if isLoading && detail == nil {
+            LoadingView("加载详情…").frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if let detail {
+            ScrollView {
+                VStack(alignment: .leading, spacing: Spacing.lg) {
+                    header(detail)
+                    episodesSection(detail)
+                    if !related.isEmpty { relatedSection }
+                }
+                .padding(Spacing.lg)
+            }
+        } else {
+            ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    // MARK: 头部：封面 + 信息 + 操作
+    private func header(_ detail: DramaDetail) -> some View {
+        HStack(alignment: .top, spacing: Spacing.lg) {
             Group {
                 if let urlStr = drama.coverURL, let url = URL(string: urlStr) {
                     AsyncImage(url: url) { phase in
@@ -59,33 +93,58 @@ public struct DetailView: View {
                     }
                 } else { Brand.placeholder }
             }
-            .frame(width: 180, height: 240)
+            .frame(width: 150, height: 200)
             .clipShape(RoundedRectangle(cornerRadius: Radius.md, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: Radius.md).stroke(Brand.separator, lineWidth: 0.5))
+            .shadow(color: .black.opacity(0.15), radius: 8, y: 4)
 
             VStack(alignment: .leading, spacing: Spacing.sm) {
-                Text(drama.title).font(Typography.title)
-                if let status = detail?.drama.updateStatus {
-                    Label(status, systemImage: "arrow.triangle.2.circlepath")
-                        .font(Typography.caption)
-                        .foregroundStyle(Brand.secondaryLabel)
+                Text(drama.title)
+                    .font(Typography.title)
+                    .lineLimit(2)
+                HStack(spacing: Spacing.sm) {
+                    if let cnt = detail.drama.episodeCount {
+                        Label("\(cnt) 集", systemImage: "collection.playback")
+                    }
+                    if let status = detail.drama.updateStatus, !status.isEmpty {
+                        Label(status, systemImage: "arrow.triangle.2.circlepath")
+                    }
                 }
-                if let desc = detail?.drama.description, !desc.isEmpty {
+                .font(Typography.caption)
+                .foregroundStyle(Brand.secondaryLabel)
+
+                if !detail.drama.tags.isEmpty {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: Spacing.xs) {
+                            ForEach(detail.drama.tags.prefix(6), id: \.self) { tag in
+                                Text(tag)
+                                    .font(Typography.caption)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 3)
+                                    .background(Capsule().fill(Brand.accent.opacity(0.1)))
+                                    .foregroundStyle(Brand.accent)
+                            }
+                        }
+                    }
+                }
+
+                if let desc = detail.drama.description, !desc.isEmpty {
                     Text(desc)
                         .font(Typography.body)
                         .foregroundStyle(Brand.secondaryLabel)
-                        .lineLimit(6)
+                        .lineLimit(4)
                 }
+
                 Spacer(minLength: Spacing.md)
                 HStack(spacing: Spacing.sm) {
                     Button {
-                        onPlay(detail ?? DramaDetail(drama: drama, episodes: []), resumeIndex())
+                        onPlay(detail, resumeIndex())
                     } label: {
                         Label("立即播放", systemImage: "play.fill")
-                            .frame(minWidth: 120)
+                            .frame(minWidth: 130)
                     }
                     .buttonStyle(.borderedProminent)
-                    .tint(Brand.pink)
+                    .tint(Brand.accent)
 
                     Button {
                         toggleFav()
@@ -93,26 +152,34 @@ public struct DetailView: View {
                         Label(isFav ? "已收藏" : "收藏", systemImage: isFav ? "heart.fill" : "heart")
                     }
                     .buttonStyle(.bordered)
-                    .tint(isFav ? Brand.pink : .secondary)
+                    .tint(isFav ? Brand.accent : .secondary)
                 }
             }
         }
     }
 
-    private var episodesSection: some View {
+    // MARK: 选集（胶囊网格）
+    private func episodesSection(_ detail: DramaDetail) -> some View {
         VStack(alignment: .leading, spacing: Spacing.sm) {
-            Text("选集").font(Typography.headline)
-            if let eps = detail?.episodes, !eps.isEmpty {
-                LazyVStack(alignment: .leading, spacing: 2) {
-                    ForEach(Array(eps.enumerated()), id: \.element.id) { idx, ep in
-                        EpisodeRow(
-                            episode: ep,
-                            isCurrent: idx == resumeIndex(),
-                            isPlayed: playedEpisodeIds.contains(ep.id)
-                        ) {
-                            onPlay(detail ?? DramaDetail(drama: drama, episodes: eps), idx)
-                        }
-                    }
+            HStack {
+                Text("选集").font(Typography.headline)
+                Text("\(detail.episodes.count) 集")
+                    .font(Typography.caption)
+                    .foregroundStyle(Brand.secondaryLabel)
+                Spacer()
+                if detail.episodes.count > 60 {
+                    Text("已看 \(playedEpisodeIds.count) 集")
+                        .font(Typography.caption)
+                        .foregroundStyle(Brand.secondaryLabel)
+                }
+            }
+            if !detail.episodes.isEmpty {
+                EpisodeGrid(
+                    episodes: detail.episodes,
+                    currentIndex: -1,
+                    playedIds: playedEpisodeIds
+                ) { idx, _ in
+                    onPlay(detail, idx)
                 }
             } else {
                 Text("暂无分集信息").font(Typography.caption).foregroundStyle(Brand.secondaryLabel)
