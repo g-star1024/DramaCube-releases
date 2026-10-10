@@ -199,8 +199,13 @@ public actor LiveEngine {
     }
 
     // MARK: - 播放地址
-    // 直播走网关代理（统一 UA / 防盗链），由 GatewayServer 的路由处理，引擎只提供 UA 约定。
-    public static let playbackUserAgent = "okHttp/Mod-1.5.0.0"
+    // 直播走网关代理（防盗链），由 GatewayServer 的路由处理，引擎只提供 UA 约定。
+    //
+    // UA 策略（实测）：该 OTT 源按 UA 分流——
+    //  - m3u8 播放列表/分片：咪咕 CDN 对 okHttp UA 直接 403/断连，浏览器 UA 放行；
+    //  - 仅「获取 m3u 源文件本身」时服务端要求 okHttp UA（用户在源站后台绑定）。
+    // 因此：拉源（fetchChannels）用 okHttp UA，播放代理（playback）用浏览器 UA。
+    public static let playbackUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15"
 
     public enum LiveError: Error, LocalizedError {
         case badURL, fetchFailed(Int), parseFailed
