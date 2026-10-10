@@ -25,7 +25,12 @@ public enum MediaServerBootstrap {
             await reg.register(LiveAdapter(source: src))
         }
 
-        // TODO(M2/M3): Emby / Jellyfin / AList / Subsonic / audiobookshelf / 红果 适配器登记
+        // 用户自建服务器（M3：Emby/Jellyfin/AList/Subsonic/audiobookshelf）
+        for cfg in await ServerConfigStore.shared.all() where cfg.enabled {
+            if let adapter = ServerConfigStore.makeAdapter(for: cfg) {
+                await reg.register(adapter)
+            }
+        }
     }
 
     /// 重新装配（订阅/库/直播源变更后调用）。

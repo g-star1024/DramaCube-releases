@@ -441,6 +441,74 @@ public enum GatewayServer {
             return Self.json(GatewayEnvelope(ok: true, data: items))
         }
 
+        // MARK: - 自建服务器管理（M3）
+        router.get("api/mediaserver/list") { _, _ async throws -> Response in
+            let cfgs = await ServerConfigStore.shared.all()
+            return Self.json(GatewayEnvelope(ok: true, data: cfgs))
+        }
+
+        router.get("api/mediaserver/add-emby") { request, _ async throws -> Response in
+            guard let base = Self.queryValue(request, name: "base"),
+                  let user = Self.queryValue(request, name: "user"),
+                  let pwd = Self.queryValue(request, name: "pwd") else {
+                throw HTTPError(.badRequest, message: "missing base/user/pwd")
+            }
+            let kindStr = Self.queryValue(request, name: "kind") ?? "emby"
+            let isJellyfin = (kindStr == "jellyfin")
+            do {
+                let cfg = try await EmbyAdapter.authenticate(baseURL: base, username: user, password: pwd, isJellyfin: isJellyfin)
+                await ServerConfigStore.shared.add(cfg)
+                await MediaServerBootstrap.reassemble()
+                return Self.json(GatewayEnvelope(ok: true, data: cfg))
+            } catch {
+                return Self.json(GatewayEnvelope<MediaServerConfig>(ok: false, error: "认证失败：\(error.localizedDescription)"))
+            }
+        }
+
+        router.get("api/mediaserver/add") { request, _ async throws -> Response in
+            guard let kindStr = Self.queryValue(request, name: "kind"),
+                  let kind = MediaServerKind(rawValue: kindStr),
+                  let base = Self.queryValue(request, name: "base") else {
+                throw HTTPError(.badRequest, message: "missing kind/base")
+            }
+            let name = Self.queryValue(request, name: "name") ?? kindStr
+            var extra: [String: String] = [:]
+            if let rp = Self.queryValue(request, name: "rootPath") { extra["rootPath"] = rp }
+            if let lid = Self.queryValue(request, name: "libraryId") { extra["libraryId"] = lid }
+            let host = URL(string: base)?.host ?? base
+            let cfg = MediaServerConfig(
+                id: "\(kindStr)|\(host)", kind: kind, name: name, baseURL: base,
+                username: Self.queryValue(request, name: "user"),
+                password: Self.queryValue(request, name: "pwd"),
+                token: Self.queryValue(request, name: "token"),
+                extra: extra
+            )
+            await ServerConfigStore.shared.add(cfg)
+            await MediaServerBootstrap.reassemble()
+            let cap = await MediaServerRegistry.shared.probe(key: cfg.id)
+            struct AddVO: Codable { let config: MediaServerConfig; let online: Bool; let message: String? }
+            return Self.json(GatewayEnvelope(ok: true, data: AddVO(config: cfg, online: cap.online, message: cap.message)))
+        }
+
+        router.get("api/mediaserver/remove") { request, _ async throws -> Response in
+            guard let id = Self.queryValue(request, name: "id") else {
+                throw HTTPError(.badRequest, message: "missing id")
+            }
+            await ServerConfigStore.shared.remove(id: id)
+            await MediaServerRegistry.shared.unregister(key: id)
+            return Self.json(GatewayEnvelope(ok: true, data: ["removed": id]))
+        }
+
+        router.get("api/mediaserver/toggle") { request, _ async throws -> Response in
+            guard let id = Self.queryValue(request, name: "id") else {
+                throw HTTPError(.badRequest, message: "missing id")
+            }
+            let on = Self.queryValue(request, name: "on") != "0"
+            await ServerConfigStore.shared.setEnabled(id: id, on)
+            await MediaServerBootstrap.reassemble()
+            return Self.json(GatewayEnvelope(ok: true, data: ["id": id, "enabled": "\(on)"]))
+        }
+
         // 封面回退：/api/cover?title= → {ok, data:{url}}（豆瓣海报，经 image-proxy 代理）
         router.get("api/cover") { request, _ async throws -> Response in
             guard let title = Self.queryValue(request, name: "title"), !title.isEmpty else {
