@@ -399,6 +399,48 @@ public enum GatewayServer {
             return try await Self.proxyLiveMedia(request, sourceURL: url)
         }
 
+        // MARK: - 统一媒体服务器（新架构聚合层）
+        // 服务器列表+连接状态：/api/servers → {ok, data:[{id,kind,name,online,latencyMs,...}]}
+        router.get("api/servers") { _, _ async throws -> Response in
+            let caps = await MediaServerRegistry.shared.probeAll()
+            let servers = await MediaServerRegistry.shared.allServers()
+            struct ServerVO: Codable {
+                let id, kind, name: String
+                let online: Bool, latencyMs: Int
+                let canTranscode, canSearch: Bool
+            }
+            let vos = servers.map { s -> ServerVO in
+                let c = caps[s.config.id]
+                return ServerVO(id: s.config.id, kind: s.config.kind.rawValue, name: s.config.name,
+                                online: c?.online ?? false, latencyMs: c?.latencyMs ?? 0,
+                                canTranscode: c?.canTranscode ?? false, canSearch: c?.canSearch ?? true)
+            }
+            return Self.json(GatewayEnvelope(ok: true, data: vos))
+        }
+
+        // 跨服务器聚合搜索：/api/aggregate/search?q=
+        router.get("api/aggregate/search") { request, _ async throws -> Response in
+            let q = Self.queryValue(request, name: "q") ?? ""
+            guard !q.isEmpty else { throw HTTPError(.badRequest, message: "missing q") }
+            let items = await MediaServerRegistry.shared.aggregateSearch(query: q, filter: SearchFilter())
+            return Self.json(GatewayEnvelope(ok: true, data: items))
+        }
+
+        // 聚合首页：/api/aggregate/home?limit= → {continueWatching, recentlyAdded}
+        router.get("api/aggregate/home") { request, _ async throws -> Response in
+            let limit = Int(Self.queryValue(request, name: "limit") ?? "20") ?? 20
+            async let cw = MediaServerRegistry.shared.aggregateContinueWatching(limit: limit)
+            async let ra = MediaServerRegistry.shared.aggregateRecentlyAdded(limit: limit)
+            struct HomeVO: Codable { let continueWatching, recentlyAdded: [MediaItem] }
+            return Self.json(GatewayEnvelope(ok: true, data: HomeVO(continueWatching: await cw, recentlyAdded: await ra)))
+        }
+
+        // 本地继续观看：/api/aggregate/progress → [MediaItem]
+        router.get("api/aggregate/progress") { _, _ async throws -> Response in
+            let items = await ProgressStore.shared.continueWatching(limit: 30)
+            return Self.json(GatewayEnvelope(ok: true, data: items))
+        }
+
         // 封面回退：/api/cover?title= → {ok, data:{url}}（豆瓣海报，经 image-proxy 代理）
         router.get("api/cover") { request, _ async throws -> Response in
             guard let title = Self.queryValue(request, name: "title"), !title.isEmpty else {
@@ -590,6 +632,7 @@ public enum GatewayServer {
         return "http://127.0.0.1:8787/api/live/stream?url=\(enc)"
     }
     public static func run(port: Int) async throws {
+        await MediaServerBootstrap.assemble()
         var configuration = ApplicationConfiguration()
         configuration.address = .hostname("127.0.0.1", port: port)
         var app = Application(router: makeRouter(), configuration: configuration)
