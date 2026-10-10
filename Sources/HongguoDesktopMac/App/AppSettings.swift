@@ -32,6 +32,8 @@ public final class AppSettings: ObservableObject {
     /// 默认外部播放器（"builtin"=内置 AVPlayer，或 iina/vlc/mpv/systemDefault）。
     /// 设置后选集播放时自动用该播放器打开，无需每次在播放界面手动切换。
     @Published public var defaultExternalPlayer: String { didSet { defaults.set(defaultExternalPlayer, forKey: "defaultExternalPlayer") } }
+    /// 内置播放内核（M2）：mpv（libmpv，全格式/ASS字幕/多音轨/硬解）或 avplayer（系统，稳定回退）。
+    @Published public var playbackEngine: String { didSet { defaults.set(playbackEngine, forKey: "playbackEngine") } }
 
     /// 缓冲策略对应的前向缓冲秒数（参考 MoonTVPlus/HLS.js maxBufferLength）。
     public var forwardBufferSeconds: Double {
@@ -67,6 +69,7 @@ public final class AppSettings: ObservableObject {
         bufferStrategy = d.string(forKey: "bufferStrategy") ?? "medium"
         prefetchNextEpisode = d.object(forKey: "prefetchNextEpisode") == nil ? true : d.bool(forKey: "prefetchNextEpisode")
         defaultExternalPlayer = d.string(forKey: "defaultExternalPlayer") ?? "builtin"
+        playbackEngine = d.string(forKey: "playbackEngine") ?? "avplayer"   // M2：默认仍 avplayer，mpv 需手动开启验证
         homeSection = d.object(forKey: "homeSection") == nil ? "discover" : (d.string(forKey: "homeSection") ?? "discover")
         pageSize = d.object(forKey: "pageSize") == nil ? 24 : d.integer(forKey: "pageSize")
         loadCoversOnCellular = d.object(forKey: "loadCoversOnCellular") == nil ? true : d.bool(forKey: "loadCoversOnCellular")
