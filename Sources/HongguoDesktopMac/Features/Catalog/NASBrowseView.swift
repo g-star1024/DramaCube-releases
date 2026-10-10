@@ -14,9 +14,13 @@ struct NASBrowseView: View {
     @State private var allItems: [Drama] = []     // 当前目录全部视频（一次性从 NAS 列出，轻量）
     @State private var visibleCount = 30           // 懒加载：首屏只渲染前 30 个，滚动加载更多
     @State private var isLoading = false
+    @State private var isRefreshing = false        // 后台刷新中（缓存已显示，静默更新）
     @State private var error: String?
+    @State private var lastScanTime: Date?         // 上次扫描时间（缓存命中时显示）
 
     private let pageSize = 30
+    /// 扫描结果磁盘缓存有效期（10 分钟内不重复全库扫描）
+    private let scanCacheTTL: TimeInterval = 600
 
     /// 当前可见的卡片（懒加载切片）。封面生成是重活，只渲染可见部分避免一次性打满 CPU/IO。
     private var items: [Drama] { Array(allItems.prefix(visibleCount)) }
@@ -133,6 +137,23 @@ struct NASBrowseView: View {
                 .foregroundStyle(Brand.secondaryLabel)
                 .lineLimit(1)
                 .truncationMode(.head)
+            // 上次扫描时间 + 手动刷新
+            if let t = lastScanTime {
+                Text("更新于 \(t, style: .time)")
+                    .font(.system(size: 10))
+                    .foregroundStyle(Brand.secondaryLabel.opacity(0.7))
+            }
+            Button { Task { await refresh() } } label: {
+                Image(systemName: "arrow.clockwise")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(isRefreshing ? Brand.secondaryLabel : Brand.label)
+                    .frame(width: 24, height: 24)
+                    .background(Circle().fill(Brand.chipFill))
+                    .rotationEffect(.degrees(isRefreshing ? 360 : 0))
+            }
+            .buttonStyle(.plain)
+            .disabled(isRefreshing || isLoading)
+            .help("重新扫描（跳过缓存）")
             Spacer()
             libSwitchButton
         }
@@ -158,6 +179,8 @@ struct NASBrowseView: View {
             ErrorView(error, retry: { Task { await load() } })
         } else if allItems.isEmpty && isLoading {
             LoadingView("正在扫描媒体库…")
+        } else if allItems.isEmpty && isRefreshing {
+            LoadingView("正在刷新媒体库…")
         } else if allItems.isEmpty {
             EmptyState("该目录暂无视频", systemImage: "film", description: "支持 mp4 / mkv / mov / m4v / avi / wmv / flv / ts / m3u8")
         } else {
@@ -203,16 +226,58 @@ struct NASBrowseView: View {
         Task { await load() }
     }
 
-    private func load() async {
+    private var scanCacheKey: String { "nas:scan:\(currentLibId ?? ""):\(currentPath)" }
+
+    /// 加载：先读磁盘扫描缓存（TTL 内直接显示，不重复全库扫描）→ 过期/无缓存才扫网络。
+    /// force=true（手动刷新）跳过缓存强制重扫。
+    private func load(force: Bool = false) async {
         guard let libId = currentLibId else { allItems = []; return }
-        isLoading = true; error = nil
-        do {
-            allItems = try await nm.browse(id: libId, path: currentPath)
-            visibleCount = min(pageSize, allItems.count)  // 重置懒加载到首屏数量
-        } catch {
-            self.error = "加载失败：\(error.localizedDescription)"
+        error = nil
+
+        // ① 非强制刷新：先试磁盘缓存
+        if !force {
+            let cached = await DiskCache.shared.readFresh([Drama].self, key: scanCacheKey, maxAge: scanCacheTTL)
+            if let items = cached.value, !items.isEmpty {
+                allItems = items
+                visibleCount = min(pageSize, items.count)
+                if cached.fresh {
+                    // 缓存新鲜：直接展示，不扫网络
+                    lastScanTime = Date()
+                    return
+                }
+                // 缓存过期：先展示旧缓存，再后台静默刷新
+                isRefreshing = true
+                await scanNetwork(libId: libId)
+                isRefreshing = false
+                return
+            }
         }
+
+        // ② 无缓存/强制刷新：全量扫描
+        isLoading = true
+        await scanNetwork(libId: libId)
         isLoading = false
+    }
+
+    /// 实际网络扫描 + 写缓存。
+    private func scanNetwork(libId: String) async {
+        do {
+            let items = try await nm.browse(id: libId, path: currentPath)
+            allItems = items
+            visibleCount = min(pageSize, items.count)
+            lastScanTime = Date()
+            await DiskCache.shared.write(items, key: scanCacheKey)
+        } catch {
+            // 已有缓存内容时不报错覆盖，仅静默；无内容才显示错误
+            if allItems.isEmpty {
+                self.error = "加载失败：\(error.localizedDescription)"
+            }
+        }
+    }
+
+    /// 手动刷新：跳过缓存强制重扫。
+    private func refresh() async {
+        await load(force: true)
     }
 }
 

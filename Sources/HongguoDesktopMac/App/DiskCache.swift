@@ -34,6 +34,18 @@ actor DiskCache {
         return try? JSONDecoder().decode(T.self, from: data)
     }
 
+    /// 带新鲜度读取：缓存存在且在 maxAge 秒内 → (值, true)；否则 (值?, false)。
+    /// 用于「资源库扫描缓存」这类需要明确判断 TTL 的场景。
+    func readFresh<T: Codable>(_ type: T.Type, key: String, maxAge: TimeInterval) -> (value: T?, fresh: Bool) {
+        let url = fileURL(for: key)
+        guard let data = try? Data(contentsOf: url),
+              let attrs = try? FileManager.default.attributesOfItem(atPath: url.path),
+              let mtime = attrs[.modificationDate] as? Date else { return (nil, false) }
+        let value = try? JSONDecoder().decode(T.self, from: data)
+        let fresh = Date().timeIntervalSince(mtime) < maxAge
+        return (value, fresh)
+    }
+
     func write<T: Codable>(_ value: T, key: String) {
         guard let data = try? JSONEncoder().encode(value) else { return }
         try? data.write(to: fileURL(for: key), options: .atomic)
