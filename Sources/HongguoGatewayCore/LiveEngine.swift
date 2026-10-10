@@ -221,15 +221,14 @@ public actor LiveEngine {
 
     // MARK: - 连通性测试
 
-    /// 测试单个频道流是否可达（发起请求看是否 2xx/3xx）。直播流是长连接，只取头部即取消。
+    /// 测试单个频道流是否可达。直播流是长连接/大文件，用 bytes() 只取响应头即判定，不下载 body。
     /// 用浏览器 UA（播放代理统一 UA，与真实播放一致）。
     public static func testChannel(url: String) async -> Bool {
         guard let u = URL(string: url) else { return false }
-        var req = URLRequest(url: u, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 8)
+        var req = URLRequest(url: u, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 10)
         req.setValue(playbackUserAgent, forHTTPHeaderField: "User-Agent")
-        req.setValue("bytes=0-0", forHTTPHeaderField: "Range")
         do {
-            let (_, resp) = try await URLSession.shared.data(for: req)
+            let (_, resp) = try await URLSession.shared.bytes(for: req)
             guard let http = resp as? HTTPURLResponse else { return false }
             return (200..<400).contains(http.statusCode)
         } catch {
@@ -237,16 +236,21 @@ public actor LiveEngine {
         }
     }
 
-    /// 批量测试一组频道，返回 [channelId: 是否可达]。并发执行。
+    /// 批量测试一组频道，返回 [channelId: 是否可达]。限流并发（8 个一组），避免触发 CDN 限流全失败。
     public func testChannels(urls: [String: String]) async -> [String: Bool] {
-        await withTaskGroup(of: (String, Bool).self) { group in
-            for (id, url) in urls {
-                group.addTask { (id, await Self.testChannel(url: url)) }
+        var out: [String: Bool] = [:]
+        let entries = Array(urls)
+        let batchSize = 8
+        for chunkStart in stride(from: 0, to: entries.count, by: batchSize) {
+            let chunk = Array(entries[chunkStart..<min(chunkStart + batchSize, entries.count)])
+            await withTaskGroup(of: (String, Bool).self) { group in
+                for (id, url) in chunk {
+                    group.addTask { (id, await Self.testChannel(url: url)) }
+                }
+                for await (id, ok) in group { out[id] = ok }
             }
-            var out: [String: Bool] = [:]
-            for await (id, ok) in group { out[id] = ok }
-            return out
         }
+        return out
     }
 
     // MARK: - 播放地址

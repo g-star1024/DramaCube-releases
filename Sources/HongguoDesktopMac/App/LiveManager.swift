@@ -118,11 +118,14 @@ public final class LiveManager: ObservableObject {
         let batchSize = 40
         for chunk in stride(from: 0, to: channels.count, by: batchSize) {
             let slice = Array(channels[chunk..<min(chunk + batchSize, channels.count)])
-            let ids = slice.map(\.id).joined(separator: "|")
-            let urls = slice.map { $0.url.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? $0.url }
-                .joined(separator: "|")
-            let urlStr = "\(base)/api/live/test?ids=\(ids)&urls=\(urls)"
-            if let part: [String: Bool] = try? await get(urlStr) {
+            // 换行分隔：id 内含 "|"（name|group），不能用 | 当分隔符。id/url 都保持原始，
+            // 交给 URLComponents.queryItems 统一 percent 编码（再手动编码会双重编码导致 unsupported URL）。
+            let ids = slice.map(\.id).joined(separator: "\n")
+            let urls = slice.map(\.url).joined(separator: "\n")
+            var comps = URLComponents(string: "\(base)/api/live/test")!
+            comps.queryItems = [.init(name: "ids", value: ids), .init(name: "urls", value: urls)]
+            guard let u = comps.url else { continue }
+            if let part: [String: Bool] = try? await get(u.absoluteString) {
                 out.merge(part) { a, _ in a }
             }
         }

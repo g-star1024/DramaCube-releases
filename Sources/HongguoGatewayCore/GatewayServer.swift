@@ -321,13 +321,14 @@ public enum GatewayServer {
             return Self.json(GatewayEnvelope(ok: true, data: ["id": id]))
         }
 
-        // 批量连通性测试：/api/live/test?ids=id1,id2&urls=enc1,enc2  （一一对应，URL 需 percent 编码）
+        // 批量连通性测试：/api/live/test?ids=<换行分隔,各编码>&urls=<换行分隔,各编码>
         // 返回 [id: Bool]。并发探测各频道流可达性。
         router.get("api/live/test") { request, _ async throws -> Response in
             let idsRaw = Self.queryValue(request, name: "ids") ?? ""
             let urlsRaw = Self.queryValue(request, name: "urls") ?? ""
-            let ids = idsRaw.split(separator: "|").map(String.init)
-            let urls = urlsRaw.split(separator: "|").map(String.init)
+            // 换行分隔（id 内含 |，不能用 | 分隔）
+            let ids = idsRaw.components(separatedBy: "\n").filter { !$0.isEmpty }
+            let urls = urlsRaw.components(separatedBy: "\n").filter { !$0.isEmpty }
             guard ids.count == urls.count, !ids.isEmpty else {
                 throw HTTPError(.badRequest, message: "ids/urls 数量需一致且非空")
             }
