@@ -279,6 +279,7 @@ public struct BrowseView: View {
         if reset { error = nil }
         do {
             let fresh = try await CatalogService.shared.catalog(path: currentPath, page: target)
+                .filter { !HongguoClient.isActorCard($0) } // 兜底过滤演员卡（缓存/旧路径也可能混入）
             if reset {
                 items = fresh
                 renderCount = renderChunk

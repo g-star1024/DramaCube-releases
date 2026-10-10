@@ -31,22 +31,28 @@ struct SourceSettingsView: View {
     private var importCard: some View {
         VStack(alignment: .leading, spacing: Spacing.sm) {
             Text("TVBox 订阅").font(.system(size: 13, weight: .semibold)).foregroundStyle(Brand.secondaryLabel)
+            // 多行输入：一次可粘贴多个订阅地址（换行/逗号/分号分隔），自动排重合并
+            TextEditor(text: $urlInput)
+                .font(.system(size: 12, design: .monospaced))
+                .frame(minHeight: 56, maxHeight: 90)
+                .padding(4)
+                .background(RoundedRectangle(cornerRadius: 6).fill(Brand.background))
+                .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Brand.separator.opacity(0.6), lineWidth: 0.5))
             HStack(spacing: Spacing.sm) {
-                TextField("粘贴订阅地址（JSON/TVBox 格式）", text: $urlInput)
-                    .textFieldStyle(.roundedBorder)
+                Spacer()
                 Button(sm.isImporting ? "导入中…" : (sm.hasSubscription ? "更新订阅" : "一键导入")) {
                     Task { await doImport() }
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(Brand.accent)
-                .disabled(sm.isImporting || urlInput.trimmingCharacters(in: .whitespaces).isEmpty)
+                .disabled(sm.isImporting || urlInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
             if let message {
                 Text(message)
                     .font(Typography.caption)
                     .foregroundStyle(msgIsError ? .red : .green)
             }
-            Text("支持 TVBox / MoonTV 标准订阅（maccms JSON 接口）。导入后站点内容在侧边栏「视频源」浏览，搜索自动聚合所有启用的源。")
+            Text("支持 TVBox / MoonTV 标准订阅（maccms JSON 接口）。可一次粘贴多个地址（换行/逗号/分号分隔），自动按接口排重合并。导入后站点在侧边栏「视频源」浏览，搜索自动聚合所有启用的源。")
                 .font(Typography.caption)
                 .foregroundStyle(Brand.secondaryLabel)
         }
@@ -179,12 +185,14 @@ struct SourceSettingsView: View {
 
     // MARK: 动作
     private func doImport() async {
-        let url = urlInput.trimmingCharacters(in: .whitespaces)
+        let url = urlInput.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !url.isEmpty else { return }
         message = nil
         do {
             let count = try await sm.importSubscription(url: url)
-            message = "导入成功：\(count) 个站点，已可在「视频源」页浏览"
+            message = count > 0
+                ? "导入成功：新增 \(count) 个站点（排重合并后共 \(sm.sites.count) 个）"
+                : "无新增站点（地址中的站点均已收录，共 \(sm.sites.count) 个）"
             msgIsError = false
         } catch {
             message = "导入失败：\(error.localizedDescription)"

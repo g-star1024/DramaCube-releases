@@ -57,9 +57,52 @@ public actor TVBoxEngine {
 
     // MARK: - 订阅管理
 
-    /// 从 URL 导入订阅（TVBox 格式）。返回站点数。
+    /// 从 URL 导入订阅（TVBox 格式）。支持一次传多个地址（换行/逗号分隔），
+    /// 与已有站点按 api 排重合并（重复的不重复计数）。返回新增站点数。
     @discardableResult
     public func importSubscription(url: String) async throws -> Int {
+        let urls = url
+            .components(separatedBy: CharacterSet(charactersIn: "\n,;，；"))
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { $0.hasPrefix("http") }
+        guard !urls.isEmpty else { throw TVBoxError.badURL }
+
+        // 逐个拉取解析，合并（单地址失败不拖垮其余）
+        var fetched: [Site] = []
+        for u in urls {
+            if let list = try? await Self.fetchSubscription(url: u) {
+                fetched.append(contentsOf: list)
+            }
+        }
+        // 仅保留 maccms 类源（api 非空）
+        let cleaned = fetched.filter { !$0.api.isEmpty && $0.api.hasPrefix("http") }
+        guard !cleaned.isEmpty else { throw TVBoxError.noSites }
+
+        // 与现有站点按 api 排重合并（已有优先，新源只补未收录的）
+        await ensureLoaded()
+        var existingApis = Set(sites.map { Self.normalizeAPI($0.api) })
+        var added = 0
+        for s in cleaned {
+            let key = Self.normalizeAPI(s.api)
+            if existingApis.insert(key).inserted {
+                sites.append(s)
+                added += 1
+            }
+        }
+        lastLoad = Date()
+        try JSONEncoder().encode(Subscription(sites: sites)).write(to: Self.cacheURL, options: .atomic)
+        return added
+    }
+
+    /// api 归一化（去尾斜杠/去协议差异），用于排重键。
+    private static func normalizeAPI(_ api: String) -> String {
+        var s = api.trimmingCharacters(in: .whitespaces).lowercased()
+        if s.hasSuffix("/") { s.removeLast() }
+        return s.replacingOccurrences(of: "https://", with: "").replacingOccurrences(of: "http://", with: "")
+    }
+
+    /// 拉取并解析单个订阅地址（不做排重/持久化）。
+    private static func fetchSubscription(url: String) async throws -> [Site] {
         guard let u = URL(string: url) else { throw TVBoxError.badURL }
         var req = URLRequest(url: u, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 30)
         req.setValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36", forHTTPHeaderField: "User-Agent")
@@ -67,19 +110,8 @@ public actor TVBoxEngine {
         guard let http = resp as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
             throw TVBoxError.fetchFailed((resp as? HTTPURLResponse)?.statusCode ?? -1)
         }
-        let sub: Subscription
-        do {
-            sub = try JSONDecoder().decode(Subscription.self, from: data)
-        } catch {
-            throw TVBoxError.parseFailed
-        }
-        // 仅保留 maccms 类源（api 非空）
-        let cleaned = sub.sites.filter { !$0.api.isEmpty && $0.api.hasPrefix("http") }
-        guard !cleaned.isEmpty else { throw TVBoxError.noSites }
-        sites = cleaned
-        lastLoad = Date()
-        try data.write(to: Self.cacheURL, options: .atomic)
-        return cleaned.count
+        let sub = try JSONDecoder().decode(Subscription.self, from: data)
+        return sub.sites
     }
 
     /// 已导入的站点列表（先尝试读缓存）。
@@ -157,9 +189,12 @@ public actor TVBoxEngine {
     // MARK: - 列表 / 搜索 / 详情
 
     /// 最新列表：`?ac=list&pg=n`，可选 `typeId` 频道过滤（t 参数）。
+    /// 过滤采集站混入的演员卡（纯人名、无封面、无集数）。
     public func latest(siteKey: String, page: Int, typeId: Int? = nil) async throws -> [Drama] {
         let s = try await site(key: siteKey)
-        return try await fetchList(site: s, page: page, typeId: typeId).map { Self.toDrama($0, siteKey: s.key) }
+        return try await fetchList(site: s, page: page, typeId: typeId)
+            .map { Self.toDrama($0, siteKey: s.key) }
+            .filter { !HongguoClient.isActorCard($0) }
     }
 
     // MARK: - 频道分类（class）
@@ -341,6 +376,9 @@ public actor TVBoxEngine {
     }
 
     /// 拉取并解码完整 maccms 响应（含 list 与 class）。
+    /// 容错：部分采集站（如 xinlangapi）个别频道的 JSON 被截断（未闭合字符串/数组），
+    /// 整体解码会抛 dataCorrupted「correct format」。此时按「最后一个完整 list 条目」
+    /// 截断数据、丢弃坏尾巴，抢救已完整解析出的条目，而不是整页报错。
     private func fetchResponse(_ url: URL) async throws -> VodListResponse {
         var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 15)
         req.setValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36", forHTTPHeaderField: "User-Agent")
@@ -349,7 +387,75 @@ public actor TVBoxEngine {
         guard let http = resp as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
             throw TVBoxError.fetchFailed((resp as? HTTPURLResponse)?.statusCode ?? -1)
         }
-        return try JSONDecoder().decode(VodListResponse.self, from: data)
+        let decoder = JSONDecoder()
+        if let full = try? decoder.decode(VodListResponse.self, from: data) {
+            return full
+        }
+        // 截断容错：找最后一个完整 vod 条目（"vod_id" 起、到下一个 "vod_id" 前的 '}），
+        // 直接把 list 数组在最后一个完整对象处闭合，其余字段不要。
+        if let salvaged = Self.salvageTruncatedList(data) {
+            return salvaged
+        }
+        // 抢救不出条目才真正报错
+        throw TVBoxError.parseFailed
+    }
+
+    /// 从被截断的 maccms JSON 中抢救已完整的 list 条目。
+    /// 思路：list 是 [ {...}, {...}, ...被截断 ]; 找到 "{...完整...}" 的最后一个完整对象，
+    /// 在 list 数组该处补 `]` 与 `}`，重新解码一个只含 list 的 VodListResponse。
+    private static func salvageTruncatedList(_ data: Data) -> VodListResponse? {
+        guard var text = String(data: data, encoding: .utf8),
+              let listStart = text.range(of: "\"list\"\\s*:\\s*\\[", options: .regularExpression) else { return nil }
+        // 只扫描 list 数组内容区
+        let scanFrom = listStart.upperBound
+        var lastGoodEnd: String.Index?  // 最后一个完整对象的 '}' 位置
+        var depth = 0
+        var inString = false
+        var escaped = false
+        var objStart: String.Index?
+        var idx = scanFrom
+        while idx < text.endIndex {
+            let ch = text[idx]
+            if inString {
+                if escaped { escaped = false }
+                else if ch == "\\" { escaped = true }
+                else if ch == "\"" { inString = false }
+                idx = text.index(after: idx)
+                continue
+            }
+            switch ch {
+            case "\"":
+                inString = true
+            case "{":
+                if depth == 0 { objStart = idx }
+                depth += 1
+            case "}":
+                depth -= 1
+                if depth == 0, objStart != nil {
+                    lastGoodEnd = text.index(after: idx) // 完整对象结束
+                    objStart = nil
+                }
+                if depth < 0 { // 提前闭合（理论上不该发生），停
+                    idx = text.endIndex
+                    continue
+                }
+            case "]":
+                if depth == 0 { // 数组完整结束，说明其实没截断在 list 里
+                    lastGoodEnd = lastGoodEnd ?? idx
+                    idx = text.endIndex
+                    continue
+                }
+            default:
+                break
+            }
+            idx = text.index(after: idx)
+        }
+        guard let goodEnd = lastGoodEnd, goodEnd > scanFrom else { return nil }
+        // 重新拼一个最小合法 JSON：{"list":[ ...完整条目... ]}
+        let body = String(text[scanFrom..<goodEnd])
+        let rebuilt = "{\"list\":[\(body)]}"
+        guard let redata = rebuilt.data(using: .utf8) else { return nil }
+        return try? JSONDecoder().decode(VodListResponse.self, from: redata)
     }
 
     /// Vod → Drama（id 带 tvbox 前缀，便于路由识别与进度隔离）。

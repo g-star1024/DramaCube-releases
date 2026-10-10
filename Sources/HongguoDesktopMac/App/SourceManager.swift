@@ -175,7 +175,8 @@ public final class SourceManager: ObservableObject {
 
     // MARK: - 订阅
 
-    /// 一键导入（或更新）订阅。
+    /// 一键导入（或更新）订阅。支持一次粘贴多个地址（换行/逗号/分号分隔），
+    /// 与已有站点按 api 排重合并，返回新增站点数。
     public func importSubscription(url: String) async throws -> Int {
         isImporting = true
         defer { isImporting = false }
@@ -186,7 +187,7 @@ public final class SourceManager: ObservableObject {
         lastImportCount = count
         await refreshSites()
         writeMirror()
-        AppLog.log(.app, "视频源订阅导入成功：\(count) 个站点（已写本地镜像）")
+        AppLog.log(.app, "视频源订阅导入完成：新增 \(count) 个站点（多源排重合并，已写本地镜像）")
         return count
     }
 

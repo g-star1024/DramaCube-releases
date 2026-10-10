@@ -25,6 +25,7 @@ public struct SettingsView: View {
             playbackTab.tabItem { Label("播放", systemImage: "play.circle") }
             browseTab.tabItem { Label("浏览", systemImage: "square.grid.2x2") }
             sourcesTab.tabItem { Label("视频源", systemImage: "antenna.radiowaves.left.and.right") }
+            liveTab.tabItem { Label("电视直播", systemImage: "tv") }
             nasTab.tabItem { Label("资源库", systemImage: "externaldrive.connected.to.line.below") }
             serviceTab.tabItem { Label("服务", systemImage: "stethoscope") }
             aboutTab.tabItem { Label("关于", systemImage: "info.circle") }
@@ -83,6 +84,12 @@ public struct SettingsView: View {
 
     private var sourcesTab: some View {
         SourceSettingsView()
+    }
+
+    // MARK: - 电视直播
+
+    private var liveTab: some View {
+        LiveSettingsView()
     }
 
     // MARK: - 资源库（NAS）
@@ -210,7 +217,6 @@ public struct SettingsView: View {
                         Picker("", selection: $s.homeSection) {
                             Text("发现").tag("discover")
                             Text("排行榜").tag("rank")
-                            Text("探索").tag("explore")
                         }
                         .labelsHidden()
                         .frame(width: 110)

@@ -262,6 +262,61 @@ public enum GatewayServer {
             return Response(status: status, headers: headers, body: body)
         }
 
+        // MARK: 电视直播（m3u 源聚合）
+        // 直播源配置持久化（live-sources.json），频道列表排重合并按组返回。
+
+        // 直播源列表：/api/live/sources
+        router.get("api/live/sources") { _, _ async throws -> Response in
+            let list = await LiveEngine.shared.allSources()
+            return Self.json(GatewayEnvelope(ok: true, data: list))
+        }
+
+        // 添加直播源：/api/live/add?url=&name=  （url 相同幂等更新，不重复计数）
+        router.get("api/live/add") { request, _ async throws -> Response in
+            guard let url = Self.queryValue(request, name: "url"), !url.isEmpty else {
+                throw HTTPError(.badRequest, message: "missing url")
+            }
+            let name = Self.queryValue(request, name: "name")
+            let added = try await LiveEngine.shared.addSource(url: url, name: name)
+            await LiveEngine.shared.invalidateCache()
+            return Self.json(GatewayEnvelope(ok: true, data: added))
+        }
+
+        // 删除直播源：/api/live/remove?id=
+        router.get("api/live/remove") { request, _ async throws -> Response in
+            guard let id = Self.queryValue(request, name: "id"), !id.isEmpty else {
+                throw HTTPError(.badRequest, message: "missing id")
+            }
+            try await LiveEngine.shared.removeSource(id: id)
+            await LiveEngine.shared.invalidateCache()
+            return Self.json(GatewayEnvelope(ok: true, data: ["removed": id]))
+        }
+
+        // 开关直播源：/api/live/toggle?id=&on=1
+        router.get("api/live/toggle") { request, _ async throws -> Response in
+            guard let id = Self.queryValue(request, name: "id"), !id.isEmpty else {
+                throw HTTPError(.badRequest, message: "missing id")
+            }
+            let on = (Self.queryValue(request, name: "on") ?? "1") == "1"
+            try await LiveEngine.shared.setEnabled(id: id, on)
+            await LiveEngine.shared.invalidateCache()
+            return Self.json(GatewayEnvelope(ok: true, data: ["id": id, "on": on ? "1" : "0"]))
+        }
+
+        // 频道列表：/api/live/channels  （多源排重合并，按 group 排序）
+        router.get("api/live/channels") { _, _ async throws -> Response in
+            let list = await LiveEngine.shared.channels()
+            return Self.json(GatewayEnvelope(ok: true, data: list))
+        }
+
+        // 直播流代理：/api/live/stream?url= —— 统一 UA（okHttp/Mod-1.5.0.0）防盗链
+        router.get("api/live/stream") { request, _ async throws -> Response in
+            guard let url = Self.queryValue(request, name: "url"), !url.isEmpty else {
+                throw HTTPError(.badRequest, message: "missing url")
+            }
+            return try await Self.proxyLiveMedia(request, sourceURL: url)
+        }
+
         return router
     }
 
@@ -295,7 +350,38 @@ public enum GatewayServer {
         return Response(status: status, headers: headers, body: body)
     }
 
-    /// 前台运行网关（阻塞直到 app 停止）。供独立可执行文件与 App 进程内调用。
+    /// 直播流式代理：拉 m3u8/视频流时带直播源约定的 UA（okHttp/Mod-1.5.0.0），
+    /// 透传 Range，边收边发（直播无 Content-Length，AVPlayer 按 HLS 消费）。
+    private static func proxyLiveMedia(_ request: Request, sourceURL: String) async throws -> Response {
+        guard let url = URL(string: sourceURL) else { throw HTTPError(.badRequest, message: "bad url") }
+        var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 30)
+        req.setValue(LiveEngine.playbackUserAgent, forHTTPHeaderField: "User-Agent")
+        let range = request.headers[.range].flatMap { $0.isEmpty ? nil : $0 }
+        if let range, !range.isEmpty { req.setValue(range, forHTTPHeaderField: "Range") }
+        let (bytes, resp) = try await URLSession.shared.bytes(for: req)
+        let http = resp as? HTTPURLResponse
+        var headers = HTTPFields()
+        headers[.contentType] = http?.value(forHTTPHeaderField: "Content-Type") ?? "application/vnd.apple.mpegurl"
+        if let cl = http?.value(forHTTPHeaderField: "Content-Length") { headers[.contentLength] = cl }
+        if let cr = http?.value(forHTTPHeaderField: "Content-Range") { headers[.contentRange] = cr }
+        headers[.acceptRanges] = "bytes"
+        let status: HTTPResponse.Status = (http?.statusCode == 206) ? .partialContent : .ok
+        let body = ResponseBody { writer in
+            var buffer = [UInt8]()
+            buffer.reserveCapacity(65_536)
+            for try await byte in bytes {
+                buffer.append(byte)
+                if buffer.count >= 65_536 {
+                    try await writer.write(ByteBuffer(bytes: buffer))
+                    buffer.removeAll(keepingCapacity: true)
+                }
+            }
+            if !buffer.isEmpty {
+                try await writer.write(ByteBuffer(bytes: buffer))
+            }
+        }
+        return Response(status: status, headers: headers, body: body)
+    }
     public static func run(port: Int) async throws {
         var configuration = ApplicationConfiguration()
         configuration.address = .hostname("127.0.0.1", port: port)

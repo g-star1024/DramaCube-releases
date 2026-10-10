@@ -2,17 +2,16 @@ import SwiftUI
 import HongguoCore
 
 public enum SidebarItem: String, CaseIterable, Identifiable {
-    case discover, rank, explore, tvbox, nas, favorite, history, settings
+    case discover, rank, live, tvbox, nas, library, settings
     public var id: String { rawValue }
     public var title: String {
         switch self {
         case .discover: return "发现"
         case .rank: return "排行榜"
-        case .explore: return "探索"
+        case .live: return "电视直播"
         case .tvbox: return "视频源"
         case .nas: return "资源库"
-        case .favorite: return "收藏"
-        case .history: return "历史"
+        case .library: return "收藏 / 历史"
         case .settings: return "设置"
         }
     }
@@ -20,11 +19,10 @@ public enum SidebarItem: String, CaseIterable, Identifiable {
         switch self {
         case .discover: return "sparkles"
         case .rank: return "chart.bar.fill"
-        case .explore: return "safari"
+        case .live: return "tv"
         case .tvbox: return "antenna.radiowaves.left.and.right"
         case .nas: return "externaldrive.connected.to.line.below"
-        case .favorite: return "heart"
-        case .history: return "clock"
+        case .library: return "bookmark"
         case .settings: return "gearshape"
         }
     }
@@ -60,14 +58,6 @@ public struct CatalogView: View {
             chips: RankTab.allCases.map { BrowseChip(id: $0.id, title: $0.title) },
             defaultPath: RankTab.hot.path,
             chipPath: { RankTab(rawValue: $0.id)?.path ?? RankTab.hot.path }
-        )
-    }
-    private var exploreConfig: BrowseConfig {
-        BrowseConfig(
-            title: "探索",
-            chips: ExploreTab.allCases.map { BrowseChip(id: $0.id, title: $0.title) },
-            defaultPath: ExploreTab.short.path,
-            chipPath: { ExploreTab(rawValue: $0.id)?.path ?? ExploreTab.short.path }
         )
     }
 
@@ -143,16 +133,14 @@ public struct CatalogView: View {
             BrowseView(config: discoverConfig, segments: DiscoverSegment.allCases, onSelect: openDetail)
         case .rank:
             BrowseView(config: rankConfig, onSelect: openDetail)
-        case .explore:
-            BrowseView(config: exploreConfig, onSelect: openDetail)
+        case .live:
+            LiveBrowseView()
         case .tvbox:
             TVBoxBrowseView(sm: SourceManager.shared, onSelect: openDetail)
         case .nas:
             NASBrowseView(nm: NASManager.shared, onSelect: openDetail)
-        case .favorite:
+        case .library:
             LibraryView(initial: .favorite)
-        case .history:
-            LibraryView(initial: .history)
         case .settings:
             SettingsView()
         }

@@ -18,6 +18,8 @@ struct TVBoxBrowseView: View {
     @State private var error: String?
     @State private var showSourcePicker = false
     @State private var selectedTypeId: Int? // nil = 最新（不区分频道）
+    /// 首屏是否已完成过一次加载（区分「从未加载」与「切源中途」），用于切源时也显示加载态而非暂无内容
+    @State private var hasInitiallyLoaded = false
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: Spacing.md), count: 6)
 
@@ -37,6 +39,8 @@ struct TVBoxBrowseView: View {
             // 切换源：轮播缓存按源 key 隔离，切走即清空重拉新源最新
             featured = []
             items = []
+            // 标记未就绪 → content 显示加载态而非「暂无内容」
+            hasInitiallyLoaded = false
             // 频道也要随源懒加载（此前漏掉，导致手动切源后只剩「最新」，切模块返回才出现）
             Task {
                 _ = await sm.tvboxCategories(siteKey: sm.currentSource)
@@ -182,6 +186,9 @@ struct TVBoxBrowseView: View {
             ErrorView(error, retry: { Task { await load(reset: true) } })
         } else if items.isEmpty && isLoading {
             LoadingView("正在加载 \(sm.currentSourceName)…")
+        } else if items.isEmpty && !hasInitiallyLoaded {
+            // 切换源/频道的中途（异步任务已发出但 isLoading 尚未置位）也显示加载态，不闪「暂无内容」
+            LoadingView("正在加载 \(sm.currentSourceName)…")
         } else if items.isEmpty {
             EmptyState("该源暂无内容", systemImage: "tray", description: "可能是站点无数据或接口异常，可在设置中做连通性测试")
         } else {
@@ -289,5 +296,6 @@ struct TVBoxBrowseView: View {
             AppLog.log(.error, "视频源 \(src) 加载失败：\(error.localizedDescription)")
         }
         isLoading = false
+        hasInitiallyLoaded = true
     }
 }
