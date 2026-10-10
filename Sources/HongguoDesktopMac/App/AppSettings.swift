@@ -25,6 +25,20 @@ public final class AppSettings: ObservableObject {
     @Published public var bossKeyEnabled: Bool { didSet { defaults.set(bossKeyEnabled, forKey: "bossKeyEnabled") } }
     /// 起播前自动跳过片头（秒，0 表示不跳）。
     @Published public var introSkipSeconds: Double { didSet { defaults.set(introSkipSeconds, forKey: "introSkipSeconds") } }
+    /// 缓冲策略（low/medium/high/ultra）→ AVPlayerItem.preferredForwardBufferDuration 秒数。
+    @Published public var bufferStrategy: String { didSet { defaults.set(bufferStrategy, forKey: "bufferStrategy") } }
+    /// 下集预缓冲：播放进度达 90% 时预创建下一集资源。
+    @Published public var prefetchNextEpisode: Bool { didSet { defaults.set(prefetchNextEpisode, forKey: "prefetchNextEpisode") } }
+
+    /// 缓冲策略对应的前向缓冲秒数（参考 MoonTVPlus/HLS.js maxBufferLength）。
+    public var forwardBufferSeconds: Double {
+        switch bufferStrategy {
+        case "low": return 15
+        case "high": return 60
+        case "ultra": return 120
+        default: return 30  // medium（推荐）
+        }
+    }
 
     // MARK: - 浏览偏好
     /// 首页默认分区（discover/rank/new）。
@@ -41,6 +55,8 @@ public final class AppSettings: ObservableObject {
         autoPlayNext = d.object(forKey: "autoPlayNext") == nil ? true : d.bool(forKey: "autoPlayNext")
         bossKeyEnabled = d.object(forKey: "bossKeyEnabled") == nil ? true : d.bool(forKey: "bossKeyEnabled")
         introSkipSeconds = d.object(forKey: "introSkipSeconds") == nil ? 0 : d.double(forKey: "introSkipSeconds")
+        bufferStrategy = d.string(forKey: "bufferStrategy") ?? "medium"
+        prefetchNextEpisode = d.object(forKey: "prefetchNextEpisode") == nil ? true : d.bool(forKey: "prefetchNextEpisode")
         homeSection = d.object(forKey: "homeSection") == nil ? "discover" : (d.string(forKey: "homeSection") ?? "discover")
         pageSize = d.object(forKey: "pageSize") == nil ? 24 : d.integer(forKey: "pageSize")
         loadCoversOnCellular = d.object(forKey: "loadCoversOnCellular") == nil ? true : d.bool(forKey: "loadCoversOnCellular")

@@ -66,6 +66,10 @@ public final class PlayerViewModel: ObservableObject, ActivePlayer {
     private var lastSaved = Date.distantPast
     nonisolated(unsafe) private var notifObservers: [NSObjectProtocol] = []
     private var wasPlayingBeforeBoss = false
+    /// 下集预缓冲：本集是否已触发过预热（每集只预热一次）。
+    private var prefetchedNext = false
+    /// 预热的下一集资源（保留引用防释放，切换时可直接用）。
+    private var prefetchedAsset: AVURLAsset?
 
     public init(detail: DramaDetail, startIndex: Int = 0) {
         self.detail = detail
@@ -154,12 +158,17 @@ public final class PlayerViewModel: ObservableObject, ActivePlayer {
             let stream = URL(string: "\(AppConfig.gatewayBaseURL)/api/stream/\(detail.drama.id)/\(ep.id)")!
             item = AVPlayerItem(url: stream)
         }
+        // 应用缓冲策略：preferredForwardBufferDuration（参考 MoonTVPlus maxBufferLength 15/30/60/120s）
+        let bufferSecs = AppSettings.shared.forwardBufferSeconds
+        item.preferredForwardBufferDuration = bufferSecs
+
         player.replaceCurrentItem(with: item)
         currentTime = 0
         duration = 0
         isBuffering = true
         error = nil
         isResuming = false
+        prefetchedNext = false
 
         // 断点续播：读取本集已存进度，待就绪后 seek。
         if let prog = Repository.shared.progress(dramaId: dramaId, episodeId: ep.id) {
@@ -380,6 +389,66 @@ public final class PlayerViewModel: ObservableObject, ActivePlayer {
         return union == 0 ? 0 : Double(inter) / Double(union)
     }
 
+    /// 下载当前集（用可分享地址，经网关代理可直接访问）。
+    public func downloadCurrentEpisode() {
+        guard let ep = currentEpisode, let url = shareablePlayURL else { return }
+        DownloadManager.shared.addDownload(
+            dramaId: dramaId, episodeId: ep.id,
+            dramaTitle: title, episodeTitle: ep.title,
+            sourceURL: url.absoluteString
+        )
+    }
+
+    /// 当前集下载状态（供按钮显示）。
+    public var currentDownloadState: DownloadState? {
+        guard let ep = currentEpisode else { return nil }
+        return DownloadManager.shared.status(for: dramaId, episodeId: ep.id)
+    }
+
+    // MARK: - 外部播放器打开
+
+    /// 当前集的可播放地址（经网关代理，外部播放器可直接访问，无需 Referer）。
+    /// 返回 nil 表示当前集无可分享地址。
+    public var shareablePlayURL: URL? {
+        guard let ep = currentEpisode else { return nil }
+        if let url = ep.playURL, !url.isEmpty {
+            if url.hasPrefix("file://") { return URL(string: url) }
+            if url.lowercased().contains(".m3u8") { return URL(string: url) }
+            if detail.drama.id.hasPrefix("nas|") { return URL(string: url) }
+            return hongguoGatewayMediaURL(url)
+        }
+        // 新站点：经网关 stream 代理
+        return URL(string: "\(AppConfig.gatewayBaseURL)/api/stream/\(detail.drama.id)/\(ep.id)")
+    }
+
+    /// 用系统已安装的外部播放器打开当前集（IINA / VLC / 默认）。
+    public func openInExternalPlayer(_ app: ExternalPlayerApp) {
+        guard let url = shareablePlayURL else { return }
+        ExternalPlayerOpener.open(url: url, app: app)
+    }
+
+    // MARK: - 下集预缓冲
+
+    /// 播放进度达 90% 时预热下一集资源（预创建 AVURLAsset 并异步加载关键属性，
+    /// 让 CDN 连接/TLS 握手/码率协商提前完成，切下集时秒开）。
+    private func maybePrefetchNext(currentSeconds: Double) {
+        guard AppSettings.shared.prefetchNextEpisode, !prefetchedNext else { return }
+        guard duration > 0, currentSeconds / duration >= 0.9 else { return }
+        let next = currentIndex + 1
+        guard episodes.indices.contains(next) else { return }
+        prefetchedNext = true
+        let ep = episodes[next]
+        guard let urlString = ep.playURL, !urlString.isEmpty,
+              let url = URL(string: urlString) else { return }
+        let asset = AVURLAsset(url: url)
+        prefetchedAsset = asset
+        Task.detached(priority: .utility) {
+            // 异步预加载关键属性，触发网络预热（连接 + 首个分片）。
+            _ = try? await asset.load(.duration, .tracks)
+            AppLog.log(.player, "下集预缓冲完成：第\(ep.index)集")
+        }
+    }
+
     // MARK: - 周期观察
 
     private func setupPeriodicObserver() {
@@ -393,6 +462,7 @@ public final class PlayerViewModel: ObservableObject, ActivePlayer {
                     self.currentTime = sec
                 }
                 self.saveProgress()
+                self.maybePrefetchNext(currentSeconds: self.currentTime)
                 NowPlayingManager.shared.updatePlayback(title: self.title, episodeTitle: self.episodeTitle,
                                                        duration: self.duration, currentTime: self.currentTime, isPlaying: self.isPlaying)
             }

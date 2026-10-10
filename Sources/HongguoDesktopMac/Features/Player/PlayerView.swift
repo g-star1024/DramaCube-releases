@@ -151,6 +151,24 @@ public struct PlayerView: View {
         }
     }
 
+    // MARK: 下载按钮状态
+    private var downloadButtonIcon: String {
+        switch vm.currentDownloadState {
+        case .downloading: return "arrow.down.circle.fill"
+        case .completed: return "checkmark.circle.fill"
+        case .failed: return "exclamationmark.circle"
+        default: return "arrow.down.circle"
+        }
+    }
+    private var downloadButtonHelp: String {
+        switch vm.currentDownloadState {
+        case .downloading: return "下载中…"
+        case .completed: return "已下载"
+        case .failed: return "下载失败，点击重试"
+        default: return "下载当前集"
+        }
+    }
+
     // MARK: 控制条
     private var controlBar: some View {
         HStack(spacing: Spacing.sm) {
@@ -197,6 +215,25 @@ public struct PlayerView: View {
             } label: { Image(systemName: "square.stack.2.1") }
             .help("查找其他季 / 相似剧")
 
+            Menu {
+                ForEach(ExternalPlayerOpener.installedApps) { app in
+                    Button { vm.openInExternalPlayer(app) } label: {
+                        Text("在 \(app.displayName) 中打开")
+                    }
+                }
+            } label: {
+                Image(systemName: "play.rectangle.on.rectangle")
+            }
+            .menuStyle(.borderlessButton)
+            .frame(width: 28)
+            .help("在外部播放器中打开当前集")
+
+            Button { vm.downloadCurrentEpisode() } label: {
+                Image(systemName: downloadButtonIcon)
+            }
+            .help(downloadButtonHelp)
+            .disabled(vm.currentDownloadState == .downloading || vm.currentDownloadState == .completed)
+
             Button { vm.showEpisodes.toggle() } label: { Image(systemName: "list.bullet") }
 
             Button { PipCoordinator.shared.toggle() } label: { Image(systemName: "rectangle.on.rectangle") }
@@ -207,8 +244,7 @@ public struct PlayerView: View {
                 .help("全屏 (⌘↩)")
         }
         .buttonStyle(.borderless)
-        .padding(.horizontal, Spacing.md)
-        .padding(.vertical, Spacing.sm)
+        .padding(.horizontal, Spacing.md)        .padding(.vertical, Spacing.sm)
         .controlSize(.regular)
     }
 

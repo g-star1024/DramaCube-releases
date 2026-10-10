@@ -346,6 +346,46 @@ public enum GatewayServer {
             return try await Self.proxyLiveMedia(request, sourceURL: url)
         }
 
+        // 封面回退：/api/cover?title= → {ok, data:{url}}（豆瓣海报，经 image-proxy 代理）
+        router.get("api/cover") { request, _ async throws -> Response in
+            guard let title = Self.queryValue(request, name: "title"), !title.isEmpty else {
+                throw HTTPError(.badRequest, message: "missing title")
+            }
+            if let poster = await CoverEngine.shared.doubanPoster(forRawTitle: title) {
+                let proxied = CoverEngine.proxiedImageURL(poster, gatewayBase: "http://127.0.0.1:8787")
+                return Self.json(GatewayEnvelope(ok: true, data: ["url": proxied]))
+            }
+            return Self.json(GatewayEnvelope(ok: true, data: ["url": ""]))
+        }
+
+        // 图片代理：/api/image-proxy?url= —— 转发豆瓣等防盗链图片（带 Referer）。
+        router.get("api/image-proxy") { request, _ async throws -> Response in
+            guard let urlStr = Self.queryValue(request, name: "url"),
+                  let url = URL(string: urlStr) else {
+                throw HTTPError(.badRequest, message: "bad url")
+            }
+            var req = URLRequest(url: url, cachePolicy: .returnCacheDataElseLoad, timeoutInterval: 15)
+            req.setValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15", forHTTPHeaderField: "User-Agent")
+            // 豆瓣图片防盗链：Referer 设为豆瓣主站
+            if url.host?.contains("doubanio.com") == true {
+                req.setValue("https://movie.douban.com/", forHTTPHeaderField: "Referer")
+            }
+            let (bytes, resp) = try await URLSession.shared.bytes(for: req)
+            let http = resp as? HTTPURLResponse
+            var headers = HTTPFields()
+            headers[.contentType] = http?.value(forHTTPHeaderField: "Content-Type") ?? "image/jpeg"
+            headers[.cacheControl] = "public, max-age=86400"
+            let body = ResponseBody { writer in
+                var buf = [UInt8](); buf.reserveCapacity(65_536)
+                for try await b in bytes {
+                    buf.append(b)
+                    if buf.count >= 65_536 { try await writer.write(ByteBuffer(bytes: buf)); buf.removeAll(keepingCapacity: true) }
+                }
+                if !buf.isEmpty { try await writer.write(ByteBuffer(bytes: buf)) }
+            }
+            return Response(status: .ok, headers: headers, body: body)
+        }
+
         return router
     }
 

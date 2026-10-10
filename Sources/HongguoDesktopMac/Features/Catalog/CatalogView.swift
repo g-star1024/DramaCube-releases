@@ -2,7 +2,7 @@ import SwiftUI
 import HongguoCore
 
 public enum SidebarItem: String, CaseIterable, Identifiable {
-    case discover, rank, tvbox, nas, live, library, settings
+    case discover, rank, tvbox, nas, live, library, downloads, settings
     public var id: String { rawValue }
     public var title: String {
         switch self {
@@ -12,6 +12,7 @@ public enum SidebarItem: String, CaseIterable, Identifiable {
         case .nas: return "资源库"
         case .live: return "电视直播"
         case .library: return "历史收藏"
+        case .downloads: return "下载"
         case .settings: return "设置"
         }
     }
@@ -23,6 +24,7 @@ public enum SidebarItem: String, CaseIterable, Identifiable {
         case .nas: return "externaldrive.connected.to.line.below"
         case .live: return "tv"
         case .library: return "bookmark"
+        case .downloads: return "arrow.down.circle"
         case .settings: return "gearshape"
         }
     }
@@ -141,6 +143,8 @@ public struct CatalogView: View {
             LiveBrowseView()
         case .library:
             LibraryView(initial: .history)
+        case .downloads:
+            DownloadsView()
         case .settings:
             SettingsView()
         }

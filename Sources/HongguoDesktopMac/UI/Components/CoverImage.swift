@@ -1,6 +1,7 @@
 import SwiftUI
 import AppKit
 import ImageIO
+import HongguoCore
 
 /// 全局封面下载闸门：限制并发请求数，避免开局几十张封面同时请求
 /// 打爆网络与主线程（App 卡死的根因之一）。
@@ -94,15 +95,51 @@ public struct CoverImage: View {
     private func load() async {
         failed = false
         image = nil
-        guard let url else { failed = true; return }
+        // 无源封面：直接走豆瓣回退
+        guard let url else {
+            await loadDoubanFallback()
+            return
+        }
         let img = await Self.fetchAndDecode(url).image
         // task 可能已因 url 变化被取消，取消后不再写状态
         guard !Task.isCancelled else { return }
         if let img {
             image = img
         } else {
+            // 源封面加载失败：尝试豆瓣回退
+            await loadDoubanFallback()
+        }
+    }
+
+    /// 豆瓣封面回退：按标题查网关 /api/cover，取豆瓣海报（经 image-proxy 防盗链）。
+    private func loadDoubanFallback() async {
+        guard let title, !title.trimmingCharacters(in: .whitespaces).isEmpty else {
+            failed = true
+            return
+        }
+        guard let fallback = await Self.fetchDoubanCoverURL(title: title) else {
+            guard !Task.isCancelled else { return }
+            failed = true
+            return
+        }
+        let img = await Self.fetchAndDecode(fallback).image
+        guard !Task.isCancelled else { return }
+        if let img {
+            image = img
+        } else {
             failed = true
         }
+    }
+
+    /// 调网关封面回退接口，拿豆瓣海报代理地址。
+    nonisolated private static func fetchDoubanCoverURL(title: String) async -> URL? {
+        struct CoverResp: Codable { let ok: Bool; let data: [String: String]? }
+        guard let q = title.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+              let url = URL(string: "\(AppConfig.gatewayBaseURL)/api/cover?title=\(q)") else { return nil }
+        guard let (data, _) = try? await URLSession.shared.data(from: url),
+              let resp = try? JSONDecoder().decode(CoverResp.self, from: data),
+              resp.ok, let u = resp.data?["url"], !u.isEmpty else { return nil }
+        return URL(string: u)
     }
 
     /// NSImage 非 Sendable，用只读盒子跨隔离域传递（内容构造后不再变更，安全）。

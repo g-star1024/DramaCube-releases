@@ -201,6 +201,63 @@ public struct SettingsView: View {
                         .controlSize(.small)
                     }
                 }
+
+                sectionCard("缓冲") {
+                    row("缓冲策略") {
+                        Picker("", selection: $s.bufferStrategy) {
+                            Text("低缓冲").tag("low")
+                            Text("中缓冲").tag("medium")
+                            Text("高缓冲").tag("high")
+                            Text("超高缓冲").tag("ultra")
+                        }
+                        .labelsHidden()
+                        .pickerStyle(.segmented)
+                        .frame(width: 280)
+                        .controlSize(.small)
+                    }
+                    rowDivider
+                    HStack(alignment: .top, spacing: 6) {
+                        Image(systemName: "info.circle")
+                            .font(.system(size: 11))
+                            .foregroundStyle(Brand.secondaryLabel)
+                        Text("缓冲块越大播放越流畅但越耗流量/内存。当前：\(Int(s.forwardBufferSeconds)) 秒。下集预缓冲在播放进度 90% 时自动预热下一集。")
+                            .font(.system(size: 11))
+                            .foregroundStyle(Brand.secondaryLabel)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(.horizontal, Spacing.md)
+                    .padding(.vertical, Spacing.sm)
+                    rowDivider
+                    row("下集预缓冲") {
+                        Toggle("", isOn: $s.prefetchNextEpisode).labelsHidden().toggleStyle(.switch).controlSize(.small)
+                    }
+                }
+
+                sectionCard("下载") {
+                    row("最大同时下载") {
+                        Stepper(value: Binding(
+                            get: { DownloadManager.shared.maxConcurrent },
+                            set: { DownloadManager.shared.maxConcurrent = $0 }
+                        ), in: 1...6) {
+                            Text("\(DownloadManager.shared.maxConcurrent) 个")
+                                .font(.system(size: 12))
+                        }
+                        .frame(width: 150, alignment: .trailing)
+                        .controlSize(.small)
+                    }
+                    rowDivider
+                    HStack(alignment: .top, spacing: 6) {
+                        Image(systemName: "info.circle")
+                            .font(.system(size: 11))
+                            .foregroundStyle(Brand.secondaryLabel)
+                        Text("m3u8 自动调用 ffmpeg 转 mp4（检测到 \(DownloadManager.ffmpegPath != nil ? "已安装" : "未安装 ffmpeg，直链可直接下载")）。下载文件保存在「下载/剧立方」目录。")
+                            .font(.system(size: 11))
+                            .foregroundStyle(Brand.secondaryLabel)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(.horizontal, Spacing.md)
+                    .padding(.vertical, Spacing.sm)
+                }
             }
             .padding(Spacing.xl)
         }

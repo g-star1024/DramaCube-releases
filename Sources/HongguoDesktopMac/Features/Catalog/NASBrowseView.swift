@@ -190,6 +190,8 @@ private struct NASCard: View {
     let drama: Drama
     init(_ d: Drama) { self.drama = d }
 
+    @State private var coverURL: URL?
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             ZStack {
@@ -197,9 +199,16 @@ private struct NASCard: View {
                     .fill(LinearGradient(colors: [Brand.placeholder, Brand.secondaryBackground],
                                          startPoint: .topLeading, endPoint: .bottomTrailing))
                     .aspectRatio(2/3, contentMode: .fit)
-                Image(systemName: "play.rectangle.fill")
-                    .font(.system(size: 30))
-                    .foregroundStyle(Brand.accent.opacity(0.55))
+                if let coverURL, let img = NSImage(contentsOf: coverURL) {
+                    Image(nsImage: img)
+                        .resizable()
+                        .scaledToFill()
+                        .clipShape(RoundedRectangle(cornerRadius: Radius.md, style: .continuous))
+                } else {
+                    Image(systemName: "play.rectangle.fill")
+                        .font(.system(size: 30))
+                        .foregroundStyle(Brand.accent.opacity(0.55))
+                }
                 if let st = drama.updateStatus, !st.isEmpty {
                     Text(st)
                         .font(.system(size: 10, weight: .semibold))
@@ -210,6 +219,7 @@ private struct NASCard: View {
                         .padding(5)
                 }
             }
+            .clipShape(RoundedRectangle(cornerRadius: Radius.md, style: .continuous))
             Text(drama.title)
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(Brand.label)
@@ -222,5 +232,17 @@ private struct NASCard: View {
                 .font(.system(size: 12))
         }
         .contentShape(Rectangle())
+        .task { await loadCover() }
+    }
+
+    /// 加载首帧封面：先查缓存，无则后台生成。
+    private func loadCover() async {
+        // id = nas|<libId>|file|<path>，需还原播放地址
+        let parts = drama.id.split(separator: "|", omittingEmptySubsequences: false).map(String.init)
+        guard parts.count >= 4 else { return }
+        guard let playURL = try? await NASManager.shared.playURLString(id: parts[1], path: parts[3]) else { return }
+        if let url = await NASCoverGenerator.shared.cover(forVideoPlayURL: playURL) {
+            coverURL = url
+        }
     }
 }
