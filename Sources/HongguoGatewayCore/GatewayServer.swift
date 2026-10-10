@@ -389,12 +389,40 @@ public enum GatewayServer {
         if let range, !range.isEmpty { req.setValue(range, forHTTPHeaderField: "Range") }
         let (bytes, resp) = try await URLSession.shared.bytes(for: req)
         let http = resp as? HTTPURLResponse
+        var contentType = http?.value(forHTTPHeaderField: "Content-Type") ?? "application/vnd.apple.mpegurl"
+        let statusCode = http?.statusCode ?? 200
+        // 分片/流按扩展名补正 MIME：jsdelivr 等 CDN 对 .ts 返回 text/plain，AVPlayer 不识别会拒播
+        let lower = sourceURL.lowercased()
+        if lower.contains(".ts") || contentType.contains("text/plain") {
+            if lower.hasSuffix(".ts") || lower.contains(".ts?") { contentType = "video/mp2t" }
+        }
+        if lower.hasSuffix(".m3u8") || lower.contains(".m3u8?") { contentType = "application/vnd.apple.mpegurl" }
+
+        // 关键：m3u8 播放列表必须重写——里面的分片/子列表是源站绝对 URL，
+        // AVPlayer 会绕过网关直接请求分片，而分片域名对 AVPlayer UA 防盗链 → 播放失败。
+        // 检测为 m3u8（按 content-type 或 .m3u8 后缀）时，读取全文并重写所有 URL 行走本网关代理。
+        let isM3U8 = contentType.contains("mpegurl") || contentType.contains("m3u")
+            || sourceURL.lowercased().contains(".m3u8")
+        if isM3U8, statusCode == 200 {
+            // m3u8 是文本且体积小（KB 级），全量读出重写
+            var textBytes = [UInt8]()
+            for try await b in bytes { textBytes.append(b) }
+            if let text = String(bytes: textBytes, encoding: .utf8) {
+                let rewritten = rewriteM3U8(text, baseURL: url)
+                var headers = HTTPFields()
+                headers[.contentType] = "application/vnd.apple.mpegurl"
+                let buf = ByteBuffer(data: Data(rewritten.utf8))
+                return Response(status: .ok, headers: headers, body: .init(byteBuffer: buf))
+            }
+            // 非文本则按流透传（不重写）
+        }
+
         var headers = HTTPFields()
-        headers[.contentType] = http?.value(forHTTPHeaderField: "Content-Type") ?? "application/vnd.apple.mpegurl"
+        headers[.contentType] = contentType
         if let cl = http?.value(forHTTPHeaderField: "Content-Length") { headers[.contentLength] = cl }
         if let cr = http?.value(forHTTPHeaderField: "Content-Range") { headers[.contentRange] = cr }
         headers[.acceptRanges] = "bytes"
-        let status: HTTPResponse.Status = (http?.statusCode == 206) ? .partialContent : .ok
+        let status: HTTPResponse.Status = (statusCode == 206) ? .partialContent : .ok
         let body = ResponseBody { writer in
             var buffer = [UInt8]()
             buffer.reserveCapacity(65_536)
@@ -410,6 +438,56 @@ public enum GatewayServer {
             }
         }
         return Response(status: status, headers: headers, body: body)
+    }
+
+    /// 重写 m3u8：把分片 / 子播放列表 / 密钥的 URL 全部改写成走本网关 /api/live/stream 代理。
+    /// 相对 URL 先按 baseURL 解析成绝对，再编码进代理 query。
+    private static func rewriteM3U8(_ text: String, baseURL: URL) -> String {
+        var out: [String] = []
+        for rawLine in text.components(separatedBy: "\n") {
+            let line = rawLine.trimmingCharacters(in: CharacterSet(charactersIn: "\r"))
+            if line.hasPrefix("#") {
+                // #EXT-X-KEY / #EXT-X-MAP 等含 URI="..." 的标签行也要重写 URI
+                if line.contains("URI=\"") {
+                    out.append(rewriteTagURI(line, baseURL: baseURL))
+                } else {
+                    out.append(line)
+                }
+            } else if !line.isEmpty {
+                // 分片 / 子播放列表地址行
+                let absolute = resolveURL(line, base: baseURL)
+                out.append(proxyURLString(absolute))
+            } else {
+                out.append(line)
+            }
+        }
+        return out.joined(separator: "\n")
+    }
+
+    /// 重写标签行里的 URI="..."（如 #EXT-X-KEY:METHOD=AES-128,URI="..."）。
+    private static func rewriteTagURI(_ line: String, baseURL: URL) -> String {
+        guard let uriKeyRange = line.range(of: "URI=\"") else { return line }
+        let valueStart = uriKeyRange.upperBound
+        guard let closeQuote = line[valueStart...].firstIndex(of: "\"") else { return line }
+        let uriValue = String(line[valueStart..<closeQuote])
+        let absolute = resolveURL(uriValue, base: baseURL)
+        let proxied = proxyURLString(absolute)
+        return line.replacingCharacters(in: valueStart..<closeQuote, with: proxied)
+    }
+
+    /// 相对地址按 base 解析成绝对；已是 http 开头直接返回。
+    private static func resolveURL(_ s: String, base: URL) -> String {
+        if s.hasPrefix("http://") || s.hasPrefix("https://") { return s }
+        if let resolved = URL(string: s, relativeTo: base)?.absoluteURL {
+            return resolved.absoluteString
+        }
+        return s
+    }
+
+    /// 把绝对 URL 编码进本网关直播代理地址（绝对地址，确保 AVPlayer 正确解析）。
+    private static func proxyURLString(_ absolute: String) -> String {
+        let enc = absolute.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? absolute
+        return "http://127.0.0.1:8787/api/live/stream?url=\(enc)"
     }
     public static func run(port: Int) async throws {
         var configuration = ApplicationConfiguration()
