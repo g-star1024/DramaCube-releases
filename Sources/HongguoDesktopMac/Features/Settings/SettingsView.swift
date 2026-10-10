@@ -25,10 +25,11 @@ public struct SettingsView: View {
             playbackTab.tabItem { Label("播放", systemImage: "play.circle") }
             browseTab.tabItem { Label("浏览", systemImage: "square.grid.2x2") }
             sourcesTab.tabItem { Label("视频源", systemImage: "antenna.radiowaves.left.and.right") }
+            nasTab.tabItem { Label("资源库", systemImage: "externaldrive.connected.to.line.below") }
             serviceTab.tabItem { Label("服务", systemImage: "stethoscope") }
             aboutTab.tabItem { Label("关于", systemImage: "info.circle") }
         }
-        .frame(width: 600, height: 480)
+        .frame(width: 640, height: 520)
     }
 
     // MARK: - 通用（菜单栏 / Dock / 窗口行为）
@@ -42,24 +43,25 @@ public struct SettingsView: View {
             VStack(spacing: Spacing.lg) {
                 sectionCard("菜单栏托盘") {
                     row("关闭主窗口时") {
+                        Text(closeToTray ? "最小化到菜单栏" : "直接退出应用")
+                            .font(.system(size: 12))
+                            .foregroundStyle(Brand.secondaryLabel)
                         Toggle("", isOn: $closeToTray)
-                            .labelsHidden().toggleStyle(.switch)
-                        Text(closeToTray ? "最小化到菜单栏（⌘Q 退出）" : "直接退出应用")
-                            .font(Typography.caption)
-                            .foregroundStyle(Brand.secondaryLabel)
+                            .labelsHidden().toggleStyle(.switch).controlSize(.small)
                     }
+                    rowDivider
                     row("隐藏 Dock 图标") {
-                        Toggle("", isOn: $hideDockIcon)
-                            .labelsHidden().toggleStyle(.switch)
                         Text(hideDockIcon ? "仅显示菜单栏图标" : "Dock 与菜单栏同时显示")
-                            .font(Typography.caption)
+                            .font(.system(size: 12))
                             .foregroundStyle(Brand.secondaryLabel)
+                        Toggle("", isOn: $hideDockIcon)
+                            .labelsHidden().toggleStyle(.switch).controlSize(.small)
                     }
                 }
                 sectionCard("播放窗口") {
                     row("竖版视频") {
-                        Text("自动收窄窗口消除黑边（无需设置）")
-                            .font(Typography.caption)
+                        Text("自动收窄窗口消除黑边")
+                            .font(.system(size: 12))
                             .foregroundStyle(Brand.secondaryLabel)
                     }
                 }
@@ -69,7 +71,6 @@ public struct SettingsView: View {
         .background(Brand.background)
         .onChange(of: hideDockIcon) { _, v in
             UserDefaults.standard.set(v, forKey: "ui.hideDockIcon")
-            // 即时生效：通过通知让托盘控制器重读
             MenuBarController.shared.start()
         }
         .onChange(of: closeToTray) { _, v in
@@ -84,38 +85,76 @@ public struct SettingsView: View {
         SourceSettingsView()
     }
 
-    // MARK: 行布局原语（标签固定宽度左对齐，控件右贴齐）
+    // MARK: - 资源库（NAS）
 
+    private var nasTab: some View {
+        NASSettingsView()
+    }
+
+    // MARK: 分组列表原语（参考移动端设置：分组标题悬浮 + 圆角卡片内多行）
+    //
+    // 设计语言：卡片行高紧凑、行间细分割线、label 左对齐控件右贴齐，
+    // 视觉密度对齐参考截图（系统/网络/服务器/播放器/缓存/反馈/关于 分组列表）。
+
+    /// 单行：label 左，控件右。
     private func row<V: View>(_ label: String, @ViewBuilder control: () -> V) -> some View {
         HStack(spacing: Spacing.md) {
             Text(label)
-                .font(Typography.body)
+                .font(.system(size: 13))
                 .foregroundStyle(Brand.label)
-                .frame(width: 120, alignment: .leading)
+            Spacer(minLength: 8)
             control()
-            Spacer(minLength: 0)
         }
-        .padding(.vertical, 5)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .contentShape(Rectangle())
     }
 
-    private func sectionCard(_ title: String, @ViewBuilder rows: () -> some View) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(title)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(Brand.secondaryLabel)
-                .padding(.bottom, 6)
-            rows()
+    /// 可导航行（右侧 chevron，点击动作）。
+    private func navRow(_ label: String, value: String? = nil, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: Spacing.md) {
+                Text(label).font(.system(size: 13)).foregroundStyle(Brand.label)
+                Spacer()
+                if let value {
+                    Text(value).font(.system(size: 12)).foregroundStyle(Brand.secondaryLabel)
+                }
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Brand.secondaryLabel.opacity(0.5))
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .contentShape(Rectangle())
         }
-        .padding(Spacing.lg)
+        .buttonStyle(.plain)
+    }
+
+    /// 分组卡片：标题悬浮在上，内容行间自动加分割线。
+    private func sectionCard<Rows: View>(_ title: String, @ViewBuilder rows: () -> Rows) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(Brand.secondaryLabel)
+                .padding(.leading, 4)
+            VStack(spacing: 0) {
+                rows()
+            }
+            .background(
+                RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
+                    .fill(Brand.chipFill.opacity(0.55))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
+                    .strokeBorder(Brand.separator.opacity(0.4), lineWidth: 0.5)
+            )
+        }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
-                .fill(Brand.chipFill)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
-                .strokeBorder(Brand.separator.opacity(0.5), lineWidth: 0.5)
-        )
+    }
+
+    /// 行间分割线（配合 sectionCard 使用）。
+    private var rowDivider: some View {
+        Divider().padding(.leading, 14)
     }
 
     // MARK: - 播放
@@ -131,23 +170,28 @@ public struct SettingsView: View {
                             }
                         }
                         .labelsHidden()
-                        .frame(width: 140)
+                        .frame(width: 110)
+                        .controlSize(.small)
                     }
+                    rowDivider
                     row("自动连播") {
-                        Toggle("", isOn: $s.autoPlayNext).labelsHidden().toggleStyle(.switch)
+                        Toggle("", isOn: $s.autoPlayNext).labelsHidden().toggleStyle(.switch).controlSize(.small)
                     }
+                    rowDivider
                     row("老板键") {
-                        Toggle("", isOn: $s.bossKeyEnabled).labelsHidden().toggleStyle(.switch)
-                        Text("⌘⇧H 隐藏 / 显示主窗口")
-                            .font(Typography.caption)
+                        Text("⌘⇧H")
+                            .font(.system(size: 12, design: .monospaced))
                             .foregroundStyle(Brand.secondaryLabel)
+                        Toggle("", isOn: $s.bossKeyEnabled).labelsHidden().toggleStyle(.switch).controlSize(.small)
                     }
+                    rowDivider
                     row("跳过片头") {
                         Stepper(value: $s.introSkipSeconds, in: 0...30, step: 5) {
-                            Text(s.introSkipSeconds == 0 ? "不跳过" : "自动跳过 \(Int(s.introSkipSeconds)) 秒")
-                                .font(Typography.body)
+                            Text(s.introSkipSeconds == 0 ? "不跳过" : "\(Int(s.introSkipSeconds)) 秒")
+                                .font(.system(size: 12))
                         }
-                        .frame(width: 180, alignment: .leading)
+                        .frame(width: 170, alignment: .trailing)
+                        .controlSize(.small)
                     }
                 }
             }
@@ -169,8 +213,10 @@ public struct SettingsView: View {
                             Text("探索").tag("explore")
                         }
                         .labelsHidden()
-                        .frame(width: 140)
+                        .frame(width: 110)
+                        .controlSize(.small)
                     }
+                    rowDivider
                     row("每页数量") {
                         Picker("", selection: $s.pageSize) {
                             ForEach([12, 24, 36, 48], id: \.self) { n in
@@ -178,7 +224,8 @@ public struct SettingsView: View {
                             }
                         }
                         .labelsHidden()
-                        .frame(width: 140)
+                        .frame(width: 110)
+                        .controlSize(.small)
                     }
                 }
                 sectionCard("本地缓存") {
@@ -195,10 +242,14 @@ public struct SettingsView: View {
                             }
                         }
                         .disabled(cacheCleared)
+                        .controlSize(.small)
                     }
-                    Text("清除后重新联网加载，不影响收藏与播放记录。")
-                        .font(Typography.caption)
-                        .foregroundStyle(Brand.secondaryLabel)
+                    rowDivider
+                    row("说明") {
+                        Text("不影响收藏与播放记录")
+                            .font(.system(size: 12))
+                            .foregroundStyle(Brand.secondaryLabel)
+                    }
                 }
             }
             .padding(Spacing.xl)
@@ -214,38 +265,38 @@ public struct SettingsView: View {
                 sectionCard("本地网关") {
                     row("地址") {
                         Text(AppConfig.gatewayBaseURL)
-                            .font(.system(size: 13, design: .monospaced))
+                            .font(.system(size: 12, design: .monospaced))
+                            .foregroundStyle(Brand.secondaryLabel)
                             .textSelection(.enabled)
                     }
+                    rowDivider
                     row("端口") {
                         TextField("", value: $s.gatewayPort, format: .number)
                             .textFieldStyle(.roundedBorder)
-                            .frame(width: 110)
-                        Text("修改后需重启应用生效")
-                            .font(Typography.caption)
+                            .frame(width: 90)
+                            .controlSize(.small)
+                        Text("重启生效")
+                            .font(.system(size: 11))
                             .foregroundStyle(Brand.secondaryLabel)
                     }
                 }
                 sectionCard("健康检查") {
-                    HStack(spacing: Spacing.md) {
-                        Button(healthState == .checking ? "探测中…" : "立即检查") {
-                            checkHealth()
-                        }
-                        .disabled(healthState == .checking)
-
+                    row("网关状态") {
                         switch healthState {
                         case .idle:
-                            Text("未检测").font(.caption).foregroundStyle(Brand.secondaryLabel)
+                            Text("未检测").font(.system(size: 12)).foregroundStyle(Brand.secondaryLabel)
                         case .checking:
                             ProgressView().controlSize(.small)
                         case .ok(let detail):
                             Label(detail, systemImage: "checkmark.circle.fill")
-                                .font(.caption).foregroundStyle(.green)
+                                .font(.system(size: 12)).foregroundStyle(.green)
                         case .failed(let detail):
                             Label(detail, systemImage: "xmark.octagon.fill")
-                                .font(.caption).foregroundStyle(.red)
+                                .font(.system(size: 12)).foregroundStyle(.red)
                         }
-                        Spacer()
+                        Button(healthState == .checking ? "探测中…" : "立即检查") { checkHealth() }
+                            .disabled(healthState == .checking)
+                            .controlSize(.small)
                     }
                 }
             }
@@ -274,38 +325,43 @@ public struct SettingsView: View {
                 .padding(.top, Spacing.md)
 
                 sectionCard("信息") {
-                    row("最低系统") {
-                        Text("macOS " + AppConfig.minMacOS).font(Typography.body)
+                    row("版本") {
+                        Text(AppConfig.appVersion)
+                            .font(.system(size: 12, design: .monospaced))
+                            .foregroundStyle(Brand.secondaryLabel)
                     }
+                    rowDivider
+                    row("最低系统") {
+                        Text("macOS " + AppConfig.minMacOS)
+                            .font(.system(size: 12))
+                            .foregroundStyle(Brand.secondaryLabel)
+                    }
+                    rowDivider
                     row("内容来源") {
-                        Text("公开网页解析（本地网关收口）").font(Typography.body)
+                        Text("公开网页解析（本地网关收口）")
+                            .font(.system(size: 12))
+                            .foregroundStyle(Brand.secondaryLabel)
                     }
                 }
                 sectionCard("更新") {
-                    row("检查更新") {
-                        Button("前往 GitHub Releases") {
-                            if let url = URL(string: "https://github.com/g-star1024/hongguo-mac/releases/latest") {
-                                NSWorkspace.shared.open(url)
-                            }
+                    navRow("检查更新", value: "GitHub Releases") {
+                        if let url = URL(string: "https://github.com/g-star1024/hongguo-mac/releases/latest") {
+                            NSWorkspace.shared.open(url)
                         }
                     }
                 }
                 sectionCard("运行日志") {
                     row("日志文件") {
                         Text(AppLog.currentLogFile.lastPathComponent)
-                            .font(.system(size: 12, design: .monospaced))
+                            .font(.system(size: 11, design: .monospaced))
                             .foregroundStyle(Brand.secondaryLabel)
                             .lineLimit(1)
                             .truncationMode(.middle)
                     }
-                    row("打开目录") {
-                        Button("在 Finder 中显示日志") {
-                            NSWorkspace.shared.open(AppLog.logDirectory)
-                        }
+                    rowDivider
+                    navRow("在 Finder 中显示日志") {
+                        NSWorkspace.shared.open(AppLog.logDirectory)
                     }
-                    Text("遇到卡死/异常时，把最新一份日志发给开发者即可定位问题（含主线程卡顿记录与内存曲线）。")
-                        .font(Typography.caption)
-                        .foregroundStyle(Brand.secondaryLabel)
                 }
             }
             .padding(Spacing.xl)

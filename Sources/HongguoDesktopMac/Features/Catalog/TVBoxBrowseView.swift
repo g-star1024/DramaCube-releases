@@ -34,7 +34,10 @@ struct TVBoxBrowseView: View {
         .task { await initialLoad() }
         .onChange(of: sm.currentSource) { _, _ in
             selectedTypeId = nil
-            Task { await load(reset: true) }
+            // 切换源：轮播缓存按源 key 隔离，切走即清空重拉新源最新
+            featured = []
+            items = []
+            Task { await load(reset: true); await refreshFeatured() }
         }
         .onChange(of: selectedTypeId) { _, _ in Task { await load(reset: true) } }
         .onChange(of: sm.sites) { _, _ in ensureDefaultSource() }
@@ -43,29 +46,30 @@ struct TVBoxBrowseView: View {
         }
     }
 
-    // MARK: 源切换条（不含红果；末尾圆形切换按钮弹全源列表）
+    // MARK: 源切换条（只显示当前源 chip + 末尾切换按钮弹全源列表，不再平铺全部源）
     private var sourceBar: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: Spacing.sm) {
-                ForEach(sm.enabledSites) { s in
-                    sourceChip(id: s.key, name: s.name)
-                }
-                if sm.hasSubscription {
-                    Button { showSourcePicker = true } label: {
-                        Image(systemName: "arrow.triangle.2.circlepath")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(Brand.label)
-                            .frame(width: 28, height: 28)
-                            .background(Circle().fill(Brand.chipFill))
-                            .overlay(Circle().strokeBorder(Brand.separator.opacity(0.6), lineWidth: 0.5))
-                    }
-                    .buttonStyle(.plain)
-                    .help("切换视频源")
-                }
+        HStack(spacing: Spacing.sm) {
+            if let cur = sm.sites.first(where: { $0.key == sm.currentSource }) {
+                sourceChip(id: cur.key, name: cur.name)
+            } else if let first = sm.enabledSites.first {
+                sourceChip(id: first.key, name: first.name)
             }
-            .padding(.horizontal, Spacing.lg)
-            .padding(.vertical, Spacing.sm)
+            if sm.hasSubscription {
+                Button { showSourcePicker = true } label: {
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(Brand.label)
+                        .frame(width: 28, height: 28)
+                        .background(Circle().fill(Brand.chipFill))
+                        .overlay(Circle().strokeBorder(Brand.separator.opacity(0.6), lineWidth: 0.5))
+                }
+                .buttonStyle(.plain)
+                .help("切换视频源")
+            }
+            Spacer()
         }
+        .padding(.horizontal, Spacing.lg)
+        .padding(.vertical, Spacing.sm)
     }
 
     private func sourceChip(id: String, name: String) -> some View {
@@ -263,12 +267,20 @@ struct TVBoxBrowseView: View {
         // 频道懒加载
         Task { _ = await sm.tvboxCategories(siteKey: src) }
         await load(reset: true, force: true)
-        // 轮播 = 最新第一页前 6 部（与当前频道独立，始终取站点最新）
-        if featured.isEmpty {
-            if let f = try? await sm.tvboxLatest(siteKey: src, page: 1), !f.isEmpty {
-                featured = Array(f.prefix(6))
-                await DiskCache.shared.write(Array(f.prefix(6)), key: featuredCacheKey)
-            }
+        // 轮播 = 该源最新第一页前 6 部（缓存按源 key 隔离，切换源时强制重拉）
+        await refreshFeatured()
+    }
+
+    /// 拉取当前源轮播（有该源缓存先用缓存，同时后台刷新回写）。
+    private func refreshFeatured() async {
+        let src = sm.currentSource
+        guard src != "hongguo", sm.enabledSites.contains(where: { $0.key == src }) else { featured = []; return }
+        if let cf: [Drama] = await DiskCache.shared.read([Drama].self, key: featuredCacheKey), !cf.isEmpty {
+            featured = cf
+        }
+        if let f = try? await sm.tvboxLatest(siteKey: src, page: 1), !f.isEmpty {
+            featured = Array(f.prefix(6))
+            await DiskCache.shared.write(Array(f.prefix(6)), key: featuredCacheKey)
         }
     }
 

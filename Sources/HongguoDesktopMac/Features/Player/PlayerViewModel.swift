@@ -137,6 +137,12 @@ public final class PlayerViewModel: ObservableObject, ActivePlayer {
                 // （实测 curl 200 而 URLSession 404），网关代理会 404；
                 // AVPlayer 走 AppleCoreMedia 栈，是播放器标准指纹，CDN 全部放行。
                 item = AVPlayerItem(url: URL(string: url)!)
+            } else if url.hasPrefix("file://") {
+                // NAS 本机挂载目录：file:// 直读，AVPlayer 原生支持 Range。
+                item = AVPlayerItem(url: URL(fileURLWithPath: String(url.dropFirst("file://".count))))
+            } else if detail.drama.id.hasPrefix("nas|") {
+                // NAS WebDAV 直链：http(s) 原样直连（带 Basic 鉴权的 AVURLAsset 在 DetailView 已拼好凭据到 URL 或无需鉴权）。
+                item = AVPlayerItem(url: URL(string: url)!)
             } else {
                 // mp4 等直链（红果源）：经网关剥离 Referer + Range 透传。
                 item = AVPlayerItem(url: hongguoGatewayMediaURL(url))

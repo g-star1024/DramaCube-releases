@@ -30,7 +30,10 @@ public struct BrowseConfig {
 public struct BrowseView: View {
     let config: BrowseConfig
     let onSelect: (Drama) -> Void
+    /// 发现页大类分段（真人剧/漫剧/AI剧）；传 nil 表示无分段（排行/探索沿用）。
+    var segments: [DiscoverSegment]? = nil
 
+    @State private var selectedSegment: DiscoverSegment = .real
     @State private var selectedChip: BrowseChip?
     @State private var items: [Drama] = []
     @State private var page = 1
@@ -45,15 +48,34 @@ public struct BrowseView: View {
 
     private let renderChunk = 36
 
+    /// 当前生效的 chips：漫剧/AI剧分段下隐藏 tag 标签栏（站点无 tag 子路由）。
+    private var effectiveChips: [BrowseChip] {
+        guard segments != nil else { return config.chips }
+        return selectedSegment == .real ? config.chips : []
+    }
+
     private var currentPath: String {
+        if let segs = segments, segs.count > 1 {
+            switch selectedSegment {
+            case .real:
+                if let chip = selectedChip { return config.chipPath(chip) }
+                return config.defaultPath
+            case .comic: return "/category/comic-drama"
+            case .ai: return "/category/ai-drama"
+            }
+        }
         if let chip = selectedChip { return config.chipPath(chip) }
         return config.defaultPath
     }
 
-    private var cacheKey: String { "catalog:\(config.title):\(currentPath)" }
+    private var cacheKey: String {
+        let seg = segments != nil ? ":\(selectedSegment.rawValue)" : ""
+        return "catalog:\(config.title)\(seg):\(currentPath)"
+    }
 
-    public init(config: BrowseConfig, onSelect: @escaping (Drama) -> Void) {
+    public init(config: BrowseConfig, segments: [DiscoverSegment]? = nil, onSelect: @escaping (Drama) -> Void) {
         self.config = config
+        self.segments = segments
         self.onSelect = onSelect
         // 默认选中第一个芯片（发现页 tag 分类直接展示，不再停留「全部」）
         _selectedChip = State(initialValue: config.chips.first)
@@ -61,10 +83,36 @@ public struct BrowseView: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            if !config.chips.isEmpty {
+            if let segs = segments, segs.count > 1 {
+                // 大类分段胶囊（真人剧 / 漫剧 / AI剧）
+                HStack(spacing: 0) {
+                    ForEach(segs) { seg in
+                        Button {
+                            if selectedSegment != seg { selectedSegment = seg }
+                        } label: {
+                            Text(seg.title)
+                                .font(.system(size: 13, weight: selectedSegment == seg ? .semibold : .regular))
+                                .padding(.horizontal, 18)
+                                .padding(.vertical, 7)
+                                .background(
+                                    Capsule().fill(selectedSegment == seg ? Color.black.opacity(0.85) : Color.clear)
+                                )
+                                .foregroundStyle(selectedSegment == seg ? .white : Brand.secondaryLabel)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(4)
+                .background(Capsule().fill(Brand.chipFill))
+                .overlay(Capsule().strokeBorder(Brand.separator.opacity(0.5), lineWidth: 0.5))
+                .padding(.horizontal, Spacing.md)
+                .padding(.top, Spacing.sm)
+                .frame(maxWidth: .infinity, alignment: .center)
+            }
+            if !effectiveChips.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: Spacing.sm) {
-                        ForEach(config.chips) { chip in
+                        ForEach(effectiveChips) { chip in
                             CategoryChip(chip.title, isSelected: selectedChip?.id == chip.id) {
                                 // 发现页 tag 分类：始终选中其一，不允许取消回「全部」
                                 if selectedChip?.id != chip.id { selectedChip = chip }
@@ -85,6 +133,7 @@ public struct BrowseView: View {
         // 集数懒回填：渲染窗口扩大时补当前可见卡片缺失的集数（榜单/搜索/首页精选源数据无集数）
         .task(id: renderCount) { await backfillCounts() }
         .onChange(of: selectedChip) { _, _ in Task { await load(reset: true) } }
+        .onChange(of: selectedSegment) { _, _ in Task { await load(reset: true) } }
     }
 
     @ViewBuilder

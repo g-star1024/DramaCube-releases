@@ -33,6 +33,19 @@ public enum BrowseCategory: String, CaseIterable, Identifiable {
     }
 }
 
+/// 发现页大类分段（顶部胶囊：真人剧=tag 标签筛选 / 漫剧 / AI剧）。
+public enum DiscoverSegment: String, CaseIterable, Identifiable {
+    case real, comic, ai
+    public var id: String { rawValue }
+    public var title: String {
+        switch self {
+        case .real: return "真人剧"
+        case .comic: return "漫剧"
+        case .ai: return "AI剧"
+        }
+    }
+}
+
 /// 发现页 tag 标签分类（与站点 /category/real-drama/<slug> 路由一一对应）。
 /// 站点结构实测：/category/real-drama 下的 tag 筛选共 24 个（去掉「全部」）。
 public enum DramaTag: String, CaseIterable, Identifiable {

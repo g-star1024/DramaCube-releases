@@ -2,7 +2,7 @@ import SwiftUI
 import HongguoCore
 
 public enum SidebarItem: String, CaseIterable, Identifiable {
-    case discover, rank, explore, tvbox, favorite, history, settings
+    case discover, rank, explore, tvbox, nas, favorite, history, settings
     public var id: String { rawValue }
     public var title: String {
         switch self {
@@ -10,6 +10,7 @@ public enum SidebarItem: String, CaseIterable, Identifiable {
         case .rank: return "排行榜"
         case .explore: return "探索"
         case .tvbox: return "视频源"
+        case .nas: return "资源库"
         case .favorite: return "收藏"
         case .history: return "历史"
         case .settings: return "设置"
@@ -19,8 +20,9 @@ public enum SidebarItem: String, CaseIterable, Identifiable {
         switch self {
         case .discover: return "sparkles"
         case .rank: return "chart.bar.fill"
-        case .explore: return "compass"
+        case .explore: return "safari"
         case .tvbox: return "antenna.radiowaves.left.and.right"
+        case .nas: return "externaldrive.connected.to.line.below"
         case .favorite: return "heart"
         case .history: return "clock"
         case .settings: return "gearshape"
@@ -138,13 +140,15 @@ public struct CatalogView: View {
     private var sectionContent: some View {
         switch selection {
         case .discover:
-            BrowseView(config: discoverConfig, onSelect: openDetail)
+            BrowseView(config: discoverConfig, segments: DiscoverSegment.allCases, onSelect: openDetail)
         case .rank:
             BrowseView(config: rankConfig, onSelect: openDetail)
         case .explore:
             BrowseView(config: exploreConfig, onSelect: openDetail)
         case .tvbox:
             TVBoxBrowseView(sm: SourceManager.shared, onSelect: openDetail)
+        case .nas:
+            NASBrowseView(nm: NASManager.shared, onSelect: openDetail)
         case .favorite:
             LibraryView(initial: .favorite)
         case .history:

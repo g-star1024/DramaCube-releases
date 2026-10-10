@@ -143,6 +143,89 @@ public enum GatewayServer {
             return try await Self.proxyMedia(request, sourceURL: mainURL)
         }
 
+        // MARK: NAS 资源库（WebDAV / 本机挂载目录）
+        // 库配置由网关侧持久化（Application Support/nas-libraries.json），升级重装不丢。
+
+        // 库列表：/api/nas/libraries
+        router.get("api/nas/libraries") { _, _ async throws -> Response in
+            let libs = await NASEngine.shared.allLibraries()
+            return Self.json(GatewayEnvelope(ok: true, data: libs))
+        }
+
+        // 添加库：/api/nas/add?name=&type=webdav|mount&base=&user=&pass=
+        router.get("api/nas/add") { request, _ async throws -> Response in
+            guard let name = Self.queryValue(request, name: "name"), !name.isEmpty,
+                  let typeStr = Self.queryValue(request, name: "type"),
+                  let base = Self.queryValue(request, name: "base"), !base.isEmpty else {
+                throw HTTPError(.badRequest, message: "missing name/type/base")
+            }
+            let type: NASEngine.Library.LibType = (typeStr == "mount") ? .mount : .webdav
+            let lib = NASEngine.Library(
+                name: name, type: type, baseURL: base,
+                username: Self.queryValue(request, name: "user"),
+                password: Self.queryValue(request, name: "pass"))
+            let added = try await NASEngine.shared.addLibrary(lib)
+            return Self.json(GatewayEnvelope(ok: true, data: added))
+        }
+
+        // 删除库：/api/nas/remove?id=
+        router.get("api/nas/remove") { request, _ async throws -> Response in
+            guard let id = Self.queryValue(request, name: "id"), !id.isEmpty else {
+                throw HTTPError(.badRequest, message: "missing id")
+            }
+            try await NASEngine.shared.removeLibrary(id: id)
+            return Self.json(GatewayEnvelope(ok: true, data: ["removed": id]))
+        }
+
+        // 开关库：/api/nas/toggle?id=&on=1
+        router.get("api/nas/toggle") { request, _ async throws -> Response in
+            guard let id = Self.queryValue(request, name: "id"), !id.isEmpty else {
+                throw HTTPError(.badRequest, message: "missing id")
+            }
+            let on = (Self.queryValue(request, name: "on") ?? "1") == "1"
+            try await NASEngine.shared.setEnabled(id: id, on)
+            return Self.json(GatewayEnvelope(ok: true, data: ["id": id, "on": on ? "1" : "0"]))
+        }
+
+        // 测试库：/api/nas/test?id=
+        router.get("api/nas/test") { request, _ async throws -> Response in
+            guard let id = Self.queryValue(request, name: "id"), !id.isEmpty else {
+                throw HTTPError(.badRequest, message: "missing id")
+            }
+            let r = await NASEngine.shared.test(id: id)
+            return Self.json(GatewayEnvelope(ok: true, data: r))
+        }
+
+        // 浏览库：/api/nas/browse/:id?path=  （目录聚合为 Drama）
+        router.get("api/nas/browse/:id") { request, ctx async throws -> Response in
+            guard let id = ctx.parameters.get("id", as: String.self), !id.isEmpty else {
+                throw HTTPError(.badRequest, message: "missing id")
+            }
+            let path = Self.queryValue(request, name: "path") ?? ""
+            let items = try await NASEngine.shared.browse(id: id, path: path)
+            return Self.json(GatewayEnvelope(ok: true, data: items))
+        }
+
+        // 目录详情：/api/nas/detail/:id?path=
+        router.get("api/nas/detail/:id") { request, ctx async throws -> Response in
+            guard let id = ctx.parameters.get("id", as: String.self), !id.isEmpty else {
+                throw HTTPError(.badRequest, message: "missing id")
+            }
+            let path = Self.queryValue(request, name: "path") ?? ""
+            let detail = try await NASEngine.shared.detail(id: id, dirPath: path)
+            return Self.json(GatewayEnvelope(ok: true, data: detail))
+        }
+
+        // 播放地址还原：/api/nas/playurl/:id?path= → {ok, data:{url}}
+        router.get("api/nas/playurl/:id") { request, ctx async throws -> Response in
+            guard let id = ctx.parameters.get("id", as: String.self), !id.isEmpty else {
+                throw HTTPError(.badRequest, message: "missing id")
+            }
+            let path = Self.queryValue(request, name: "path") ?? ""
+            let url = try await NASEngine.shared.playURL(id: id, path: path)
+            return Self.json(GatewayEnvelope(ok: true, data: ["url": url.absoluteString]))
+        }
+
         return router
     }
 

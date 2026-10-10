@@ -73,6 +73,14 @@ public final class SourceManager: ObservableObject {
     private let base = AppConfig.gatewayBaseURL
     private var autoTestTimer: Timer?
 
+    /// 站点列表本地镜像（Application Support，升级重装不丢，网关不可达时兜底）。
+    private static var mirrorURL: URL {
+        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("DramaCube", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir.appendingPathComponent("tvbox-sites-mirror.json")
+    }
+
     /// 是否已导入订阅。
     public var hasSubscription: Bool { !sites.isEmpty }
 
@@ -127,12 +135,42 @@ public final class SourceManager: ObservableObject {
     // MARK: - 初始化
 
     /// 启动时装载站点列表（状态已在 init 从 UserDefaults 恢复）。
+    /// 先读本地镜像秒显，再等网关就绪拉真值；网关不可达时保留镜像数据（源不再"丢失"）。
     public func load() {
+        // 1. 本地镜像秒显（镜像由最近一次成功导入/刷新写入）
+        if sites.isEmpty,
+           let data = try? Data(contentsOf: Self.mirrorURL),
+           let mirrored = try? JSONDecoder().decode([TVBoxSite].self, from: data),
+           !mirrored.isEmpty {
+            sites = mirrored
+            AppLog.log(.app, "视频源列表已从本地镜像恢复（\(mirrored.count) 站）")
+        }
+        // 2. 网关就绪后拉真值（重试兜住网关启动竞态：start() 异步，首个请求可能 502/拒绝）
         Task {
-            await refreshSites()
+            await refreshSitesWithRetry()
             maybeAutoTest()
         }
         scheduleAutoTest()
+    }
+
+    /// 带重试的站点列表刷新：网关刚启动未监听时连接被拒，最多重试 6 次（1s/2s/3s/4s/5s/6s）。
+    private func refreshSitesWithRetry() async {
+        for attempt in 1...6 {
+            await refreshSites()
+            if !sites.isEmpty { return }
+            // 若本来就没订阅（镜像也为空 + 网关空），不必死等，两次空响应就退
+            if attempt >= 2, !FileManager.default.fileExists(atPath: Self.mirrorURL.path) { return }
+            AppLog.log(.net, "视频源列表第 \(attempt) 次获取为空，\(attempt)s 后重试（等待网关就绪）")
+            try? await Task.sleep(nanoseconds: UInt64(attempt) * 1_000_000_000)
+        }
+    }
+
+    /// 站点列表写入本地镜像（导入成功 / 每次刷新成功后调用）。
+    private func writeMirror() {
+        guard !sites.isEmpty else { return }
+        if let data = try? JSONEncoder().encode(sites) {
+            try? data.write(to: Self.mirrorURL, options: .atomic)
+        }
     }
 
     // MARK: - 订阅
@@ -147,17 +185,25 @@ public final class SourceManager: ObservableObject {
         let count = resp["count"] ?? 0
         lastImportCount = count
         await refreshSites()
-        AppLog.log(.app, "视频源订阅导入成功：\(count) 个站点")
+        writeMirror()
+        AppLog.log(.app, "视频源订阅导入成功：\(count) 个站点（已写本地镜像）")
         return count
     }
 
-    /// 刷新站点列表（导入后 / 启动时）。
+    /// 刷新站点列表（导入后 / 启动时）。成功且有数据时写镜像。
     public func refreshSites() async {
         do {
             let list: [TVBoxSite] = try await get("\(base)/api/tvbox/sites")
-            sites = list
+            if !list.isEmpty {
+                sites = list
+                writeMirror()
+            } else if !subscriptionURL.isEmpty {
+                // 网关返回空 = 网关侧订阅缓存丢/被清，用已存订阅 URL 自动重导一次
+                AppLog.log(.net, "网关站点列表为空，用已存订阅 URL 自动重新导入")
+                _ = try? await importSubscription(url: subscriptionURL)
+            }
         } catch {
-            // 未导入订阅时网关返回空数组，错误仅记录不打断
+            // 未导入订阅或网关未就绪时错误仅记录不打断（镜像数据已先展示）
             AppLog.log(.net, "视频源列表获取失败：\(error.localizedDescription)")
         }
     }

@@ -30,12 +30,14 @@ ZIP_PATH="$BUILD_DIR/dramacube-macOS-$ARCH-$VERSION.zip"
 DMG_PATH="$BUILD_DIR/dramacube-macOS-$ARCH-$VERSION.dmg"
 
 echo "==> [1/6] Swift Release 构建 (arch: ${ARCH})"
+# 用 xcrun 确保走 Xcode 完整工具链（裸 /usr/bin/swift 在仅有 CLT 的环境找不到标准库）
+SWIFT="${SWIFT:-xcrun swift}"
 if [ "$ARCH" = "universal" ]; then
     # 仅在 Apple Silicon 上可行（Intel 机无法出 arm64 切片）
-    swift build --disable-sandbox -c release --product "$EXEC_NAME" --arch arm64 --arch x86_64
+    $SWIFT build --disable-sandbox -c release --product "$EXEC_NAME" --arch arm64 --arch x86_64
     BIN_DIR=".build/apple/Products/Release"
 else
-    swift build --disable-sandbox -c release --product "$EXEC_NAME" --arch "$ARCH"
+    $SWIFT build --disable-sandbox -c release --product "$EXEC_NAME" --arch "$ARCH"
     BIN_DIR=".build/release"
 fi
 BIN="$BIN_DIR/$EXEC_NAME"

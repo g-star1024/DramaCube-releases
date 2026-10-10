@@ -42,7 +42,7 @@ public struct WebParser {
             let tail = String(html[range.upperBound...])
             guard let start = tail.firstIndex(of: "{") else { continue }
             var depth = 0, inStr = false, esc = false
-            var end = tail.endIndex
+            var end: String.Index? = nil
             for i in tail.indices {
                 let c = tail[i]
                 if esc { esc = false; continue }
@@ -53,6 +53,10 @@ public struct WebParser {
                     else if c == "}" { depth -= 1; if depth == 0 { end = i; break } }
                 }
             }
+            // 括号未配对（页面异常/被截断/非预期标记）时绝不能切片——
+            // end 落在 endIndex 或 start 之后都会触发 String 索引断言直接 SIGILL 闪退
+            //（v1.1.1 线上崩溃实锤：抓取非红果详情页时 extractRouterData 断言 crash）。
+            guard let end, end >= start, depth == 0, !inStr else { continue }
             let jsonStr = String(tail[start...end])
             if let d = jsonStr.data(using: .utf8) { return d }
         }

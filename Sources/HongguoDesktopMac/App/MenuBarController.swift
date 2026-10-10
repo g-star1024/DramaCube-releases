@@ -16,6 +16,9 @@ final class MenuBarController: NSObject, NSWindowDelegate {
     private var observedMainWindow: NSWindow?
     private var hideDock = false
     private var closeToTray = true
+    /// 记录最近一次可见的主窗口（即使 orderOut 后也持有引用，用于恢复）。
+    private weak var lastMainWindow: NSWindow?
+    private var closeObserver: NSObjectProtocol?
 
     // MARK: - 启动
 
@@ -113,7 +116,20 @@ final class MenuBarController: NSObject, NSWindowDelegate {
         guard let w = mainWindow() else { return }
         guard observedMainWindow !== w else { return }
         observedMainWindow = w
+        lastMainWindow = w
         w.delegate = self
+        // 监听窗口真正关闭（被系统销毁），清空引用避免野指针
+        if let obs = closeObserver { NotificationCenter.default.removeObserver(obs) }
+        closeObserver = NotificationCenter.default.addObserver(
+            forName: NSWindow.willCloseNotification, object: w, queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                if self?.observedMainWindow === self?.lastMainWindow {
+                    self?.observedMainWindow = nil
+                }
+                self?.lastMainWindow = nil
+            }
+        }
     }
 
     private func mainWindow() -> NSWindow? {
@@ -135,15 +151,45 @@ final class MenuBarController: NSObject, NSWindowDelegate {
     // MARK: - 菜单动作
 
     @objc private func onShowMain() {
-        attachToMainWindow()
+        NSApp.unhide(nil)
+        NSApp.activate(ignoringOtherApps: true)
+
+        // 1. 已有可见主窗口 → 直接前置
         if let w = mainWindow() {
             w.makeKeyAndOrderFront(nil)
             w.deminiaturize(nil)
-        } else {
-            // 窗口被销毁场景：重新触发 SwiftUI WindowGroup 创建（发 openWindow）
-            NSApp.unhide(nil)
+            return
         }
-        NSApp.activate(ignoringOtherApps: true)
+
+        // 2. 被 orderOut 隐藏（closeToTray 拦截）但窗口对象还活着 → 恢复
+        if let w = lastMainWindow {
+            w.makeKeyAndOrderFront(nil)
+            w.deminiaturize(nil)
+            attachToMainWindow()
+            return
+        }
+
+        // 3. 兜底：在所有 NSWindow 里找符合主窗口特征的（哪怕不可见）
+        if let w = NSApp.windows.first(where: {
+            $0.level == .normal && $0.frame.width >= 900
+                && !($0 is NSPanel) && $0.title != ""
+        }) {
+            w.makeKeyAndOrderFront(nil)
+            w.deminiaturize(nil)
+            lastMainWindow = w
+            attachToMainWindow()
+            return
+        }
+
+        // 4. 窗口已被系统销毁 → 让 SwiftUI WindowGroup 重建一个
+        AppLog.log(.app, "主窗口已销毁，触发 WindowGroup 重建")
+        NSApp.sendAction(#selector(NSApplication.newWindowForTab(_:)), to: nil, from: nil)
+        // newWindowForTab 无效时（无 tabbing），用 openDocument 路径兜底
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+            guard self?.mainWindow() == nil else { return }
+            NSDocumentController.shared.newDocument(nil)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { self?.attachToMainWindow() }
+        }
     }
 
     @objc private func onTogglePlay() {

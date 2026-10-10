@@ -231,6 +231,20 @@ public struct DetailView: View {
                 let parts = drama.id.split(separator: "|").map(String.init)
                 guard parts.count == 3 else { throw HongguoParseError.fieldMissing("tvbox id") }
                 d = try await SourceManager.shared.tvboxDetail(siteKey: parts[1], vodId: parts[2])
+            } else if drama.id.hasPrefix("nas|") {
+                // NAS 源：id = nas|<libId>|dir|<dirPath> 或 nas|<libId>|file|<filePath>
+                let parts = drama.id.split(separator: "|", maxSplits: 3).map(String.init)
+                guard parts.count == 4 else { throw HongguoParseError.fieldMissing("nas id") }
+                if parts[2] == "dir" {
+                    d = try await NASManager.shared.detail(id: parts[1], dirPath: parts[3])
+                } else {
+                    // 单文件：详情即一集
+                    let url = try await NASManager.shared.playURLString(id: parts[1], path: parts[3])
+                    d = DramaDetail(
+                        drama: drama,
+                        episodes: [Episode(id: "1", index: 1, title: drama.title, playURL: url)]
+                    )
+                }
             } else {
                 d = try await CatalogService.shared.detail(id: drama.id)
             }
@@ -255,7 +269,7 @@ public struct DetailView: View {
         // TVBox 源不做回退（跨源推荐意义不大且流量浪费）
         if let rel = d.related, !rel.isEmpty {
             related = rel
-        } else if related.isEmpty, !drama.id.hasPrefix("tvbox|") {
+        } else if related.isEmpty, !drama.id.hasPrefix("tvbox|"), !drama.id.hasPrefix("nas|") {
             Task { await loadRelatedFallback() }
         }
     }
