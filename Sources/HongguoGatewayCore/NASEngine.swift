@@ -131,39 +131,30 @@ public actor NASEngine {
         }
     }
 
-    // MARK: - 浏览（聚合为 Drama）
+    // MARK: - 浏览（直出视频列表）
 
-    /// 浏览库根目录：目录（含视频）→ Drama（多集）；散文件 → 单集 Drama。
+    /// 浏览库：递归收集当前路径下全部视频文件，直出为可点播的单集列表（不聚合目录成卡片）。
+    /// 目录仅用于路径导航（前端 pathBar），不作为内容展示。
     public func browse(id: String, path: String) async throws -> [Drama] {
         let lib = try library(id: id)
-        let entries = try await listEntries(lib: lib, path: path)
-        var dramas: [Drama] = []
-
-        // 目录：若（递归一层）含视频则聚合为一部剧
-        for e in entries where e.isDir {
-            let sub = try? await listVideos(lib: lib, path: join(path, e.name))
-            guard let vids = sub, !vids.isEmpty else { continue }
-            dramas.append(Drama(
-                id: "nas|\(id)|dir|\(join(path, e.name))",
-                title: e.name,
-                coverURL: nil,
-                episodeCount: vids.count,
-                tags: [lib.name],
-                updateStatus: "\(vids.count) 个视频"
-            ))
-        }
-        // 散文件：逐文件成剧（单集）
-        for e in entries where !e.isDir && Self.isVideo(e.name) {
-            dramas.append(Drama(
-                id: "nas|\(id)|file|\(join(path, e.name))",
-                title: (e.name as NSString).deletingPathExtension,
+        let videos = try await listVideosWithPaths(lib: lib, path: path)
+        return videos.map { (relPath, url) in
+            Drama(
+                id: "nas|\(id)|file|\(relPath)",
+                title: (relPath as NSString).deletingPathExtension.components(separatedBy: "/").last ?? relPath,
                 coverURL: nil,
                 episodeCount: 1,
                 tags: [lib.name],
-                updateStatus: "单集"
-            ))
+                updateStatus: (relPath as NSString).pathExtension.uppercased()
+            )
         }
-        return dramas
+    }
+
+    /// 递归收集路径下全部视频（相对路径 + 可播 URL），按相对路径排序。
+    private func listVideosWithPaths(lib: Library, path: String) async throws -> [(String, URL)] {
+        var out: [(String, URL)] = []
+        await collectVideos(lib: lib, path: path, depth: 0, into: &out)
+        return out.sorted { $0.0.localizedStandardCompare($1.0) == .orderedAscending }
     }
 
     /// 目录剧集详情：列出目录内全部视频为集。
@@ -256,6 +247,23 @@ public actor NASEngine {
             } else if Self.isVideo(e.name) {
                 if let u = try? fileURL(lib: lib, path: join(path, e.name)) {
                     out.append(u)
+                }
+            }
+        }
+    }
+
+    /// 带相对路径的递归收集（browse 直出视频列表用）。
+    private func collectVideos(lib: Library, path: String, depth: Int, into out: inout [(String, URL)]) async {
+        if depth > maxDepth || out.count >= maxTotal { return }
+        guard let entries = try? await listEntries(lib: lib, path: path) else { return }
+        for e in entries.prefix(maxEntries) {
+            if out.count >= maxTotal { return }
+            let rel = join(path, e.name)
+            if e.isDir {
+                await collectVideos(lib: lib, path: rel, depth: depth + 1, into: &out)
+            } else if Self.isVideo(e.name) {
+                if let u = try? fileURL(lib: lib, path: rel) {
+                    out.append((rel, u))
                 }
             }
         }

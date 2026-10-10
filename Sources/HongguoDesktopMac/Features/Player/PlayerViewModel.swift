@@ -60,6 +60,7 @@ public final class PlayerViewModel: ObservableObject, ActivePlayer {
     nonisolated(unsafe) private var timeObserverToken: Any?
     nonisolated(unsafe) private var endObserver: NSObjectProtocol?
     private var statusObserver: NSKeyValueObservation?
+    private var tracksObserver: NSKeyValueObservation?
     private var pendingSeek: Double?
     private var episodeLoadStart: Date?
     private var lastSaved = Date.distantPast
@@ -84,6 +85,7 @@ public final class PlayerViewModel: ObservableObject, ActivePlayer {
         if let token = timeObserverToken { player.removeTimeObserver(token) }
         if let e = endObserver { NotificationCenter.default.removeObserver(e) }
         statusObserver?.invalidate()
+        tracksObserver?.invalidate()
         player.pause()
         player.replaceCurrentItem(with: nil)
         for o in notifObservers { NotificationCenter.default.removeObserver(o) }
@@ -167,6 +169,7 @@ public final class PlayerViewModel: ObservableObject, ActivePlayer {
         }
 
         observeItemStatus()
+        observeTracks(item)
         observeEnd()
 
         if autoplay {
@@ -198,10 +201,14 @@ public final class PlayerViewModel: ObservableObject, ActivePlayer {
                     self.pendingSeek = nil
                     if observed.duration.seconds.isFinite { self.duration = observed.duration.seconds }
                     self.isBuffering = false
-                    self.detectVideoOrientation(observed)
+                    // 竖版检测统一交给 observeTracks（tracks 就绪后），此处不再调用
                 } else if observed.status == .failed {
-                    let msg = observed.error?.localizedDescription ?? "该集无法播放"
-                    AppLog.log(.error, "第\(self.currentEpisode?.index ?? 0)集播放失败：\(msg)")
+                    let raw = observed.error?.localizedDescription ?? "该集无法播放"
+                    // resource unavailable = 源站/CDN 资源失效或拦截（常见于 TVBox 采集源过期）
+                    let msg = raw.localizedCaseInsensitiveContains("resource unavailable")
+                        ? "该集资源已失效（源站可能已下线或被拦截），请换源或换集"
+                        : raw
+                    AppLog.log(.error, "第\(self.currentEpisode?.index ?? 0)集播放失败：\(raw)")
                     self.error = msg
                     self.isBuffering = false
                 }
@@ -216,6 +223,21 @@ public final class PlayerViewModel: ObservableObject, ActivePlayer {
             forName: .AVPlayerItemDidPlayToEndTime, object: item, queue: .main
         ) { [weak self] _ in
             Task { @MainActor in self?.playNext() }
+        }
+    }
+
+    /// 监听视频轨道异步就绪：HLS/m3u8 的 tracks 在 .readyToPlay 时常未加载完成，
+    /// 此时 detectVideoOrientation 会因取不到 track 直接返回（竖版 9:16 收窄失效的根因）。
+    /// 改为监听 tracks 变化，就绪后再检测横竖版。
+    private func observeTracks(_ item: AVPlayerItem) {
+        tracksObserver?.invalidate()
+        tracksObserver = item.observe(\.tracks, options: [.initial, .new]) { [weak self] observed, _ in
+            guard let self else { return }
+            Task { @MainActor in
+                if !observed.tracks.isEmpty {
+                    self.detectVideoOrientation(observed)
+                }
+            }
         }
     }
 

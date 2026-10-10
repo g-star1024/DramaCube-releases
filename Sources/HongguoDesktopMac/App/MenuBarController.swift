@@ -36,11 +36,11 @@ final class MenuBarController: NSObject, NSWindowDelegate {
         guard statusItem == nil else { return }
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         if let btn = item.button {
-            // 优先用 app 图标缩略；失败回退 SF Symbol
-            let img = NSApp.applicationIconImage.copy() as? NSImage
-            img?.size = NSSize(width: 18, height: 18)
-            btn.image = img ?? NSImage(systemSymbolName: "play.square.stack", accessibilityDescription: "剧立方")
-            btn.image?.isTemplate = false
+            // 与其他 mac 应用一致：黑白模板图标（isTemplate=true，随深浅模式自动反色）
+            // 用 SF Symbol 而非彩色 app 图标缩略
+            let img = NSImage(systemSymbolName: "play.rectangle.on.rectangle.fill", accessibilityDescription: "剧立方")
+            img?.isTemplate = true
+            btn.image = img
         }
         item.menu = buildMenu()
         statusItem = item

@@ -38,12 +38,15 @@ actor CoverGate {
 ///    全尺寸位图每张数 MB，几十张即可拖垮内存。
 public struct CoverImage: View {
     let url: URL?
+    /// 失败/加载占位上显示的标题（取首字作头像式占位，更美观）。
+    let title: String?
 
     @State private var image: NSImage?
     @State private var failed = false
 
-    public init(_ url: URL?) {
+    public init(_ url: URL?, title: String? = nil) {
         self.url = url
+        self.title = title
     }
 
     public var body: some View {
@@ -61,23 +64,51 @@ public struct CoverImage: View {
         .task(id: url) { await load() }
     }
 
-    private var loadingView: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: Radius.sm, style: .continuous)
-                .fill(LinearGradient(colors: [Brand.placeholder, Brand.secondaryBackground],
-                                     startPoint: .topLeading, endPoint: .bottomTrailing))
-            ProgressView().controlSize(.small)
+    /// 占位底色：按标题 hash 从品牌色板取色，保证同一标题稳定同色。
+    private var placeholderColors: [Color] {
+        let palette: [[Color]] = [
+            [Color(red: 0.55, green: 0.45, blue: 0.85), Color(red: 0.40, green: 0.30, blue: 0.70)], // 紫
+            [Color(red: 0.90, green: 0.45, blue: 0.55), Color(red: 0.75, green: 0.28, blue: 0.42)], // 粉
+            [Color(red: 0.40, green: 0.60, blue: 0.88), Color(red: 0.25, green: 0.45, blue: 0.75)], // 蓝
+            [Color(red: 0.45, green: 0.72, blue: 0.60), Color(red: 0.28, green: 0.55, blue: 0.45)], // 青
+            [Color(red: 0.90, green: 0.62, blue: 0.40), Color(red: 0.75, green: 0.45, blue: 0.25)], // 橙
+        ]
+        guard let title, !title.isEmpty else {
+            return [Brand.placeholder, Brand.secondaryBackground]
         }
+        let h = abs(title.unicodeScalars.reduce(0) { ($0 &* 31 &+ Int($1.value)) & 0x7fffffff })
+        return palette[h % palette.count]
+    }
+
+    private var loadingView: some View {
+        placeholderView(showSpinner: true)
     }
 
     private var failureView: some View {
+        placeholderView(showSpinner: false)
+    }
+
+    /// 品牌色渐变底 + 居中标题首字占位（加载中叠 spinner）。
+    private func placeholderView(showSpinner: Bool) -> some View {
         ZStack {
             RoundedRectangle(cornerRadius: Radius.sm, style: .continuous)
-                .fill(LinearGradient(colors: [Brand.placeholder, Brand.secondaryBackground],
+                .fill(LinearGradient(colors: placeholderColors,
                                      startPoint: .topLeading, endPoint: .bottomTrailing))
-            Image(systemName: "film")
-                .font(.system(size: 24))
-                .foregroundStyle(Brand.separator)
+            if let title, let first = title.first {
+                Text(String(first))
+                    .font(.system(size: 44, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.85))
+            } else {
+                Image(systemName: "film")
+                    .font(.system(size: 28))
+                    .foregroundStyle(.white.opacity(0.6))
+            }
+            if showSpinner {
+                ProgressView().controlSize(.small)
+                    .tint(.white)
+                    .frame(maxHeight: .infinity, alignment: .bottom)
+                    .padding(.bottom, 8)
+            }
         }
     }
 

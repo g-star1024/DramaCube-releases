@@ -1,10 +1,10 @@
 import SwiftUI
 import HongguoCore
 
-/// NAS 资源库浏览页：库 chips + 路径导航 + 视频网格。
+/// NAS 资源库浏览页：库切换 + 路径导航 + 视频列表。
 ///
-/// 库内目录（含视频）聚合为一部剧（多集），散文件逐文件成剧；
-/// Drama.id = nas|<libId>|dir|<path> / nas|<libId>|file|<path>，详情/播放在 DetailView 按前缀分流。
+/// 直出当前路径下全部视频文件（递归），点击卡片直接播放（不再聚合目录成剧、不进详情选集）。
+/// Drama.id = nas|<libId>|file|<相对路径>，playURL 由 PlayerViewModel 按 nas| 前缀直连。
 struct NASBrowseView: View {
     @ObservedObject var nm: NASManager
     let onSelect: (Drama) -> Void
@@ -158,7 +158,7 @@ struct NASBrowseView: View {
                 LazyVGrid(columns: columns, spacing: Spacing.md) {
                     ForEach(items) { d in
                         NASCard(d)
-                            .onTapGesture { onSelect(d) }
+                            .onTapGesture { Task { await play(d) } }
                     }
                 }
                 .padding(Spacing.lg)
@@ -183,32 +183,48 @@ struct NASBrowseView: View {
         }
         isLoading = false
     }
+
+    /// 点击视频卡片直接播放（单集，跳过详情页）。
+    private func play(_ drama: Drama) async {
+        // id = nas|<libId>|file|<path>
+        let parts = drama.id.split(separator: "|", omittingEmptySubsequences: false).map(String.init)
+        guard parts.count >= 4 else { return }
+        do {
+            let url = try await nm.playURLString(id: parts[1], path: parts[3])
+            let ep = Episode(id: "1", index: 1, title: drama.title, playURL: url)
+            let detail = DramaDetail(drama: drama, episodes: [ep])
+            await MainActor.run {
+                PlayerWindowManager.shared.show(detail: detail, startIndex: 0)
+            }
+        } catch {
+            self.error = "无法播放：\(error.localizedDescription)"
+        }
+    }
 }
 
-/// NAS 视频卡片（无封面，用文件名+图标占位）。
+/// NAS 视频卡片（无封面，用文件名+图标占位；点击直接播放）。
 private struct NASCard: View {
     let drama: Drama
     init(_ d: Drama) { self.drama = d }
-
-    private var isDir: Bool { drama.id.contains("|dir|") }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             ZStack {
                 RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
-                    .fill(Brand.chipFill)
+                    .fill(LinearGradient(colors: [Brand.placeholder, Brand.secondaryBackground],
+                                         startPoint: .topLeading, endPoint: .bottomTrailing))
                     .aspectRatio(2/3, contentMode: .fit)
-                Image(systemName: isDir ? "folder.fill" : "play.rectangle.fill")
+                Image(systemName: "play.rectangle.fill")
                     .font(.system(size: 30))
-                    .foregroundStyle(Brand.secondaryLabel.opacity(0.6))
-                if let cnt = drama.episodeCount, cnt > 1 {
-                    Text("\(cnt)")
-                        .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Brand.accent.opacity(0.55))
+                if let st = drama.updateStatus, !st.isEmpty {
+                    Text(st)
+                        .font(.system(size: 10, weight: .semibold))
                         .foregroundStyle(.white)
-                        .padding(.horizontal, 7).padding(.vertical, 3)
-                        .background(Capsule().fill(Color.black.opacity(0.65)))
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-                        .padding(6)
+                        .padding(.horizontal, 6).padding(.vertical, 2)
+                        .background(Capsule().fill(Color.black.opacity(0.6)))
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                        .padding(5)
                 }
             }
             Text(drama.title)
@@ -216,11 +232,6 @@ private struct NASCard: View {
                 .foregroundStyle(Brand.label)
                 .lineLimit(2)
                 .multilineTextAlignment(.leading)
-            if let st = drama.updateStatus {
-                Text(st)
-                    .font(.system(size: 10))
-                    .foregroundStyle(Brand.secondaryLabel)
-            }
         }
         .contentShape(Rectangle())
     }

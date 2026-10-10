@@ -168,12 +168,26 @@ public actor TVBoxEngine {
     private var classCache: [String: [Category]] = [:]
     private var classFetchedAt: [String: Date] = [:]
 
-    /// 站点频道列表：部分站点 ac=list 不返回 class（实测 360zy），
-    /// 因此用 ac=videolist 连续翻页收集全量 vod 的 type_id+type_name 归并得出。
-    /// 最多翻 10 页（约 200 条），拿到 ≥8 个频道或列表耗尽即停。
+    /// 站点频道列表：优先取 ac=list 响应的 class 字段（标准 maccms），
+    /// 站点不返回 class 时降级用 ac=videolist 翻页归并 vod 的 type_id+type_name。
     public func categories(siteKey: String) async -> [Category] {
         if let cached = classCache[siteKey], !cached.isEmpty { return cached }
         guard let s = try? await site(key: siteKey) else { return [] }
+        // ① 标准途径：ac=list 响应的 class 字段
+        var comps = URLComponents(string: s.api)
+        comps?.queryItems = [URLQueryItem(name: "ac", value: "list"), URLQueryItem(name: "pg", value: "1")]
+        if let u = comps?.url, let resp = try? await fetchResponse(u), let cls = resp.class, !cls.isEmpty {
+            let cats = cls.compactMap { c -> Category? in
+                guard let tid = c.type_id?.intValue, let name = c.type_name, !name.isEmpty else { return nil }
+                return Category(typeId: tid, name: name)
+            }.sorted { $0.typeId < $1.typeId }
+            if !cats.isEmpty {
+                classCache[siteKey] = cats
+                classFetchedAt[siteKey] = Date()
+                return cats
+            }
+        }
+        // ② 降级：ac=videolist 翻页归并（最多 10 页，≥8 频道或耗尽即停）
         var seen: [Int: String] = [:]
         for page in 1...10 {
             guard let vods = try? await fetchVodListFull(site: s, page: page), !vods.isEmpty else { break }
@@ -290,6 +304,13 @@ public actor TVBoxEngine {
 
     private struct VodListResponse: Decodable {
         let list: [Vod]?
+        let `class`: [ClassItem]?
+    }
+
+    /// maccms ac=list 响应里的标准频道分类（type_id → type_name）。
+    private struct ClassItem: Decodable {
+        let type_id: JSONValue?
+        let type_name: String?
     }
 
     private func fetchList(site s: Site, page: Int, typeId: Int? = nil) async throws -> [Vod] {
@@ -316,6 +337,11 @@ public actor TVBoxEngine {
     }
 
     private func fetchVods(_ url: URL) async throws -> [Vod] {
+        try await fetchResponse(url).list ?? []
+    }
+
+    /// 拉取并解码完整 maccms 响应（含 list 与 class）。
+    private func fetchResponse(_ url: URL) async throws -> VodListResponse {
         var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 15)
         req.setValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36", forHTTPHeaderField: "User-Agent")
         req.setValue("application/json", forHTTPHeaderField: "Accept")
@@ -323,8 +349,7 @@ public actor TVBoxEngine {
         guard let http = resp as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
             throw TVBoxError.fetchFailed((resp as? HTTPURLResponse)?.statusCode ?? -1)
         }
-        let decoded = try JSONDecoder().decode(VodListResponse.self, from: data)
-        return decoded.list ?? []
+        return try JSONDecoder().decode(VodListResponse.self, from: data)
     }
 
     /// Vod → Drama（id 带 tvbox 前缀，便于路由识别与进度隔离）。

@@ -13,7 +13,7 @@ public struct PosterCard: View {
             Color.clear
                 .aspectRatio(3.0 / 4.0, contentMode: .fit)
                 .overlay {
-                    CoverImage(drama.coverURL.flatMap { URL(string: $0) })
+                    CoverImage(drama.coverURL.flatMap { URL(string: $0) }, title: drama.title)
                 }
                 .clipShape(RoundedRectangle(cornerRadius: Radius.sm, style: .continuous))
                 .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(Brand.separator.opacity(0.6), lineWidth: 0.5))
@@ -23,11 +23,10 @@ public struct PosterCard: View {
                 .lineLimit(1)
                 .foregroundStyle(Brand.label)
                 .help(drama.title)
-            if let cnt = drama.episodeCount {
-                Text("\(cnt) 集")
-                    .font(.system(size: 12))
-                    .foregroundStyle(Brand.secondaryLabel)
-            }
+            // 集数行固定高度占位：无集数时显示空文本占位，避免卡片高度不一错位
+            Text(drama.episodeCount.map { "\($0) 集" } ?? " ")
+                .font(.system(size: 12))
+                .foregroundStyle(Brand.secondaryLabel)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
