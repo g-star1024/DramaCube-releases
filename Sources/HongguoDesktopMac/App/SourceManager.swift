@@ -376,6 +376,24 @@ public final class SourceManager: ObservableObject {
         return try await get("\(base)/api/tvbox/detail/\(siteKey)/\(id)")
     }
 
+    /// 发现页短剧横排：从首个可用源拉最新列表（MoonTVPlus 热播短剧形式，返回真实可播 Drama）。
+    /// 优先取该源的「短剧」频道，取不到则退回最新列表，按集数多者优先（短剧特征：集数多）。
+    public func duanjuRecommends(limit: Int = 18) async -> [Drama] {
+        guard let site = enabledSites.first else { return [] }
+        // 找短剧频道
+        let cats = await tvboxCategories(siteKey: site.key)
+        let duanjuCat = cats.first { $0.name.contains("短剧") || $0.name.contains("微短") }
+        if let list = try? await tvboxLatest(siteKey: site.key, page: 1, typeId: duanjuCat?.id), !list.isEmpty {
+            return Array(list.prefix(limit))
+        }
+        if let list = try? await tvboxLatest(siteKey: site.key, page: 1, typeId: nil) {
+            // 短剧特征：集数多；优先按集数降序
+            let sorted = list.sorted { ($0.episodeCount ?? 0) > ($1.episodeCount ?? 0) }
+            return Array(sorted.prefix(limit))
+        }
+        return []
+    }
+
     /// 播放地址：m3u8 优先 + 网关代理（剥离 Referer）。
     public func tvboxPlayURL(siteKey: String, vodId: String, episodeIndex: Int) -> URL {
         URL(string: "\(base)/api/tvbox/play/\(siteKey)/\(vodId)/\(episodeIndex)")!

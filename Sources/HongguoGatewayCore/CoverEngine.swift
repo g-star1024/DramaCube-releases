@@ -1,4 +1,5 @@
 import Foundation
+import HongguoCore
 #if canImport(FoundationNetworking)
 import FoundationNetworking
 #endif
@@ -63,5 +64,60 @@ public actor CoverEngine {
     public static func proxiedImageURL(_ absolute: String, gatewayBase: String) -> String {
         let enc = absolute.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? absolute
         return "\(gatewayBase)/api/image-proxy?url=\(enc)"
+    }
+
+    // MARK: - 豆瓣热门（MoonTVPlus 首页形式：热门电影/剧集/综艺横排）
+
+    /// 豆瓣热门条目（对齐 MoonTVPlus DoubanItem）。
+    public struct DoubanHotItem: Codable, Sendable {
+        public let id: String
+        public let title: String
+        public let poster: String      // 豆瓣图（doubanio.com），前端经 image-proxy 加载
+        public let rate: String        // 评分（可空字符串）
+        public let year: String
+        public init(id: String, title: String, poster: String, rate: String, year: String) {
+            self.id = id; self.title = title; self.poster = poster; self.rate = rate; self.year = year
+        }
+    }
+
+    private var hotCache: [String: (items: [DoubanHotItem], at: Date)] = [:]
+
+    /// 拉豆瓣「最近热门」分类列表（对齐 MoonTVPlus /api/douban/categories）。
+    /// - Parameters:
+    ///   - kind: movie / tv
+    ///   - category: 热门 / tv / show（MoonTVPlus：电影=热门，剧集=tv，综艺=show）
+    ///   - type: 全部 / tv / show
+    public func doubanHot(kind: String, category: String, type: String, limit: Int = 18) async -> [DoubanHotItem] {
+        let key = "\(kind)|\(category)|\(type)|\(limit)"
+        if let c = hotCache[key], Date().timeIntervalSince(c.at) < 3600 { return c.items }
+        let cat = category.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? category
+        let typ = type.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? type
+        let urlStr = "https://m.douban.com/rexxar/api/v2/subject/recent_hot/\(kind)?start=0&limit=\(limit)&category=\(cat)&type=\(typ)"
+        guard let url = URL(string: urlStr) else { return [] }
+        var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 10)
+        req.setValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15", forHTTPHeaderField: "User-Agent")
+        req.setValue("https://m.douban.com/", forHTTPHeaderField: "Referer")
+        // 豆瓣国内可直连；强制直连避免系统代理境外出口被拦。
+        guard let (data, resp) = try? await DirectURLSession.shared.data(for: req),
+              let http = resp as? HTTPURLResponse, (200..<300).contains(http.statusCode),
+              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let items = obj["items"] as? [[String: Any]] else {
+            return hotCache[key]?.items ?? []
+        }
+        let out: [DoubanHotItem] = items.compactMap { it in
+            let title = (it["title"] as? String) ?? ""
+            guard !title.isEmpty else { return nil }
+            var id = (it["id"] as? String) ?? ""
+            if id.isEmpty, let n = it["id"] as? Int { id = String(n) }
+            if id.isEmpty, let n = it["id"] as? Int64 { id = String(n) }
+            let poster = (it["pic"] as? [String: Any])?["normal"] as? String
+                ?? (it["pic"] as? [String: Any])?["large"] as? String ?? ""
+            let rate = (it["rating"] as? [String: Any])?["value"] as? Double
+            let year = (it["year"] as? String) ?? ""
+            return DoubanHotItem(id: id, title: title, poster: poster,
+                                 rate: rate.map { String(format: "%.1f", $0) } ?? "", year: year)
+        }
+        if !out.isEmpty { hotCache[key] = (out, Date()) }
+        return out
     }
 }

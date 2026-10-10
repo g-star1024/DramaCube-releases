@@ -411,6 +411,16 @@ public enum GatewayServer {
             return Self.json(GatewayEnvelope(ok: true, data: ["url": ""]))
         }
 
+        // 豆瓣热门（MoonTVPlus 首页形式）：/api/douban/hot?kind=movie|tv&category=&type=&limit=
+        router.get("api/douban/hot") { request, _ async throws -> Response in
+            let kind = Self.queryValue(request, name: "kind") ?? "movie"
+            let category = Self.queryValue(request, name: "category") ?? "热门"
+            let type = Self.queryValue(request, name: "type") ?? "全部"
+            let limit = Int(Self.queryValue(request, name: "limit") ?? "") ?? 18
+            let items = await CoverEngine.shared.doubanHot(kind: kind, category: category, type: type, limit: limit)
+            return Self.json(GatewayEnvelope(ok: true, data: items))
+        }
+
         // 图片代理：/api/image-proxy?url= —— 转发豆瓣等防盗链图片（带 Referer）。
         router.get("api/image-proxy") { request, _ async throws -> Response in
             guard let urlStr = Self.queryValue(request, name: "url"),
@@ -480,7 +490,8 @@ public enum GatewayServer {
         req.setValue(LiveEngine.playbackUserAgent, forHTTPHeaderField: "User-Agent")
         let range = request.headers[.range].flatMap { $0.isEmpty ? nil : $0 }
         if let range, !range.isEmpty { req.setValue(range, forHTTPHeaderField: "Range") }
-        let (bytes, resp) = try await URLSession.shared.bytes(for: req)
+        // 强制直连：直播/采集站 CDN 锁中国大陆 IP，系统代理（VPN）走境外会被区域拦截 403。
+        let (bytes, resp) = try await DirectURLSession.shared.bytes(for: req)
         let http = resp as? HTTPURLResponse
         var contentType = http?.value(forHTTPHeaderField: "Content-Type") ?? "application/vnd.apple.mpegurl"
         let statusCode = http?.statusCode ?? 200

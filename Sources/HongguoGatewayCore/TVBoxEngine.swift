@@ -452,7 +452,8 @@ public actor TVBoxEngine {
         var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 15)
         req.setValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36", forHTTPHeaderField: "User-Agent")
         req.setValue("application/json", forHTTPHeaderField: "Accept")
-        let (data, resp) = try await URLSession.shared.data(for: req)
+        // 强制直连：采集站 CDN 锁中国大陆 IP，系统代理（VPN）走境外会被区域拦截 403。
+        let (data, resp) = try await DirectURLSession.shared.data(for: req)
         guard let http = resp as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
             throw TVBoxError.fetchFailed((resp as? HTTPURLResponse)?.statusCode ?? -1)
         }

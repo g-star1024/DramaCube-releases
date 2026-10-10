@@ -210,7 +210,8 @@ public actor LiveEngine {
         guard let u = URL(string: url) else { throw LiveError.badURL }
         var req = URLRequest(url: u, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 25)
         req.setValue(userAgent, forHTTPHeaderField: "User-Agent")
-        let (data, resp) = try await URLSession.shared.data(for: req)
+        // 强制直连：直播源 CDN 锁中国大陆 IP，系统代理（VPN）走境外会被区域拦截 403。
+        let (data, resp) = try await DirectURLSession.shared.data(for: req)
         guard let http = resp as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
             throw LiveError.fetchFailed((resp as? HTTPURLResponse)?.statusCode ?? -1)
         }
@@ -291,7 +292,8 @@ public actor LiveEngine {
         var req = URLRequest(url: u, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 10)
         req.setValue(playbackUserAgent, forHTTPHeaderField: "User-Agent")
         do {
-            let (_, resp) = try await URLSession.shared.bytes(for: req)
+            // 强制直连：直播源 CDN 锁中国大陆 IP，系统代理（VPN）走境外会被区域拦截 403。
+            let (_, resp) = try await DirectURLSession.shared.bytes(for: req)
             guard let http = resp as? HTTPURLResponse else { return false }
             return (200..<400).contains(http.statusCode)
         } catch {

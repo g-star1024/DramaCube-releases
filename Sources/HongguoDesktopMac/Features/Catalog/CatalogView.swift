@@ -43,26 +43,6 @@ public struct CatalogView: View {
 
     public init() {}
 
-    // 各分区浏览配置
-    private var discoverConfig: BrowseConfig {
-        // 发现页直接展示 tag 标签分类（爱情/年代/逆袭…），无「全部」入口
-        BrowseConfig(
-            title: "发现",
-            chips: DramaTag.allCases.map { BrowseChip(id: $0.id, title: $0.title) },
-            defaultPath: DramaTag.romance.path,
-            chipPath: { DramaTag(rawValue: $0.id)?.path ?? DramaTag.romance.path },
-            featuredPath: "/rank/hot-drama"
-        )
-    }
-    private var rankConfig: BrowseConfig {
-        BrowseConfig(
-            title: "排行榜",
-            chips: RankTab.allCases.map { BrowseChip(id: $0.id, title: $0.title) },
-            defaultPath: RankTab.hot.path,
-            chipPath: { RankTab(rawValue: $0.id)?.path ?? RankTab.hot.path }
-        )
-    }
-
     public var body: some View {
         NavigationSplitView {
             List(SidebarItem.allCases, selection: $selection) { item in
@@ -136,9 +116,9 @@ public struct CatalogView: View {
     private var sectionContent: some View {
         switch selection {
         case .discover:
-            BrowseView(config: discoverConfig, segments: DiscoverSegment.allCases, onSelect: openDetail)
+            DiscoverView(onSelect: openDetail)
         case .rank:
-            BrowseView(config: rankConfig, onSelect: openDetail)
+            RankView(onSelect: openDetail)
         case .tvbox:
             TVBoxBrowseView(sm: SourceManager.shared, onSelect: openDetail)
         case .nas:

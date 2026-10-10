@@ -72,4 +72,25 @@ public final class CatalogService: ObservableObject {
         }
         return try await decode(url)
     }
+
+    // MARK: - 豆瓣热门（MoonTVPlus 首页形式）
+
+    /// 豆瓣热门条目（对齐网关 CoverEngine.DoubanHotItem）。
+    public struct DoubanHotItem: Codable, Sendable, Identifiable {
+        public let id: String
+        public let title: String
+        public let poster: String
+        public let rate: String
+        public let year: String
+    }
+
+    /// 拉豆瓣热门列表（kind: movie/tv；category/type 对齐 MoonTVPlus）。
+    public func doubanHot(kind: String, category: String, type: String, limit: Int = 18) async throws -> [DoubanHotItem] {
+        let cat = category.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? category
+        let typ = type.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? type
+        guard let url = URL(string: "\(base)/api/douban/hot?kind=\(kind)&category=\(cat)&type=\(typ)&limit=\(limit)") else {
+            throw HongguoParseError.fieldMissing("url")
+        }
+        return try await decode(url)
+    }
 }

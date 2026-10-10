@@ -22,6 +22,8 @@ public actor HongguoClient {
         let cfg = URLSessionConfiguration.default
         cfg.httpAdditionalHeaders = ["User-Agent": userAgent]
         cfg.timeoutIntervalForRequest = 20
+        // 强制直连：红果/采集站 CDN 锁中国大陆 IP，系统代理（VPN）走境外会被区域拦截 403。
+        cfg.connectionProxyDictionary = [:]
         self.session = URLSession(configuration: cfg)
     }
 

@@ -9,6 +9,13 @@ func hongguoGatewayMediaURL(_ cdnURL: String) -> URL {
     return URL(string: "\(AppConfig.gatewayBaseURL)/api/play?url=\(encoded)")!
 }
 
+/// 把 m3u8 直链包成网关直播代理地址（强制直连绕系统代理 + 浏览器 UA + 重写分片走本网关）。
+/// 采集站 CDN 锁中国大陆 IP，AVPlayer 直连走系统代理（VPN 境外出口）会被区域拦截 403。
+func hongguoGatewayM3U8URL(_ m3u8URL: String) -> URL {
+    let encoded = m3u8URL.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? m3u8URL
+    return URL(string: "\(AppConfig.gatewayBaseURL)/api/live/stream?url=\(encoded)")!
+}
+
 /// 当前播放器对外暴露的最小接口（供系统媒体控制 / 老板键调用）。
 @MainActor
 public protocol ActivePlayer: AnyObject {
@@ -140,11 +147,12 @@ public final class PlayerViewModel: ObservableObject, ActivePlayer {
         let item: AVPlayerItem
         if let url = ep.playURL, !url.isEmpty {
             if url.lowercased().contains(".m3u8") {
-                // m3u8（TVBox 源主流）：AVPlayer 原生 HLS 直接播，不走网关。
-                // 原因：部分资源 CDN（lz-cdn 等）按 TLS/HTTP2 指纹拦截裸 URLSession
-                // （实测 curl 200 而 URLSession 404），网关代理会 404；
-                // AVPlayer 走 AppleCoreMedia 栈，是播放器标准指纹，CDN 全部放行。
-                item = AVPlayerItem(url: URL(string: url)!)
+                // m3u8（TVBox/采集站主流）：经网关 /api/live/stream 代理。
+                // 关键原因（v1.2.2 修复）：采集站 CDN 锁中国大陆 IP，AVPlayer 直连走系统代理
+                // （VPN 境外出口）会被区域拦截 403「请使用国内网络访问」；且分片域名对
+                // AVPlayer 的 AppleCoreMedia UA 防盗链。网关代理强制直连（绕系统代理）+
+                // 浏览器 UA 拉流 + 重写 m3u8 把分片/子列表也走本网关，三重保障可播。
+                item = AVPlayerItem(url: hongguoGatewayM3U8URL(url))
             } else if url.hasPrefix("file://") {
                 // NAS 本机挂载目录：file:// 直读，AVPlayer 原生支持 Range。
                 item = AVPlayerItem(url: URL(fileURLWithPath: String(url.dropFirst("file://".count))))
@@ -465,8 +473,10 @@ public final class PlayerViewModel: ObservableObject, ActivePlayer {
             let ep = episodes[index]
             var url: URL?
             if let u = ep.playURL, !u.isEmpty {
-                if u.hasPrefix("file://") || u.lowercased().contains(".m3u8") || detail.drama.id.hasPrefix("nas|") {
+                if u.hasPrefix("file://") || detail.drama.id.hasPrefix("nas|") {
                     url = URL(string: u)
+                } else if u.lowercased().contains(".m3u8") {
+                    url = hongguoGatewayM3U8URL(u)
                 } else {
                     url = hongguoGatewayMediaURL(u)
                 }
@@ -497,7 +507,7 @@ public final class PlayerViewModel: ObservableObject, ActivePlayer {
         guard let ep = currentEpisode else { return nil }
         if let url = ep.playURL, !url.isEmpty {
             if url.hasPrefix("file://") { return URL(string: url) }
-            if url.lowercased().contains(".m3u8") { return URL(string: url) }
+            if url.lowercased().contains(".m3u8") { return hongguoGatewayM3U8URL(url) }
             if detail.drama.id.hasPrefix("nas|") { return URL(string: url) }
             return hongguoGatewayMediaURL(url)
         }
@@ -522,8 +532,10 @@ public final class PlayerViewModel: ObservableObject, ActivePlayer {
         let ep = episodes[index]
         var url: URL?
         if let u = ep.playURL, !u.isEmpty {
-            if u.hasPrefix("file://") || u.lowercased().contains(".m3u8") || detail.drama.id.hasPrefix("nas|") {
+            if u.hasPrefix("file://") || detail.drama.id.hasPrefix("nas|") {
                 url = URL(string: u)
+            } else if u.lowercased().contains(".m3u8") {
+                url = hongguoGatewayM3U8URL(u)
             } else {
                 url = hongguoGatewayMediaURL(u)
             }
@@ -549,8 +561,10 @@ public final class PlayerViewModel: ObservableObject, ActivePlayer {
         let ep = detail.episodes[index]
         var url: URL?
         if let u = ep.playURL, !u.isEmpty {
-            if u.hasPrefix("file://") || u.lowercased().contains(".m3u8") || detail.drama.id.hasPrefix("nas|") {
+            if u.hasPrefix("file://") || detail.drama.id.hasPrefix("nas|") {
                 url = URL(string: u)
+            } else if u.lowercased().contains(".m3u8") {
+                url = hongguoGatewayM3U8URL(u)
             } else {
                 url = hongguoGatewayMediaURL(u)
             }
