@@ -1,6 +1,6 @@
 import Foundation
 import AVKit
-import AVFoundation
+@preconcurrency import AVFoundation
 import HongguoGatewayCore
 
 // MARK: - AVPlayer 回退引擎
@@ -28,9 +28,7 @@ public final class AVPlayerEngine: NSObject, PlaybackEngine, ObservableObject {
 
     public override init() { super.init() }
 
-    deinit {
-        if let obs = timeObserver, let p = player { p.removeTimeObserver(obs) }
-    }
+    // 周期观察者由 player 释放时一并失效；不在 deinit 跨域访问非 Sendable 成员。
 
     public func load(source: PlaybackSource) {
         error = nil
@@ -65,13 +63,13 @@ public final class AVPlayerEngine: NSObject, PlaybackEngine, ObservableObject {
         Task { @MainActor in
             var subs: [SubtitleTrack] = []
             var auds: [AudioTrack] = []
-            if let group = try? await item.asset.loadMediaSelectionGroup(forMediaCharacteristic: .legible) {
+            if let group = try? await item.asset.loadMediaSelectionGroup(for: .legible) {
                 for (i, opt) in group.options.enumerated() {
                     subs.append(SubtitleTrack(id: "\(i)", title: opt.displayName,
                                               language: opt.extendedLanguageTag, isEmbedded: true))
                 }
             }
-            if let group = try? await item.asset.loadMediaSelectionGroup(forMediaCharacteristic: .audible) {
+            if let group = try? await item.asset.loadMediaSelectionGroup(for: .audible) {
                 for (i, opt) in group.options.enumerated() {
                     auds.append(AudioTrack(id: "\(i)", title: opt.displayName,
                                            language: opt.extendedLanguageTag))

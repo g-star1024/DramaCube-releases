@@ -135,7 +135,7 @@ public struct EmbyAdapter: MediaServerProtocol {
 
         // 剧集：拉子集
         var episodes: [MediaItem] = []
-        if raw.Type == "Series", let ereq = authedRequest("/Shows/\(item)/Episodes", query: [
+        if raw.itemType == "Series", let ereq = authedRequest("/Shows/\(item)/Episodes", query: [
             URLQueryItem(name: "UserId", value: uid),
             URLQueryItem(name: "Fields", value: "Overview,MediaSources")
         ]), let (edata, _) = try? await DirectURLSession.shared.data(for: ereq),
@@ -150,8 +150,8 @@ public struct EmbyAdapter: MediaServerProtocol {
             overview: raw.Overview,
             episodes: episodes,
             subtitles: subs, audioTracks: auds,
-            actors: raw.People?.filter { $0.Type == "Actor" }.map { $0.Name } ?? [],
-            directors: raw.People?.filter { $0.Type == "Director" }.map { $0.Name } ?? [],
+            actors: raw.People?.filter { $0.personType == "Actor" }.map { $0.Name } ?? [],
+            directors: raw.People?.filter { $0.personType == "Director" }.map { $0.Name } ?? [],
             genres: raw.Genres ?? []
         )
     }
@@ -276,7 +276,7 @@ public struct EmbyAdapter: MediaServerProtocol {
     private func toItem(_ r: RawItem, kind: MediaKind? = nil) -> MediaItem {
         MediaItem(
             id: r.Id, sourceKey: config.id,
-            kind: kind ?? Self.mapItemType(r.Type),
+            kind: kind ?? Self.mapItemType(r.itemType),
             title: r.Name, subTitle: r.SeriesName,
             poster: imageURL(r, type: "Primary"),
             backdrop: imageURL(r, type: "Backdrop"),
@@ -302,7 +302,7 @@ public struct EmbyAdapter: MediaServerProtocol {
         var subs: [SubtitleTrack] = []
         var auds: [AudioTrack] = []
         for stream in r.MediaSources?.first?.MediaStreams ?? [] {
-            switch stream.Type {
+            switch stream.streamType {
             case "Subtitle":
                 subs.append(SubtitleTrack(id: "\(stream.Index)", title: stream.DisplayTitle ?? "字幕",
                                           language: stream.Language, format: stream.Codec,
@@ -325,7 +325,7 @@ public struct EmbyAdapter: MediaServerProtocol {
 
     struct RawItem: Codable {
         let Id, Name: String
-        let Type: String?
+        let itemType: String?
         let SeriesName: String?
         let Overview: String?
         let ProductionYear: Int?
@@ -336,17 +336,33 @@ public struct EmbyAdapter: MediaServerProtocol {
         let People: [Person]?
         let MediaSources: [MediaSource]?
 
+        enum CodingKeys: String, CodingKey {
+            case Id, Name, SeriesName, Overview, ProductionYear, CommunityRating
+            case RunTimeTicks, Genres, ImageTags, People, MediaSources
+            case itemType = "Type"
+        }
+
         struct ImageTags: Codable { let Primary: String? }
-        struct Person: Codable { let Name, Type: String }
+        struct Person: Codable {
+            let Name: String
+            let personType: String
+            enum CodingKeys: String, CodingKey { case Name; case personType = "Type" }
+        }
         struct MediaSource: Codable {
             let MediaStreams: [MediaStream]?
             struct MediaStream: Codable {
                 let Index: Int
-                let Type: String?
+                let streamType: String?
                 let Codec: String?
                 let Language: String?
                 let DisplayTitle: String?
                 let Channels: Int?
+
+                enum CodingKeys: String, CodingKey {
+                    case Index, Codec, Language, DisplayTitle, Channels
+                    case streamType = "Type"
+                    case IsExternal
+                }
                 let IsExternal: Bool?
             }
         }

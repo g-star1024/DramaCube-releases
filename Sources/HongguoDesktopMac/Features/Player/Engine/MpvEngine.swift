@@ -28,12 +28,12 @@ public final class MpvEngine: NSObject, PlaybackEngine, ObservableObject {
     @Published public private(set) var videoIsPortrait = false
     @Published public private(set) var hwDecoder: String = "unknown"
 
-    // MARK: mpv 内部
-    private var mpv: OpaquePointer?
-    private var queue: DispatchQueue?
+    // MARK: mpv 内部（nonisolated：只操作 C 句柄，线程安全由 mpv 保证）
+    private nonisolated(unsafe) var mpv: OpaquePointer?
+    private nonisolated(unsafe) var queue: DispatchQueue?
     /// 渲染目标（由 MpvVideoSurface 注入的 CAMetalLayer）。
-    public var metalLayer = CAMetalLayer()
-    private var pendingStart: TimeInterval?
+    public nonisolated(unsafe) var metalLayer = CAMetalLayer()
+    private nonisolated(unsafe) var pendingStart: TimeInterval?
 
     public override init() { super.init() }
 
@@ -155,12 +155,13 @@ public final class MpvEngine: NSObject, PlaybackEngine, ObservableObject {
         }
     }
 
-    private func handle(_ event: UnsafePointer<mpv_event>) {
+    private nonisolated func handle(_ event: UnsafePointer<mpv_event>) {
         switch event.pointee.event_id {
         case MPV_EVENT_SHUTDOWN:
             mpv_destroy(mpv); mpv = nil
         case MPV_EVENT_FILE_LOADED:
-            Task { @MainActor in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
                 self.refreshTracks()
                 self.hwDecoder = self.getString("hwdec-current") ?? "unknown"
                 if let s = self.pendingStart, s > 0 { self.seek(to: s); self.pendingStart = nil }
@@ -171,26 +172,37 @@ public final class MpvEngine: NSObject, PlaybackEngine, ObservableObject {
                 handleProperty(prop)
             }
         case MPV_EVENT_VIDEO_RECONFIG:
-            Task { @MainActor in self.updateOrientation() }
+            Task { @MainActor [weak self] in self?.updateOrientation() }
         case MPV_EVENT_END_FILE:
-            Task { @MainActor in self.isPlaying = false }
+            Task { @MainActor [weak self] in self?.isPlaying = false }
         default:
             break
         }
     }
 
-    private func handleProperty(_ prop: mpv_event_property) {
+    private nonisolated func handleProperty(_ prop: mpv_event_property) {
         let name = String(cString: prop.name)
-        Task { @MainActor in
+        // 在切到 MainActor 前把值提取为 Sendable 本地量，避免闭包捕获非 Sendable prop/self。
+        var flagVal: Bool?
+        var doubleVal: Double?
+        if let d = prop.data {
+            switch prop.format {
+            case MPV_FORMAT_FLAG: flagVal = d.load(as: Int32.self) != 0
+            case MPV_FORMAT_DOUBLE: doubleVal = d.load(as: Double.self)
+            default: break
+            }
+        }
+        Task { @MainActor [weak self] in
+            guard let self else { return }
             switch name {
             case "pause":
-                if let d = prop.data { self.isPlaying = d.load(as: Int32.self) == 0 }
+                if let v = flagVal { self.isPlaying = !v }
             case "core-idle", "paused-for-cache":
-                if let d = prop.data { self.isBuffering = d.load(as: Int32.self) != 0 }
+                if let v = flagVal { self.isBuffering = v }
             case "time-pos":
-                if let d = prop.data { self.currentTime = d.load(as: Double.self) }
+                if let v = doubleVal { self.currentTime = v }
             case "duration":
-                if let d = prop.data { self.duration = d.load(as: Double.self) }
+                if let v = doubleVal { self.duration = v }
             case "track-list/count":
                 self.refreshTracks()
             case "video-params/aspect":
@@ -240,7 +252,7 @@ public final class MpvEngine: NSObject, PlaybackEngine, ObservableObject {
 
     // MARK: - C API 辅助
 
-    private func command(_ cmd: String, args: [String?] = []) {
+    private nonisolated func command(_ cmd: String, args: [String?] = []) {
         guard mpv != nil else { return }
         var strArgs = args
         strArgs.insert(cmd, at: 0)
@@ -250,39 +262,39 @@ public final class MpvEngine: NSObject, PlaybackEngine, ObservableObject {
         mpv_command(mpv, &cargs)
     }
 
-    private func setFlagAsync(_ name: String, _ flag: Bool) {
+    private nonisolated func setFlagAsync(_ name: String, _ flag: Bool) {
         guard mpv != nil else { return }
         var d: Int32 = flag ? 1 : 0
         mpv_set_property_async(mpv, 0, name, MPV_FORMAT_FLAG, &d)
     }
-    private func setDoubleAsync(_ name: String, _ value: Double) {
+    private nonisolated func setDoubleAsync(_ name: String, _ value: Double) {
         guard mpv != nil else { return }
         var d = value
         mpv_set_property_async(mpv, 0, name, MPV_FORMAT_DOUBLE, &d)
     }
-    private func setString(_ name: String, _ value: String) {
+    private nonisolated func setString(_ name: String, _ value: String) {
         guard mpv != nil else { return }
         mpv_set_property_string(mpv, name, value)
     }
-    private func getDouble(_ name: String) -> Double {
+    private nonisolated func getDouble(_ name: String) -> Double {
         guard mpv != nil else { return 0 }
         var d = Double()
         mpv_get_property(mpv, name, MPV_FORMAT_DOUBLE, &d)
         return d
     }
-    private func getInt(_ name: String) -> Int {
+    private nonisolated func getInt(_ name: String) -> Int {
         guard mpv != nil else { return 0 }
         var d = Int64()
         mpv_get_property(mpv, name, MPV_FORMAT_INT64, &d)
         return Int(d)
     }
-    private func getFlag(_ name: String) -> Bool {
+    private nonisolated func getFlag(_ name: String) -> Bool {
         guard mpv != nil else { return false }
         var d = Int64()
         mpv_get_property(mpv, name, MPV_FORMAT_FLAG, &d)
         return d > 0
     }
-    private func getString(_ name: String) -> String? {
+    private nonisolated func getString(_ name: String) -> String? {
         guard mpv != nil else { return nil }
         let cstr = mpv_get_property_string(mpv, name)
         let s: String? = cstr == nil ? nil : String(cString: cstr!)
