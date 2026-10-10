@@ -12,6 +12,8 @@ public struct HongguoApp: App {
         WindowGroup {
             CatalogView()
                 .frame(minWidth: 1024, minHeight: 640)
+                .preferredColorScheme(AppSettings.shared.preferredColorScheme)
+                .environment(\.uiFontScale, AppSettings.shared.uiFontScale)
                 .modelContainer(PersistenceController.shared.container)
                 .task {
                     AppLog.log(.app, "App 启动，版本 \(AppConfig.appVersion)，macOS \(ProcessInfo.processInfo.operatingSystemVersionString)")

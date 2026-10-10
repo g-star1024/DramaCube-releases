@@ -1,11 +1,13 @@
 import SwiftUI
 import HongguoCore
+import HongguoGatewayCore
 
 public enum SidebarItem: String, CaseIterable, Identifiable {
-    case rank, tvbox, nas, live, library, downloads, settings
+    case hub, rank, tvbox, nas, live, library, downloads, settings
     public var id: String { rawValue }
     public var title: String {
         switch self {
+        case .hub: return "媒体中枢"
         case .rank: return "发现"
         case .tvbox: return "视频源"
         case .nas: return "资源库"
@@ -17,6 +19,7 @@ public enum SidebarItem: String, CaseIterable, Identifiable {
     }
     public var icon: String {
         switch self {
+        case .hub: return "square.grid.2x2"
         case .rank: return "sparkles"
         case .tvbox: return "antenna.radiowaves.left.and.right"
         case .nas: return "externaldrive.connected.to.line.below"
@@ -30,7 +33,7 @@ public enum SidebarItem: String, CaseIterable, Identifiable {
 
 public struct CatalogView: View {
     @StateObject private var service = CatalogService.shared
-    @State private var selection: SidebarItem = .rank
+    @State private var selection: SidebarItem = .hub
     @State private var query = ""
     @State private var searchResults: [Drama]?
     @State private var isSearching = false
@@ -117,6 +120,8 @@ public struct CatalogView: View {
     @ViewBuilder
     private var sectionContent: some View {
         switch selection {
+        case .hub:
+            MediaHubView(onSelect: openMediaItem)
         case .rank:
             RankView(onSelect: openDetail)
         case .tvbox:
@@ -159,6 +164,22 @@ public struct CatalogView: View {
     }
 
     private func openDetail(_ drama: Drama) { selected = drama }
+
+    /// 媒体中枢条目点击：统一 MediaItem → 按来源路由到详情/播放。
+    private func openMediaItem(_ item: MediaItem) {
+        // 红果短剧：经既有 Drama 详情链路打开
+        if item.sourceKey.hasPrefix("hongguo") {
+            let drama = Drama(
+                id: item.id, title: item.title, coverURL: item.poster,
+                episodeCount: Int(item.extra["episodeCount"] ?? ""),
+                tags: (item.extra["tags"] ?? "").split(separator: ",").map(String.init),
+                category: item.subTitle
+            )
+            selected = drama
+        }
+        // 其他来源（TVBox/NAS/Emby…）后续接统一详情页；暂以通知桥接到现有链路
+        // TODO(M5)：统一详情页承载 MediaDetail
+    }
 
     private func runSearch() async {
         let q = query.trimmingCharacters(in: .whitespaces)

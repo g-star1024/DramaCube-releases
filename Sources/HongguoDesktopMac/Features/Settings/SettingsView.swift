@@ -42,6 +42,55 @@ public struct SettingsView: View {
     private var generalTab: some View {
         ScrollView {
             VStack(spacing: Spacing.lg) {
+                sectionCard("外观") {
+                    row("主题") {
+                        Picker("", selection: $s.appearance) {
+                            Text("跟随系统").tag("system")
+                            Text("浅色").tag("light")
+                            Text("深色").tag("dark")
+                        }
+                        .labelsHidden()
+                        .pickerStyle(.segmented)
+                        .frame(width: 240)
+                        .controlSize(.small)
+                    }
+                    rowDivider
+                    row("全局字体大小") {
+                        Slider(value: $s.uiFontScale, in: 0.85...1.3, step: 0.05)
+                            .frame(width: 160)
+                        Text("\(Int(s.uiFontScale * 100))%")
+                            .font(.system(size: 12, design: .monospaced))
+                            .foregroundStyle(Brand.secondaryLabel)
+                            .frame(width: 44, alignment: .trailing)
+                    }
+                }
+                sectionCard("弹幕") {
+                    row("开启弹幕") {
+                        Toggle("", isOn: $s.danmakuEnabled).labelsHidden().toggleStyle(.switch).controlSize(.small)
+                    }
+                    rowDivider
+                    row("在线弹幕（弹弹play）") {
+                        Toggle("", isOn: $s.danmakuOnline).labelsHidden().toggleStyle(.switch).controlSize(.small)
+                    }
+                    rowDivider
+                    row("弹幕字号") {
+                        Slider(value: $s.danmakuFontScale, in: 0.6...2.0, step: 0.1)
+                            .frame(width: 140)
+                        Text("\(s.danmakuFontScale, specifier: "%.1f")x")
+                            .font(.system(size: 12, design: .monospaced))
+                            .foregroundStyle(Brand.secondaryLabel)
+                            .frame(width: 40, alignment: .trailing)
+                    }
+                    rowDivider
+                    row("弹幕不透明度") {
+                        Slider(value: $s.danmakuOpacity, in: 0.2...1.0, step: 0.05)
+                            .frame(width: 140)
+                        Text("\(Int(s.danmakuOpacity * 100))%")
+                            .font(.system(size: 12, design: .monospaced))
+                            .foregroundStyle(Brand.secondaryLabel)
+                            .frame(width: 40, alignment: .trailing)
+                    }
+                }
                 sectionCard("菜单栏托盘") {
                     row("关闭主窗口时") {
                         Text(closeToTray ? "最小化到菜单栏" : "直接退出应用")

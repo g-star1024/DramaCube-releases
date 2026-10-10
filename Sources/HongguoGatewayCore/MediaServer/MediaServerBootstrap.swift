@@ -10,6 +10,9 @@ public enum MediaServerBootstrap {
     public static func assemble() async {
         let reg = MediaServerRegistry.shared
 
+        // 红果短剧内置适配器（M4：纳入统一抽象层）
+        await reg.register(HongguoAdapter())
+
         // TVBox·CMS 采集站点（每个 Site 一个逻辑服务器）
         for site in await TVBoxEngine.shared.allSites() {
             await reg.register(TVBoxAdapter(site: site))

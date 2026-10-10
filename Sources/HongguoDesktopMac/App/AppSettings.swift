@@ -35,6 +35,16 @@ public final class AppSettings: ObservableObject {
     /// 内置播放内核（M2）：mpv（libmpv，全格式/ASS字幕/多音轨/硬解）或 avplayer（系统，稳定回退）。
     @Published public var playbackEngine: String { didSet { defaults.set(playbackEngine, forKey: "playbackEngine") } }
 
+    // MARK: - 弹幕（M4）
+    /// 弹幕总开关。
+    @Published public var danmakuEnabled: Bool { didSet { defaults.set(danmakuEnabled, forKey: "danmakuEnabled") } }
+    /// 在线弹幕（弹弹play）。
+    @Published public var danmakuOnline: Bool { didSet { defaults.set(danmakuOnline, forKey: "danmakuOnline") } }
+    /// 弹幕字号缩放（0.6 ~ 2.0）。
+    @Published public var danmakuFontScale: Double { didSet { defaults.set(danmakuFontScale, forKey: "danmakuFontScale") } }
+    /// 弹幕不透明度（0.2 ~ 1.0）。
+    @Published public var danmakuOpacity: Double { didSet { defaults.set(danmakuOpacity, forKey: "danmakuOpacity") } }
+
     /// 缓冲策略对应的前向缓冲秒数（参考 MoonTVPlus/HLS.js maxBufferLength）。
     public var forwardBufferSeconds: Double {
         switch bufferStrategy {
@@ -53,6 +63,21 @@ public final class AppSettings: ObservableObject {
     /// 仅 Wi-Fi 下自动加载封面（省流量）。
     @Published public var loadCoversOnCellular: Bool { didSet { defaults.set(loadCoversOnCellular, forKey: "loadCoversOnCellular") } }
 
+    // MARK: - 外观（M4：深浅主题 + 全局字体调节）
+    /// 外观模式：system / light / dark。
+    @Published public var appearance: String { didSet { defaults.set(appearance, forKey: "appearance") } }
+    /// 全局字体缩放（0.85 ~ 1.3，1.0 为默认）。
+    @Published public var uiFontScale: Double { didSet { defaults.set(uiFontScale, forKey: "uiFontScale") } }
+
+    /// 外观对应的 ColorScheme（nil=跟随系统）。
+    public var preferredColorScheme: ColorScheme? {
+        switch appearance {
+        case "light": return .light
+        case "dark": return .dark
+        default: return nil
+        }
+    }
+
     // MARK: - 存储路径
     /// 自定义下载目录（空 = 默认 ~/Downloads/剧立方）。设置后新下载存到该目录。
     @Published public var customDownloadDir: String { didSet { defaults.set(customDownloadDir, forKey: "customDownloadDir") } }
@@ -70,9 +95,15 @@ public final class AppSettings: ObservableObject {
         prefetchNextEpisode = d.object(forKey: "prefetchNextEpisode") == nil ? true : d.bool(forKey: "prefetchNextEpisode")
         defaultExternalPlayer = d.string(forKey: "defaultExternalPlayer") ?? "builtin"
         playbackEngine = d.string(forKey: "playbackEngine") ?? "avplayer"   // M2：默认仍 avplayer，mpv 需手动开启验证
+        danmakuEnabled = d.object(forKey: "danmakuEnabled") == nil ? true : d.bool(forKey: "danmakuEnabled")
+        danmakuOnline = d.object(forKey: "danmakuOnline") == nil ? true : d.bool(forKey: "danmakuOnline")
+        danmakuFontScale = d.object(forKey: "danmakuFontScale") == nil ? 1.0 : d.double(forKey: "danmakuFontScale")
+        danmakuOpacity = d.object(forKey: "danmakuOpacity") == nil ? 0.85 : d.double(forKey: "danmakuOpacity")
         homeSection = d.object(forKey: "homeSection") == nil ? "discover" : (d.string(forKey: "homeSection") ?? "discover")
         pageSize = d.object(forKey: "pageSize") == nil ? 24 : d.integer(forKey: "pageSize")
         loadCoversOnCellular = d.object(forKey: "loadCoversOnCellular") == nil ? true : d.bool(forKey: "loadCoversOnCellular")
+        appearance = d.string(forKey: "appearance") ?? "system"
+        uiFontScale = d.object(forKey: "uiFontScale") == nil ? 1.0 : d.double(forKey: "uiFontScale")
         customDownloadDir = d.string(forKey: "customDownloadDir") ?? ""
         customCacheDir = d.string(forKey: "customCacheDir") ?? ""
     }
