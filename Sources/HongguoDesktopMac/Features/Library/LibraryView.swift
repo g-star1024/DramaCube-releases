@@ -4,17 +4,17 @@ import HongguoCore
 /// 个人库：收藏 + 历史（含播放进度 / 秒级续播入口）。
 public struct LibraryView: View {
     public enum Segment: String, CaseIterable, Identifiable {
-        case favorite, history
+        case history, favorite
         public var id: String { rawValue }
         var title: String {
-            switch self { case .favorite: return "收藏"; case .history: return "历史" }
+            switch self { case .history: return "历史"; case .favorite: return "收藏" }
         }
     }
 
     let initial: Segment
     @State private var segment: Segment
 
-    public init(initial: Segment = .favorite) {
+    public init(initial: Segment = .history) {
         self.initial = initial
         _segment = State(initialValue: initial)
     }

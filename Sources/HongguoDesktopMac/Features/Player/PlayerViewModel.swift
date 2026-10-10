@@ -206,7 +206,7 @@ public final class PlayerViewModel: ObservableObject, ActivePlayer {
                     let raw = observed.error?.localizedDescription ?? "该集无法播放"
                     let msg: String
                     if raw.localizedCaseInsensitiveContains("resource unavailable") {
-                        msg = "该集资源已失效（源站可能已下线或被拦截），请换源或换集"
+                        msg = "该集暂无播放资源：可能是源站尚未上线本集，或已被下线/拦截。可换一集（部分剧仅前几集可看），或到「视频源」换源观看"
                     } else if raw.contains("-1013") {
                         msg = "资源库鉴权失败：请检查设置中 NAS 的账号密码是否正确"
                     } else if raw.contains("-1012") || raw.contains("-1003") || raw.contains("-1001") {

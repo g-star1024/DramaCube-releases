@@ -24,6 +24,7 @@ public actor LiveEngine {
         var url: String
         var name: String
         var enabled: Bool
+        var userAgent: String?         // 自定义 UA（nil = 默认 okHttp UA 拉源）
     }
 
     // MARK: - 持久化
@@ -57,7 +58,7 @@ public actor LiveEngine {
         if sources.isEmpty {
             sources = [Source(id: UUID().uuidString,
                               url: "https://live.ottiptv.cc/iptv.m3u?userid=6844226565&sign=c08de8ed458d23d075a3fdef4e74b8bf16787d9699d4569d3f02b8107c574f93d1276e657c542a596f151cb0edfbf15301c2ba1e44374feb7b320e993ad5e78cf2a992740d4ffb&auth_token=831f2b63aeabceb95bba8dda78752da7",
-                              name: "OTT IPTV", enabled: true)]
+                              name: "OTT IPTV", enabled: true, userAgent: nil)]
             try? save()
         }
         loaded = true
@@ -72,30 +73,50 @@ public actor LiveEngine {
         public let url: String
         public let name: String
         public let enabled: Bool
+        public let userAgent: String?
     }
 
     public func allSources() -> [SourceInfo] {
         ensureLoaded()
-        return sources.map { SourceInfo(id: $0.id, url: $0.url, name: $0.name, enabled: $0.enabled) }
+        return sources.map { SourceInfo(id: $0.id, url: $0.url, name: $0.name, enabled: $0.enabled, userAgent: $0.userAgent) }
     }
 
     /// 添加/更新直播源。url 相同视为同一源（幂等），返回是否为新增。
     @discardableResult
-    public func addSource(url: String, name: String? = nil) throws -> SourceInfo {
+    public func addSource(url: String, name: String? = nil, userAgent: String? = nil) throws -> SourceInfo {
         ensureLoaded()
         let trimmed = url.trimmingCharacters(in: .whitespaces)
         guard trimmed.hasPrefix("http") else { throw LiveError.badURL }
+        let ua = userAgent?.trimmingCharacters(in: .whitespaces)
         if let i = sources.firstIndex(where: { $0.url == trimmed }) {
-            // 已存在：更新名字，视为更新不重复计数
-            if let name, !name.isEmpty { sources[i].name = name; try save() }
-            return SourceInfo(id: sources[i].id, url: trimmed, name: sources[i].name, enabled: sources[i].enabled)
+            // 已存在：更新名字/UA，视为更新不重复计数
+            if let name, !name.isEmpty { sources[i].name = name }
+            if let ua { sources[i].userAgent = ua.isEmpty ? nil : ua }
+            try save()
+            return SourceInfo(id: sources[i].id, url: trimmed, name: sources[i].name, enabled: sources[i].enabled, userAgent: sources[i].userAgent)
         }
         let displayName = (name?.isEmpty == false) ? name! : Self.hostName(of: trimmed)
-        let s = Source(id: UUID().uuidString, url: trimmed, name: displayName, enabled: true)
+        let s = Source(id: UUID().uuidString, url: trimmed, name: displayName, enabled: true, userAgent: ua?.isEmpty == false ? ua : nil)
         sources.append(s)
         try save()
-        return SourceInfo(id: s.id, url: s.url, name: s.name, enabled: s.enabled)
+        return SourceInfo(id: s.id, url: s.url, name: s.name, enabled: s.enabled, userAgent: s.userAgent)
     }
+
+    /// 更新源的自定义 UA（空串 = 恢复默认）。
+    public func setUserAgent(id: String, userAgent: String?) throws {
+        ensureLoaded()
+        guard let i = sources.firstIndex(where: { $0.id == id }) else { return }
+        let ua = userAgent?.trimmingCharacters(in: .whitespaces)
+        sources[i].userAgent = (ua?.isEmpty == false) ? ua : nil
+        try save()
+    }
+
+    /// 该源拉取时用的 UA（自定义优先，默认 okHttp）。
+    private func fetchUA(for source: Source) -> String {
+        source.userAgent ?? Self.defaultFetchUserAgent
+    }
+
+    public static let defaultFetchUserAgent = "okHttp/Mod-1.5.0.0"
 
     public func removeSource(id: String) throws {
         ensureLoaded()
@@ -127,7 +148,8 @@ public actor LiveEngine {
         var merged: [String: Channel] = [:]  // key = name|group 排重
         await withTaskGroup(of: [Channel].self) { group in
             for s in active {
-                group.addTask { (try? await Self.fetchChannels(url: s.url)) ?? [] }
+                let ua = fetchUA(for: s)
+                group.addTask { (try? await Self.fetchChannels(url: s.url, userAgent: ua)) ?? [] }
             }
             for await list in group {
                 for ch in list {
@@ -153,11 +175,10 @@ public actor LiveEngine {
 
     // MARK: - m3u 解析
 
-    private static func fetchChannels(url: String) async throws -> [Channel] {
+    private static func fetchChannels(url: String, userAgent: String) async throws -> [Channel] {
         guard let u = URL(string: url) else { throw LiveError.badURL }
         var req = URLRequest(url: u, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 25)
-        // 苹果端直播源要求自定义 UA（okHttp 通用约定）
-        req.setValue("okHttp/Mod-1.5.0.0", forHTTPHeaderField: "User-Agent")
+        req.setValue(userAgent, forHTTPHeaderField: "User-Agent")
         let (data, resp) = try await URLSession.shared.data(for: req)
         guard let http = resp as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
             throw LiveError.fetchFailed((resp as? HTTPURLResponse)?.statusCode ?? -1)
@@ -196,6 +217,36 @@ public actor LiveEngine {
         let s = line[range]
         guard let open = s.firstIndex(of: "\""), let close = s.lastIndex(of: "\""), close > open else { return nil }
         return String(s[s.index(after: open)..<close])
+    }
+
+    // MARK: - 连通性测试
+
+    /// 测试单个频道流是否可达（发起请求看是否 2xx/3xx）。直播流是长连接，只取头部即取消。
+    /// 用浏览器 UA（播放代理统一 UA，与真实播放一致）。
+    public static func testChannel(url: String) async -> Bool {
+        guard let u = URL(string: url) else { return false }
+        var req = URLRequest(url: u, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 8)
+        req.setValue(playbackUserAgent, forHTTPHeaderField: "User-Agent")
+        req.setValue("bytes=0-0", forHTTPHeaderField: "Range")
+        do {
+            let (_, resp) = try await URLSession.shared.data(for: req)
+            guard let http = resp as? HTTPURLResponse else { return false }
+            return (200..<400).contains(http.statusCode)
+        } catch {
+            return false
+        }
+    }
+
+    /// 批量测试一组频道，返回 [channelId: 是否可达]。并发执行。
+    public func testChannels(urls: [String: String]) async -> [String: Bool] {
+        await withTaskGroup(of: (String, Bool).self) { group in
+            for (id, url) in urls {
+                group.addTask { (id, await Self.testChannel(url: url)) }
+            }
+            var out: [String: Bool] = [:]
+            for await (id, ok) in group { out[id] = ok }
+            return out
+        }
     }
 
     // MARK: - 播放地址

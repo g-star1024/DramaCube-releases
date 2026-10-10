@@ -13,6 +13,9 @@ struct LiveBrowseView: View {
     @State private var error: String?
     @State private var selectedGroup: String? // nil = 全部
     @State private var playError: String?
+    /// 连通性结果：channelId -> true绿/false红；nil=未测试
+    @State private var reachability: [String: Bool] = [:]
+    @State private var isTesting = false
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: Spacing.md), count: 5)
 
@@ -37,6 +40,22 @@ struct LiveBrowseView: View {
             content
         }
         .background(Brand.background)
+        .navigationTitle("电视直播")
+        .toolbar {
+            ToolbarItem(placement: .automatic) {
+                Button {
+                    Task { await runConnectivityTest() }
+                } label: {
+                    if isTesting {
+                        ProgressView().controlSize(.small)
+                    } else {
+                        Label("测试连通", systemImage: "antenna.radiowaves.left.and.right")
+                    }
+                }
+                .disabled(isTesting || channels.isEmpty)
+                .help("测试所有频道流可达性，绿点=可播，红点=不可达")
+            }
+        }
         .task { await load() }
         .alert("播放失败", isPresented: Binding(get: { playError != nil }, set: { if !$0 { playError = nil } })) {
             Button("好", role: .cancel) { playError = nil }
@@ -87,7 +106,7 @@ struct LiveBrowseView: View {
             ScrollView {
                 LazyVGrid(columns: columns, spacing: Spacing.md) {
                     ForEach(shown) { ch in
-                        LiveChannelCard(ch)
+                        LiveChannelCard(ch, reachable: reachability[ch.id])
                             .onTapGesture { play(ch) }
                     }
                 }
@@ -110,6 +129,17 @@ struct LiveBrowseView: View {
         isLoading = false
     }
 
+    /// 批量连通性测试：绿点=可播，红点=不可达。
+    private func runConnectivityTest() async {
+        guard !channels.isEmpty else { return }
+        isTesting = true
+        let result = await lm.testChannels(channels)
+        reachability = result
+        let ok = result.values.filter { $0 }.count
+        AppLog.log(.app, "直播连通性测试：\(ok)/\(result.count) 可播")
+        isTesting = false
+    }
+
     // MARK: 播放（直播即单集流，直接进播放器）
     private func play(_ ch: LiveManager.LiveChannel) {
         let stream = lm.streamURLString(channelURL: ch.url)
@@ -124,10 +154,15 @@ struct LiveBrowseView: View {
     }
 }
 
-/// 直播频道卡片：logo + 名称 + 分组徽标。
+/// 直播频道卡片：logo + 名称 + 分组徽标 + 右上角连通性角标。
 private struct LiveChannelCard: View {
     let channel: LiveManager.LiveChannel
-    init(_ c: LiveManager.LiveChannel) { self.channel = c }
+    /// nil=未测试，true=可播（绿），false=不可达（红）
+    let reachable: Bool?
+    init(_ c: LiveManager.LiveChannel, reachable: Bool? = nil) {
+        self.channel = c
+        self.reachable = reachable
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -157,6 +192,17 @@ private struct LiveChannelCard: View {
                     .background(Capsule().fill(Color.black.opacity(0.55)))
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                     .padding(5)
+                // 连通性角标（右上角）：绿=可播，红=不可达
+                if let reachable {
+                    Circle()
+                        .fill(reachable ? Color.green : Color.red)
+                        .frame(width: 11, height: 11)
+                        .overlay(Circle().strokeBorder(Color.white, lineWidth: 1.5))
+                        .shadow(color: .black.opacity(0.2), radius: 1, y: 0.5)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                        .padding(6)
+                        .help(reachable ? "可正常播放" : "当前不可达")
+                }
             }
             .clipShape(RoundedRectangle(cornerRadius: Radius.md, style: .continuous))
             Text(channel.name)

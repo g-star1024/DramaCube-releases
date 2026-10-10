@@ -271,13 +271,14 @@ public enum GatewayServer {
             return Self.json(GatewayEnvelope(ok: true, data: list))
         }
 
-        // 添加直播源：/api/live/add?url=&name=  （url 相同幂等更新，不重复计数）
+        // 添加直播源：/api/live/add?url=&name=&ua=  （url 相同幂等更新，不重复计数）
         router.get("api/live/add") { request, _ async throws -> Response in
             guard let url = Self.queryValue(request, name: "url"), !url.isEmpty else {
                 throw HTTPError(.badRequest, message: "missing url")
             }
             let name = Self.queryValue(request, name: "name")
-            let added = try await LiveEngine.shared.addSource(url: url, name: name)
+            let ua = Self.queryValue(request, name: "ua")
+            let added = try await LiveEngine.shared.addSource(url: url, name: name, userAgent: ua)
             await LiveEngine.shared.invalidateCache()
             return Self.json(GatewayEnvelope(ok: true, data: added))
         }
@@ -309,7 +310,34 @@ public enum GatewayServer {
             return Self.json(GatewayEnvelope(ok: true, data: list))
         }
 
-        // 直播流代理：/api/live/stream?url= —— 统一 UA（okHttp/Mod-1.5.0.0）防盗链
+        // 设置直播源自定义 UA：/api/live/setua?id=&ua=  （ua 空 = 恢复默认）
+        router.get("api/live/setua") { request, _ async throws -> Response in
+            guard let id = Self.queryValue(request, name: "id"), !id.isEmpty else {
+                throw HTTPError(.badRequest, message: "missing id")
+            }
+            let ua = Self.queryValue(request, name: "ua")
+            try await LiveEngine.shared.setUserAgent(id: id, userAgent: ua)
+            await LiveEngine.shared.invalidateCache()
+            return Self.json(GatewayEnvelope(ok: true, data: ["id": id]))
+        }
+
+        // 批量连通性测试：/api/live/test?ids=id1,id2&urls=enc1,enc2  （一一对应，URL 需 percent 编码）
+        // 返回 [id: Bool]。并发探测各频道流可达性。
+        router.get("api/live/test") { request, _ async throws -> Response in
+            let idsRaw = Self.queryValue(request, name: "ids") ?? ""
+            let urlsRaw = Self.queryValue(request, name: "urls") ?? ""
+            let ids = idsRaw.split(separator: "|").map(String.init)
+            let urls = urlsRaw.split(separator: "|").map(String.init)
+            guard ids.count == urls.count, !ids.isEmpty else {
+                throw HTTPError(.badRequest, message: "ids/urls 数量需一致且非空")
+            }
+            var map: [String: String] = [:]
+            for (i, id) in ids.enumerated() { map[id] = urls[i] }
+            let result = await LiveEngine.shared.testChannels(urls: map)
+            return Self.json(GatewayEnvelope(ok: true, data: result))
+        }
+
+        // 直播流代理：/api/live/stream?url= —— 统一 UA（playbackUserAgent，浏览器 UA 实测全源通放）防盗链
         router.get("api/live/stream") { request, _ async throws -> Response in
             guard let url = Self.queryValue(request, name: "url"), !url.isEmpty else {
                 throw HTTPError(.badRequest, message: "missing url")

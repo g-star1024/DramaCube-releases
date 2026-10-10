@@ -5,8 +5,11 @@ struct LiveSettingsView: View {
     @ObservedObject private var lm = LiveManager.shared
     @State private var urlInput = ""
     @State private var nameInput = ""
+    @State private var uaInput = ""
     @State private var message: String?
     @State private var msgIsError = false
+    @State private var editingUA: LiveManager.LiveSource?
+    @State private var uaDraft = ""
 
     var body: some View {
         ScrollView {
@@ -22,6 +25,16 @@ struct LiveSettingsView: View {
         }
         .background(Brand.background)
         .onAppear { lm.load() }
+        .alert("自定义 UA", isPresented: Binding(get: { editingUA != nil }, set: { if !$0 { editingUA = nil } })) {
+            TextField("留空恢复默认", text: $uaDraft)
+            Button("保存") {
+                if let s = editingUA { Task { await lm.setUserAgent(id: s.id, uaDraft) } }
+                editingUA = nil
+            }
+            Button("取消", role: .cancel) { editingUA = nil }
+        } message: {
+            Text("为「\(editingUA?.name ?? "")」设置拉取源列表时的 User-Agent，留空恢复默认 okHttp/Mod-1.5.0.0")
+        }
     }
 
     // MARK: 添加源
@@ -41,12 +54,20 @@ struct LiveSettingsView: View {
                 .tint(Brand.accent)
                 .disabled(lm.isImporting || urlInput.trimmingCharacters(in: .whitespaces).isEmpty)
             }
+            HStack(spacing: Spacing.sm) {
+                Text("自定义 UA")
+                    .font(Typography.caption)
+                    .foregroundStyle(Brand.secondaryLabel)
+                TextField("留空用默认 okHttp/Mod-1.5.0.0", text: $uaInput)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(size: 11))
+            }
             if let message {
                 Text(message)
                     .font(Typography.caption)
                     .foregroundStyle(msgIsError ? .red : .green)
             }
-            Text("支持标准 m3u/m3u8 直播源（含 #EXTINF 元数据）。可添加多个源，频道按「名称+分组」自动排重合并。播放自带约定 UA（okHttp/Mod-1.5.0.0）。")
+            Text("支持标准 m3u/m3u8 直播源（含 #EXTINF 元数据）。可添加多个源，频道按「名称+分组」自动排重合并。播放统一经网关代理防盗链；拉取源列表默认 UA okHttp/Mod-1.5.0.0，可在下方为单个源自定义。")
                 .font(Typography.caption)
                 .foregroundStyle(Brand.secondaryLabel)
         }
@@ -82,8 +103,15 @@ struct LiveSettingsView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(s.name).font(Typography.body).lineLimit(1)
                 Text(s.url).font(.system(size: 10)).foregroundStyle(Brand.secondaryLabel).lineLimit(1).truncationMode(.middle)
+                Text("UA: \(s.userAgent ?? "默认 okHttp/Mod-1.5.0.0")")
+                    .font(.system(size: 9))
+                    .foregroundStyle(s.userAgent != nil ? Brand.accent : Brand.secondaryLabel)
+                    .lineLimit(1)
             }
             Spacer()
+            Button("设 UA") { editingUA = s; uaDraft = s.userAgent ?? "" }
+                .controlSize(.small)
+                .buttonStyle(.borderless)
             Button("删除") { Task { await lm.remove(id: s.id) } }
                 .controlSize(.small)
                 .buttonStyle(.borderless)
@@ -119,10 +147,14 @@ struct LiveSettingsView: View {
         guard !url.isEmpty else { return }
         message = nil
         do {
-            let isNew = try await lm.add(url: url, name: nameInput.trimmingCharacters(in: .whitespaces))
+            let isNew = try await lm.add(
+                url: url,
+                name: nameInput.trimmingCharacters(in: .whitespaces),
+                userAgent: uaInput.trimmingCharacters(in: .whitespaces)
+            )
             message = isNew ? "添加成功，频道已合并到「电视直播」" : "该源已存在，已更新"
             msgIsError = false
-            if isNew { urlInput = ""; nameInput = "" }
+            if isNew { urlInput = ""; nameInput = ""; uaInput = "" }
         } catch {
             message = "添加失败：\(error.localizedDescription)"
             msgIsError = true

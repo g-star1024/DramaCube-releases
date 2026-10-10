@@ -2,16 +2,16 @@ import SwiftUI
 import HongguoCore
 
 public enum SidebarItem: String, CaseIterable, Identifiable {
-    case discover, rank, live, tvbox, nas, library, settings
+    case discover, rank, tvbox, nas, live, library, settings
     public var id: String { rawValue }
     public var title: String {
         switch self {
         case .discover: return "发现"
         case .rank: return "排行榜"
-        case .live: return "电视直播"
         case .tvbox: return "视频源"
         case .nas: return "资源库"
-        case .library: return "收藏 / 历史"
+        case .live: return "电视直播"
+        case .library: return "历史收藏"
         case .settings: return "设置"
         }
     }
@@ -19,9 +19,9 @@ public enum SidebarItem: String, CaseIterable, Identifiable {
         switch self {
         case .discover: return "sparkles"
         case .rank: return "chart.bar.fill"
-        case .live: return "tv"
         case .tvbox: return "antenna.radiowaves.left.and.right"
         case .nas: return "externaldrive.connected.to.line.below"
+        case .live: return "tv"
         case .library: return "bookmark"
         case .settings: return "gearshape"
         }
@@ -133,14 +133,14 @@ public struct CatalogView: View {
             BrowseView(config: discoverConfig, segments: DiscoverSegment.allCases, onSelect: openDetail)
         case .rank:
             BrowseView(config: rankConfig, onSelect: openDetail)
-        case .live:
-            LiveBrowseView()
         case .tvbox:
             TVBoxBrowseView(sm: SourceManager.shared, onSelect: openDetail)
         case .nas:
             NASBrowseView(nm: NASManager.shared, onSelect: openDetail)
+        case .live:
+            LiveBrowseView()
         case .library:
-            LibraryView(initial: .favorite)
+            LibraryView(initial: .history)
         case .settings:
             SettingsView()
         }

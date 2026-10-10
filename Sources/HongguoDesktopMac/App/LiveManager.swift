@@ -34,6 +34,7 @@ public final class LiveManager: ObservableObject {
         public let url: String
         public let name: String
         public let enabled: Bool
+        public let userAgent: String?
     }
 
     public struct LiveChannel: Codable, Identifiable, Sendable, Hashable {
@@ -68,19 +69,29 @@ public final class LiveManager: ObservableObject {
 
     /// 添加直播源（url 相同幂等更新）。返回是否新增（false=更新已有）。
     @discardableResult
-    public func add(url: String, name: String?) async throws -> Bool {
+    public func add(url: String, name: String?, userAgent: String? = nil) async throws -> Bool {
         isImporting = true
         defer { isImporting = false }
         let before = sources.count
         var comps = URLComponents(string: "\(base)/api/live/add")!
         comps.queryItems = [.init(name: "url", value: url)]
         if let name, !name.isEmpty { comps.queryItems?.append(.init(name: "name", value: name)) }
+        if let ua = userAgent, !ua.isEmpty { comps.queryItems?.append(.init(name: "ua", value: ua)) }
         guard let u = comps.url else { throw URLError(.badURL) }
         let _: LiveSource = try await get(u.absoluteString)
         await refresh()
         let isNew = sources.count > before
         AppLog.log(.app, "直播源已\(isNew ? "添加" : "更新")：\(name ?? url)")
         return isNew
+    }
+
+    /// 设置源的自定义 UA（空串/nil = 恢复默认 okHttp UA）。
+    public func setUserAgent(id: String, _ ua: String?) async {
+        var comps = URLComponents(string: "\(base)/api/live/setua")!
+        comps.queryItems = [.init(name: "id", value: id), .init(name: "ua", value: ua ?? "")]
+        guard let u = comps.url else { return }
+        let _: [String: String] = (try? await get(u.absoluteString)) ?? [:]
+        await refresh()
     }
 
     public func remove(id: String) async {
@@ -99,6 +110,23 @@ public final class LiveManager: ObservableObject {
 
     public func channels() async throws -> [LiveChannel] {
         try await get("\(base)/api/live/channels")
+    }
+
+    /// 批量连通性测试：返回 [channelId: 是否可达]。分批避免单个 query 过长。
+    public func testChannels(_ channels: [LiveChannel]) async -> [String: Bool] {
+        var out: [String: Bool] = [:]
+        let batchSize = 40
+        for chunk in stride(from: 0, to: channels.count, by: batchSize) {
+            let slice = Array(channels[chunk..<min(chunk + batchSize, channels.count)])
+            let ids = slice.map(\.id).joined(separator: "|")
+            let urls = slice.map { $0.url.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? $0.url }
+                .joined(separator: "|")
+            let urlStr = "\(base)/api/live/test?ids=\(ids)&urls=\(urls)"
+            if let part: [String: Bool] = try? await get(urlStr) {
+                out.merge(part) { a, _ in a }
+            }
+        }
+        return out
     }
 
     /// 频道播放地址（经网关直播代理，统一 UA）。
