@@ -117,10 +117,13 @@ public actor NASEngine {
         let t0 = Date()
         do {
             let lib = try library(id: id)
-            let items = try await listVideos(lib: lib, path: "")
+            // 连通性测试：只列根目录确认可达（不全库递归扫描，避免大库测试卡几十秒）
+            _ = try await listEntries(lib: lib, path: "")
+            // 视频数用一次限深递归粗估（复用 listVideos 的递归，但有 maxTotal 上限兜底）
+            let vids = (try? await listVideos(lib: lib, path: "")) ?? []
             return TestResult(id: id, ok: true,
                               latencyMs: Int(Date().timeIntervalSince(t0) * 1000),
-                              videoCount: items.count, error: nil)
+                              videoCount: vids.count, error: nil)
         } catch {
             return TestResult(id: id, ok: false,
                               latencyMs: Int(Date().timeIntervalSince(t0) * 1000),
@@ -222,21 +225,40 @@ public actor NASEngine {
         }
     }
 
-    /// 列出某路径下（递归一层）全部视频文件 URL。
+    /// 递归扫描某路径下全部视频文件 URL。
+    ///
+    /// 早期版本只递归 1 层，遇到「电影/年份/片名/xx.mp4」这类 ≥3 层结构会全盘扫空
+    /// （实测飞牛 NAS：movie/feigrampub/... 视频在 3 层以下，导致测试显示 0 视频、浏览空白）。
+    /// 现改为递归扫描：限深 `maxDepth`、单目录限量 `maxEntries`、总量上限 `maxTotal`，
+    /// 防止巨型库扫爆；子目录失败跳过不拖垮整体。
     private func listVideos(lib: Library, path: String) async throws -> [URL] {
-        let entries = try await listEntries(lib: lib, path: path)
         var out: [URL] = []
-        for e in entries {
+        try await collectVideos(lib: lib, path: path, depth: 0, into: &out)
+        return out.sorted { $0.lastPathComponent.localizedStandardCompare($1.lastPathComponent) == .orderedAscending }
+    }
+
+    private let maxDepth = 5
+    private let maxEntries = 500   // 单目录最多处理条目
+    private let maxTotal = 5000    // 全库视频总量上限
+
+    private func collectVideos(lib: Library, path: String, depth: Int, into out: inout [URL]) async throws {
+        if depth > maxDepth || out.count >= maxTotal { return }
+        let entries: [Entry]
+        do {
+            entries = try await listEntries(lib: lib, path: path)
+        } catch {
+            return // 单目录失败（权限/超时）跳过，不中断整体扫描
+        }
+        for e in entries.prefix(maxEntries) {
+            if out.count >= maxTotal { return }
             if e.isDir {
-                let sub = try await listEntries(lib: lib, path: join(path, e.name))
-                for s in sub where !s.isDir && Self.isVideo(s.name) {
-                    out.append(try fileURL(lib: lib, path: join(join(path, e.name), s.name)))
-                }
+                try await collectVideos(lib: lib, path: join(path, e.name), depth: depth + 1, into: &out)
             } else if Self.isVideo(e.name) {
-                out.append(try fileURL(lib: lib, path: join(path, e.name)))
+                if let u = try? fileURL(lib: lib, path: join(path, e.name)) {
+                    out.append(u)
+                }
             }
         }
-        return out.sorted { $0.lastPathComponent.localizedStandardCompare($1.lastPathComponent) == .orderedAscending }
     }
 
     private func fileURL(lib: Library, path: String) throws -> URL {

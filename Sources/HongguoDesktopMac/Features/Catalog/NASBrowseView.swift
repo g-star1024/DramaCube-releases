@@ -19,7 +19,6 @@ struct NASBrowseView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            libBar
             if currentLibId != nil { pathBar }
             Divider()
             content
@@ -40,37 +39,76 @@ struct NASBrowseView: View {
                 Task { await load() }
             }
         }
+        .popover(isPresented: $showLibPicker, arrowEdge: .top) { libPicker }
     }
 
-    // MARK: 库切换条
-    private var libBar: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: Spacing.sm) {
-                ForEach(nm.libraries) { lib in
-                    let active = currentLibId == lib.id
-                    Button { currentLibId = lib.id } label: {
-                        HStack(spacing: 5) {
-                            Image(systemName: lib.type == .webdav ? "network" : "externaldrive")
-                                .font(.system(size: 11))
-                            Text(lib.name).font(Typography.caption)
+    @State private var showLibPicker = false
+
+    // MARK: 库切换按钮（只留一个 ⟳ 按钮附库名，点击弹库列表；不再平铺全部库 chip）
+    private var libSwitchButton: some View {
+        let cur = nm.libraries.first(where: { $0.id == currentLibId })
+        return Button { showLibPicker = true } label: {
+            HStack(spacing: 5) {
+                Image(systemName: "arrow.triangle.2.circlepath")
+                    .font(.system(size: 11, weight: .semibold))
+                Text(cur?.name ?? "选择资源库")
+                    .font(.system(size: 12, weight: .medium))
+                    .lineLimit(1)
+            }
+            .foregroundStyle(Brand.label)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(Capsule().fill(Brand.chipFill))
+            .overlay(Capsule().strokeBorder(Brand.separator.opacity(0.6), lineWidth: 0.5))
+        }
+        .buttonStyle(.plain)
+        .help("当前资源库：\(cur?.name ?? "未选择")，点击切换")
+    }
+
+    /// 资源库切换弹层。
+    private var libPicker: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("选择资源库")
+                .font(.system(size: 13, weight: .semibold))
+                .padding(.horizontal, Spacing.md)
+                .padding(.vertical, Spacing.sm)
+            Divider()
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    ForEach(nm.libraries) { lib in
+                        Button {
+                            if lib.enabled { currentLibId = lib.id; showLibPicker = false }
+                        } label: {
+                            HStack(spacing: Spacing.sm) {
+                                Image(systemName: currentLibId == lib.id ? "checkmark.circle.fill" : "circle")
+                                    .foregroundStyle(currentLibId == lib.id ? Brand.accent : Brand.secondaryLabel)
+                                Image(systemName: lib.type == .webdav ? "network" : "externaldrive")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(Brand.secondaryLabel)
+                                Text(lib.name).font(Typography.body).lineLimit(1)
+                                Spacer()
+                                Text(lib.typeName)
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(Brand.secondaryLabel)
+                                if !lib.enabled {
+                                    Text("已禁用").font(.system(size: 11)).foregroundStyle(Brand.secondaryLabel)
+                                }
+                            }
+                            .padding(.horizontal, Spacing.md)
+                            .padding(.vertical, 8)
+                            .contentShape(Rectangle())
                         }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(Capsule().fill(active ? Brand.accent : Brand.chipFill))
-                        .foregroundStyle(active ? .white : Brand.label)
-                        .overlay(Capsule().strokeBorder(active ? Color.clear : Brand.separator.opacity(0.6), lineWidth: 0.5))
-                        .opacity(lib.enabled ? 1 : 0.4)
+                        .buttonStyle(.plain)
+                        .disabled(!lib.enabled)
+                        .opacity(lib.enabled ? 1 : 0.5)
                     }
-                    .buttonStyle(.plain)
-                    .disabled(!lib.enabled)
                 }
             }
-            .padding(.horizontal, Spacing.lg)
-            .padding(.vertical, Spacing.sm)
         }
+        .frame(width: 300, height: 260)
     }
 
-    // MARK: 路径导航条
+    // MARK: 路径导航条（右侧放库切换按钮）
     private var pathBar: some View {
         HStack(spacing: Spacing.xs) {
             Button { navigateUp() } label: {
@@ -89,6 +127,7 @@ struct NASBrowseView: View {
                 .lineLimit(1)
                 .truncationMode(.head)
             Spacer()
+            libSwitchButton
         }
         .padding(.horizontal, Spacing.lg)
         .padding(.vertical, Spacing.xs)

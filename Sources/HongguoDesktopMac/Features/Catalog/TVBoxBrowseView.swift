@@ -23,7 +23,7 @@ struct TVBoxBrowseView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            sourceBar
+            // 顶部不再平铺当前源 chip；频道行右侧放「切换源」按钮（截图标记1位置）
             if !sm.enabledSites.isEmpty, sm.currentSource != "hongguo" {
                 categoryBar
             }
@@ -46,45 +46,24 @@ struct TVBoxBrowseView: View {
         }
     }
 
-    // MARK: 源切换条（只显示当前源 chip + 末尾切换按钮弹全源列表，不再平铺全部源）
-    private var sourceBar: some View {
-        HStack(spacing: Spacing.sm) {
-            if let cur = sm.sites.first(where: { $0.key == sm.currentSource }) {
-                sourceChip(id: cur.key, name: cur.name)
-            } else if let first = sm.enabledSites.first {
-                sourceChip(id: first.key, name: first.name)
+    // MARK: 源切换按钮（只留一个 ⟳ 按钮，附当前源名，点击弹全源列表）
+    private var sourceSwitchButton: some View {
+        Button { showSourcePicker = true } label: {
+            HStack(spacing: 5) {
+                Image(systemName: "arrow.triangle.2.circlepath")
+                    .font(.system(size: 11, weight: .semibold))
+                Text(sm.currentSourceName)
+                    .font(.system(size: 12, weight: .medium))
+                    .lineLimit(1)
             }
-            if sm.hasSubscription {
-                Button { showSourcePicker = true } label: {
-                    Image(systemName: "arrow.triangle.2.circlepath")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(Brand.label)
-                        .frame(width: 28, height: 28)
-                        .background(Circle().fill(Brand.chipFill))
-                        .overlay(Circle().strokeBorder(Brand.separator.opacity(0.6), lineWidth: 0.5))
-                }
-                .buttonStyle(.plain)
-                .help("切换视频源")
-            }
-            Spacer()
-        }
-        .padding(.horizontal, Spacing.lg)
-        .padding(.vertical, Spacing.sm)
-    }
-
-    private func sourceChip(id: String, name: String) -> some View {
-        let active = sm.currentSource == id
-        return Button {
-            sm.currentSource = id
-        } label: {
-            Text(name).font(Typography.caption)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(Capsule().fill(active ? Brand.accent : Brand.chipFill))
-                .foregroundStyle(active ? .white : Brand.label)
-                .overlay(Capsule().strokeBorder(active ? Color.clear : Brand.separator.opacity(0.6), lineWidth: 0.5))
+            .foregroundStyle(Brand.label)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(Capsule().fill(Brand.chipFill))
+            .overlay(Capsule().strokeBorder(Brand.separator.opacity(0.6), lineWidth: 0.5))
         }
         .buttonStyle(.plain)
+        .help("当前源：\(sm.currentSourceName)，点击切换")
     }
 
     /// 全源切换弹层（含延迟与状态）。
@@ -135,11 +114,11 @@ struct TVBoxBrowseView: View {
         .frame(width: 320, height: 420)
     }
 
-    // MARK: 频道分类条（maccms class）
+    // MARK: 频道分类条（maccms class）+ 右侧源切换按钮（标记1位置）
     @ViewBuilder
     private var categoryBar: some View {
         let cats = sm.categories[sm.currentSource] ?? []
-        if !cats.isEmpty {
+        HStack(spacing: Spacing.sm) {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: Spacing.sm) {
                     catChip(id: nil, name: "最新")
@@ -147,10 +126,12 @@ struct TVBoxBrowseView: View {
                         catChip(id: c.typeId, name: c.name)
                     }
                 }
-                .padding(.horizontal, Spacing.lg)
-                .padding(.vertical, Spacing.xs)
             }
+            // 源切换按钮固定在频道行右侧（不被横向滚动挤走）
+            sourceSwitchButton
         }
+        .padding(.horizontal, Spacing.lg)
+        .padding(.vertical, Spacing.xs)
     }
 
     private func catChip(id: Int?, name: String) -> some View {

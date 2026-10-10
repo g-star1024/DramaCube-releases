@@ -105,7 +105,7 @@ struct SourceSettingsView: View {
         .overlay(RoundedRectangle(cornerRadius: Radius.md).strokeBorder(Brand.separator.opacity(0.5), lineWidth: 0.5))
     }
 
-    // MARK: 站点列表
+    // MARK: 站点列表（LazyVStack 懒渲染，避免切到本 Tab 时一次性排版 100+ 行卡顿）
     private var siteListCard: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text("站点（\(sm.sites.count) 个，启用 \(sm.enabledSites.count)，按延迟排序）")
@@ -116,9 +116,11 @@ struct SourceSettingsView: View {
             let shown = sm.sortedSites.filter { s in
                 !showOnlyFailed || (sm.testResults[s.key].map { !$0.ok } ?? false)
             }
-            ForEach(shown) { s in
-                siteRow(s)
-                if s.id != shown.last?.id { Divider().padding(.leading, 4) }
+            LazyVStack(alignment: .leading, spacing: 0, pinnedViews: []) {
+                ForEach(shown) { s in
+                    siteRow(s)
+                    if s.id != shown.last?.id { Divider().padding(.leading, 4) }
+                }
             }
         }
         .padding(Spacing.lg)

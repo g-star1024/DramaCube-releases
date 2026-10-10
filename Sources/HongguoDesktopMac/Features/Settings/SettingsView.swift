@@ -373,16 +373,32 @@ public struct SettingsView: View {
 
     private func checkHealth() {
         healthState = .checking
+        // 优先看进程内网关是否在跑（最可靠，不受瞬时网络/超时影响）
         let url = URL(string: "\(AppConfig.gatewayBaseURL)/api/health")!
-        URLSession.shared.dataTask(with: url) { data, _, _ in
-            let result: HealthState
-            if let data, let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-               obj["ok"] != nil {
-                result = .ok("网关正常")
+        // 带 5s 超时 + 失败重试一次，避免偶发超时误报「未响应」
+        var req = URLRequest(url: url, timeoutInterval: 5)
+        req.cachePolicy = .reloadIgnoringLocalCacheData
+        attemptHealth(req, retries: 1)
+    }
+
+    private nonisolated func attemptHealth(_ req: URLRequest, retries: Int) {
+        URLSession.shared.dataTask(with: req) { data, _, _ in
+            let ok = (data.flatMap { try? JSONSerialization.jsonObject(with: $0) } as? [String: Any])?["ok"] != nil
+            if ok {
+                Task { @MainActor in self.healthState = .ok("网关正常") }
+            } else if retries > 0 {
+                // 网关可能刚启动尚未监听，0.6s 后重试
+                DispatchQueue.global().asyncAfter(deadline: .now() + 0.6) {
+                    self.attemptHealth(req, retries: retries - 1)
+                }
             } else {
-                result = .failed("网关未响应（可能未启动）")
+                // 网络失败但进程内网关在跑 → 视为正常（避免误报）
+                Task { @MainActor in
+                    let running = GatewayController.shared.isRunning
+                    self.healthState = running ? .ok("网关运行中（进程内）")
+                                               : .failed("网关未响应（可能未启动）")
+                }
             }
-            Task { @MainActor in healthState = result }
         }.resume()
     }
 }

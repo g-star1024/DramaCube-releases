@@ -136,7 +136,10 @@ public final class NASManager: ObservableObject {
 
     private func get<T: Codable & Sendable>(_ urlString: String) async throws -> T {
         guard let url = URL(string: urlString) else { throw URLError(.badURL) }
-        let (data, _) = try await URLSession.shared.data(from: url)
+        // 大库递归扫描可能耗时，给 60s 超时（默认 60s 但显式声明更清晰，且避免偶发挂起）
+        var req = URLRequest(url: url, timeoutInterval: 60)
+        req.cachePolicy = .reloadIgnoringLocalCacheData
+        let (data, _) = try await URLSession.shared.data(for: req)
         let env = try JSONDecoder().decode(GatewayEnvelope<T>.self, from: data)
         if let e = env.error { throw HongguoParseError.fieldMissing(e) }
         guard let d = env.data else { throw HongguoParseError.fieldMissing("data") }

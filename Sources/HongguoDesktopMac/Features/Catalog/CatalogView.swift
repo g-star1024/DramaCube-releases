@@ -297,11 +297,12 @@ final class PlayerWindowManager {
     var isManuallyFullscreen: Bool { savedFrame != nil }
 
     /// 竖版视频窗口自适应：9:16 短剧收窄窗口消除左右黑边。
-    /// 竖版 → 高 780、宽按 9:16 比例（约 440）；横版 → 恢复 960×620。
-    /// 全屏中不动（全屏本身铺满，由 AVLayer gravity 处理）。
+    /// 竖版 → 窗口高 844（视频区 800 + 控制条约 44），宽 = 视频区高 × 9/16 = 450，即视频区严格 9:16；
+    /// 横版 → 恢复 960×620。全屏中不动（全屏本身铺满，由 AVLayer gravity 处理）。
     func adaptToVideo(portrait: Bool) {
         guard let w = window, w.isVisible, savedFrame == nil else { return }
-        let target: NSSize = portrait ? NSSize(width: 480, height: 800) : NSSize(width: 960, height: 620)
+        // 9:16：宽 = 高 × 9/16。视频区高取 800 → 宽 450；窗口总高 = 800 + 控制条约 44 = 844。
+        let target: NSSize = portrait ? NSSize(width: 450, height: 844) : NSSize(width: 960, height: 620)
         // 尺寸已接近就不动（避免每集切换抖动）
         if abs(w.frame.width - target.width) < 8 && abs(w.frame.height - target.height) < 8 { return }
         var f = w.frame
@@ -314,7 +315,7 @@ final class PlayerWindowManager {
             f.origin.y = max(screen.visibleFrame.minY, min(f.origin.y, screen.visibleFrame.maxY - target.height))
         }
         w.setFrame(f, display: true, animate: true)
-        AppLog.log(.player, "播放窗口自适应：\(portrait ? "竖版" : "横版") \(Int(target.width))x\(Int(target.height))")
+        AppLog.log(.player, "播放窗口自适应：\(portrait ? "竖版 9:16" : "横版") \(Int(target.width))x\(Int(target.height))")
     }
 
     /// 切换播放器窗口全屏。

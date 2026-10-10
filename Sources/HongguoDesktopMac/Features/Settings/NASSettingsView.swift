@@ -111,15 +111,18 @@ struct NASSettingsView: View {
             }
             Spacer()
 
-            Button(testingId == lib.id ? "测试中…" : "测试") {
+            Button(testingId == lib.id ? "扫描中…" : "测试") {
                 testingId = lib.id
                 Task {
+                    // 大库递归扫描可能耗时较长，给前端更长容忍；失败优先看进程内网关
                     if let r = await nm.test(id: lib.id) {
                         testMsg[lib.id] = r.ok
                             ? "✓ \(r.latencyMs)ms · \(r.videoCount) 个视频"
                             : "✗ \(r.error ?? "连接失败")"
                     } else {
-                        testMsg[lib.id] = "✗ 网关未响应"
+                        testMsg[lib.id] = GatewayController.shared.isRunning
+                            ? "✗ 扫描超时（库较大，可直接到资源库浏览）"
+                            : "✗ 网关未响应"
                     }
                     testingId = nil
                 }

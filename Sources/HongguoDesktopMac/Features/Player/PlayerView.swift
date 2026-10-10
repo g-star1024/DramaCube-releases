@@ -19,6 +19,8 @@ public struct PlayerView: View {
     @State private var isScrubbing = false
     @State private var playedIds: Set<String> = []
     @State private var wasPlaying = false
+    /// 鼠标悬停在视频区时显示左上角悬浮控制（默认隐藏，不挡画面）。
+    @State private var isHoveringVideo = false
 
     private let rateOptions: [Double] = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0]
 
@@ -45,29 +47,36 @@ public struct PlayerView: View {
                     errorOverlay(err)
                 }
                 // 左上角悬浮控制：关闭 / 标题（Esc 全屏中先退全屏，否则关闭）
-                HStack(spacing: Spacing.sm) {
-                    Button {
-                        handleEsc()
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(.white)
-                            .frame(width: 28, height: 28)
-                            .background(Circle().fill(.black.opacity(0.45)))
-                    }
-                    .buttonStyle(.plain)
-                    .keyboardShortcut(.escape, modifiers: [])
-                    .help(PlayerWindowManager.shared.isManuallyFullscreen ? "退出全屏 (Esc)" : "关闭播放器 (Esc)")
+                // 窗口已有系统红黄绿按钮，此悬浮层默认隐藏，鼠标悬停视频区时才淡入，不遮挡画面。
+                if isHoveringVideo {
+                    HStack(spacing: Spacing.sm) {
+                        Button {
+                            handleEsc()
+                        } label: {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundStyle(.white)
+                                .frame(width: 28, height: 28)
+                                .background(Circle().fill(.black.opacity(0.45)))
+                        }
+                        .buttonStyle(.plain)
+                        .keyboardShortcut(.escape, modifiers: [])
+                        .help(PlayerWindowManager.shared.isManuallyFullscreen ? "退出全屏 (Esc)" : "关闭播放器 (Esc)")
 
-                    Text("\(detail.drama.title) · 第 \(vm.currentEpisode?.index ?? 0) 集")
-                        .font(Typography.caption)
-                        .foregroundStyle(.white.opacity(0.9))
-                        .lineLimit(1)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
-                        .background(Capsule().fill(.black.opacity(0.45)))
+                        Text("\(detail.drama.title) · 第 \(vm.currentEpisode?.index ?? 0) 集")
+                            .font(Typography.caption)
+                            .foregroundStyle(.white.opacity(0.9))
+                            .lineLimit(1)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(Capsule().fill(.black.opacity(0.45)))
+                    }
+                    .padding(Spacing.md)
+                    .transition(.opacity)
                 }
-                .padding(Spacing.md)
+            }
+            .onHover { hovering in
+                withAnimation(.easeInOut(duration: 0.2)) { isHoveringVideo = hovering }
             }
             .onTapGesture(count: 2) { toggleFullscreen() }
             .help("双击切换全屏")
