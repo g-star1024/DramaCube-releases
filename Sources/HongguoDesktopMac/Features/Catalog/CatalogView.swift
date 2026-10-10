@@ -2,12 +2,11 @@ import SwiftUI
 import HongguoCore
 
 public enum SidebarItem: String, CaseIterable, Identifiable {
-    case discover, rank, tvbox, nas, live, library, downloads, settings
+    case rank, tvbox, nas, live, library, downloads, settings
     public var id: String { rawValue }
     public var title: String {
         switch self {
-        case .discover: return "发现"
-        case .rank: return "排行榜"
+        case .rank: return "发现"
         case .tvbox: return "视频源"
         case .nas: return "资源库"
         case .live: return "电视直播"
@@ -18,8 +17,7 @@ public enum SidebarItem: String, CaseIterable, Identifiable {
     }
     public var icon: String {
         switch self {
-        case .discover: return "sparkles"
-        case .rank: return "chart.bar.fill"
+        case .rank: return "sparkles"
         case .tvbox: return "antenna.radiowaves.left.and.right"
         case .nas: return "externaldrive.connected.to.line.below"
         case .live: return "tv"
@@ -32,7 +30,7 @@ public enum SidebarItem: String, CaseIterable, Identifiable {
 
 public struct CatalogView: View {
     @StateObject private var service = CatalogService.shared
-    @State private var selection: SidebarItem = .discover
+    @State private var selection: SidebarItem = .rank
     @State private var query = ""
     @State private var searchResults: [Drama]?
     @State private var isSearching = false
@@ -46,8 +44,12 @@ public struct CatalogView: View {
     public var body: some View {
         NavigationSplitView {
             List(SidebarItem.allCases, selection: $selection) { item in
-                Label(item.title, systemImage: item.icon).tag(item)
+                Label(item.title, systemImage: item.icon)
+                    .font(.system(size: 14))
+                    .padding(.vertical, 7)   // 加大频道行距，避免挤在一起
+                    .tag(item)
             }
+            .listStyle(.sidebar)
             .navigationTitle("剧立方")
             .navigationSplitViewColumnWidth(min: 200, ideal: 220)
         } detail: {
@@ -115,8 +117,6 @@ public struct CatalogView: View {
     @ViewBuilder
     private var sectionContent: some View {
         switch selection {
-        case .discover:
-            DiscoverView(onSelect: openDetail)
         case .rank:
             RankView(onSelect: openDetail)
         case .tvbox:

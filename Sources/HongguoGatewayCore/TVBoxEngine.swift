@@ -186,22 +186,16 @@ public actor TVBoxEngine {
             subscriptionURLs = sub.urls ?? []
             lastLoad = Date()
         }
-        // 首次使用（无任何站点）：注入内置采集源（路线 D），开箱即用，不直接暴露给用户
-        if sites.isEmpty {
-            await seedBuiltinSites()
+        // v1.2.3：去掉内置采集源自动注入 + 清掉历史缓存里曾由本 App 注入的内置源（用户要求不预置）。
+        // 只清「key = 归一化 API」的注入项（seedBuiltinSites 生成的 key 形如 api_ukuapi_com_...），
+        // 不动用户订阅导入的源（key 形如 api_6/api_18，即使域名与内置源同族——订阅内容用户拍板保留）。
+        let builtinKeys = Set(Self.builtinSiteAPIs.map { Self.normalizeAPI($0.api) })
+        let before = sites.count
+        sites.removeAll { builtinKeys.contains($0.key) }
+        if sites.count != before {
+            try? JSONEncoder().encode(Subscription(sites: sites, urls: subscriptionURLs)).write(to: Self.cacheURL, options: .atomic)
         }
-    }
-
-    /// 注入内置采集源（仅在完全无站点时执行一次）。
-    private func seedBuiltinSites() async {
-        for b in Self.builtinSiteAPIs {
-            let key = Self.normalizeAPI(b.api)
-            if !sites.contains(where: { Self.normalizeAPI($0.api) == key }) {
-                sites.append(Site(key: key, name: b.name, api: b.api))
-            }
-        }
-        lastLoad = Date()
-        try? JSONEncoder().encode(Subscription(sites: sites, urls: subscriptionURLs)).write(to: Self.cacheURL, options: .atomic)
+        // 站点完全来自用户订阅导入；空订阅时视频源页引导用户添加订阅。
     }
 
     private func site(key: String) async throws -> Site {
@@ -216,7 +210,8 @@ public actor TVBoxEngine {
     public func test(site s: Site) async -> TestResult {
         let t0 = Date()
         do {
-            let list = try await fetchList(site: s, page: 1)
+            // 测速用 8s 短超时（全量 154 站时大幅缩短总耗时；正常浏览仍用 15s）。
+            let list = try await fetchList(site: s, page: 1, timeoutSecs: 8)
             return TestResult(key: s.key, ok: true,
                               latencyMs: Int(Date().timeIntervalSince(t0) * 1000),
                               count: list.count, error: nil)
@@ -417,7 +412,7 @@ public actor TVBoxEngine {
         let type_name: String?
     }
 
-    private func fetchList(site s: Site, page: Int, typeId: Int? = nil) async throws -> [Vod] {
+    private func fetchList(site s: Site, page: Int, typeId: Int? = nil, timeoutSecs: Int = 15) async throws -> [Vod] {
         var comps = URLComponents(string: s.api)
         var items = [
             URLQueryItem(name: "ac", value: "list"),
@@ -426,7 +421,10 @@ public actor TVBoxEngine {
         if let t = typeId { items.append(URLQueryItem(name: "t", value: String(t))) }
         comps?.queryItems = items
         guard let u = comps?.url else { throw TVBoxError.badURL }
-        return try await fetchVods(u)
+        if timeoutSecs == 15 { return try await fetchVods(u) }
+        // 测速等短超时场景：直接走带超时参数的 fetchResponse
+        let resp = try await fetchResponse(u, timeoutSecs: timeoutSecs)
+        return resp.list ?? []
     }
 
     /// ac=videolist 全量字段拉取（含 type_id/type_name），供频道归并。
@@ -448,8 +446,8 @@ public actor TVBoxEngine {
     /// 容错：部分采集站（如 xinlangapi）个别频道的 JSON 被截断（未闭合字符串/数组），
     /// 整体解码会抛 dataCorrupted「correct format」。此时按「最后一个完整 list 条目」
     /// 截断数据、丢弃坏尾巴，抢救已完整解析出的条目，而不是整页报错。
-    private func fetchResponse(_ url: URL) async throws -> VodListResponse {
-        var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 15)
+    private func fetchResponse(_ url: URL, timeoutSecs: Int = 15) async throws -> VodListResponse {
+        var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: TimeInterval(timeoutSecs))
         req.setValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36", forHTTPHeaderField: "User-Agent")
         req.setValue("application/json", forHTTPHeaderField: "Accept")
         // 强制直连：采集站 CDN 锁中国大陆 IP，系统代理（VPN）走境外会被区域拦截 403。

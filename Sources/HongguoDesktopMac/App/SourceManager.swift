@@ -20,9 +20,14 @@ public final class SourceManager: ObservableObject {
         disabled = Set(d.stringArray(forKey: "src.disabled") ?? [])
         autoTestIntervalHours = d.double(forKey: "src.autoTestHours") // 0 = 关闭
         lastAutoTest = d.object(forKey: "src.lastAutoTest") as? Date
-        if let data = d.data(forKey: "src.testResults"),
+        // 测速结果从 Application Support 文件恢复（兼容旧的 UserDefaults 迁移一次）。
+        if let data = try? Data(contentsOf: Self.testResultsURL),
            let r = try? JSONDecoder().decode([String: SiteTestResult].self, from: data) {
             testResults = r
+        } else if let data = d.data(forKey: "src.testResults"),
+                  let r = try? JSONDecoder().decode([String: SiteTestResult].self, from: data) {
+            testResults = r  // 旧数据迁移（didSet 会触发写入新文件）
+            d.removeObject(forKey: "src.testResults")
         } else {
             testResults = [:]
         }
@@ -45,12 +50,32 @@ public final class SourceManager: ObservableObject {
         didSet { defaults.set(Array(disabled), forKey: "src.disabled") }
     }
     /// 最近一次连通性测试结果（key → result）。
-    @Published public private(set) var testResults: [String: SiteTestResult] {
-        didSet {
-            if let data = try? JSONEncoder().encode(testResults) {
-                defaults.set(data, forKey: "src.testResults")
+    /// 持久化到 Application Support 文件（v1.2.3 修：原 UserDefaults 在字典下标赋值时不触发 didSet，
+    /// 且大字典写 UserDefaults 不可靠，重启即丢）。所有写入统一走 persistTestResults()。
+    @Published public private(set) var testResults: [String: SiteTestResult] = [:] {
+        didSet { persistTestResults() }
+    }
+
+    /// 测速结果持久化文件（Application Support，升级重装不丢）。
+    private static var testResultsURL: URL {
+        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("DramaCube", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir.appendingPathComponent("tvbox-test-results.json")
+    }
+
+    /// 落盘测速结果（节流：连续写入合并，避免全量测试 154 次逐条写盘）。
+    private var persistTestResultsWork: DispatchWorkItem?
+    private func persistTestResults() {
+        persistTestResultsWork?.cancel()
+        let snapshot = testResults
+        let work = DispatchWorkItem {
+            if let data = try? JSONEncoder().encode(snapshot) {
+                try? data.write(to: Self.testResultsURL, options: .atomic)
             }
         }
+        persistTestResultsWork = work
+        DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 0.4, execute: work)
     }
     @Published public private(set) var isImporting = false
     @Published public private(set) var isTesting = false

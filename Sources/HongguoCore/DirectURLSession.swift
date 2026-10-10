@@ -10,9 +10,16 @@ import Foundation
 /// 强制直连国内出口。豆瓣等本就允许直连的域名不受影响。
 public enum DirectURLSession {
     /// 清空代理配置的直连 session（国内 CDN 拉流专用）。
+    /// 用 ephemeral（不写盘缓存/cookie，避免与默认配置的代理行为耦合），并显式置空代理字典。
     public static let shared: URLSession = {
-        let cfg = URLSessionConfiguration.default
-        cfg.connectionProxyDictionary = [:]
+        let cfg = URLSessionConfiguration.ephemeral
+        // 显式禁用一切系统代理（HTTP/HTTPS/SOCKS），强制直连国内出口。
+        // 只设空字典在 .default 上不彻底：.default 会合并系统 scutil 代理，ephemeral + 置空才确保直连。
+        cfg.connectionProxyDictionary = [
+            kCFNetworkProxiesHTTPEnable as String: false,
+            kCFNetworkProxiesHTTPSEnable as String: false,
+            kCFNetworkProxiesSOCKSEnable as String: false,
+        ] as [String: Any]
         cfg.timeoutIntervalForRequest = 20
         cfg.timeoutIntervalForResource = 60
         return URLSession(configuration: cfg)

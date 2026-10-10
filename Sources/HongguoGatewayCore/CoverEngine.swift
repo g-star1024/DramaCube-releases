@@ -43,7 +43,8 @@ public actor CoverEngine {
         var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 8)
         req.setValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15", forHTTPHeaderField: "User-Agent")
         req.setValue("https://movie.douban.com/", forHTTPHeaderField: "Referer")
-        guard let (data, resp) = try? await URLSession.shared.data(for: req),
+        // 强制直连：豆瓣国内可直连，系统代理境外出口会慢/超时（封面回退转圈根因）。
+        guard let (data, resp) = try? await DirectURLSession.shared.data(for: req),
               let http = resp as? HTTPURLResponse, (200..<300).contains(http.statusCode),
               let arr = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else { return nil }
         // 优先完全同名 + 有封面的条目

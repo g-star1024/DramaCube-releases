@@ -433,20 +433,16 @@ public enum GatewayServer {
             if url.host?.contains("doubanio.com") == true {
                 req.setValue("https://movie.douban.com/", forHTTPHeaderField: "Referer")
             }
-            let (bytes, resp) = try await URLSession.shared.bytes(for: req)
+            // 强制直连：豆瓣/采集站图床国内可直连，系统代理境外出口拉图 25s 超时（封面转圈根因）。
+            // 用 data() 而非 bytes()：封面图小（KB 级），全量读一次即可；bytes() 流式请求在系统代理下
+            // 会被代理栈接管拖慢（实测同 session data() 0.05s / bytes() 25s）。
+            let (data, resp) = try await DirectURLSession.shared.data(for: req)
             let http = resp as? HTTPURLResponse
             var headers = HTTPFields()
             headers[.contentType] = http?.value(forHTTPHeaderField: "Content-Type") ?? "image/jpeg"
             headers[.cacheControl] = "public, max-age=86400"
-            let body = ResponseBody { writer in
-                var buf = [UInt8](); buf.reserveCapacity(65_536)
-                for try await b in bytes {
-                    buf.append(b)
-                    if buf.count >= 65_536 { try await writer.write(ByteBuffer(bytes: buf)); buf.removeAll(keepingCapacity: true) }
-                }
-                if !buf.isEmpty { try await writer.write(ByteBuffer(bytes: buf)) }
-            }
-            return Response(status: .ok, headers: headers, body: body)
+            headers[.contentLength] = "\(data.count)"
+            return Response(status: .ok, headers: headers, body: .init(byteBuffer: ByteBuffer(data: data)))
         }
 
         return router

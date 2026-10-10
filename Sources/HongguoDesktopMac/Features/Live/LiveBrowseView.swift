@@ -130,7 +130,7 @@ struct LiveBrowseView: View {
                        description: "请到「设置 → 电视直播」添加 m3u 直播源")
         } else {
             ScrollView {
-                LazyVGrid(columns: columns, spacing: Spacing.md) {
+                LazyVGrid(columns: columns, spacing: Spacing.lg) {   // 加大频道卡片间距，避免挤在一起
                     ForEach(shown) { ch in
                         LiveChannelCard(ch, reachable: reachability[ch.id])
                             .onTapGesture { play(ch) }

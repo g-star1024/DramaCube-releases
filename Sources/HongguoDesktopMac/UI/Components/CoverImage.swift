@@ -151,7 +151,7 @@ public struct CoverImage: View {
 
     /// 后台执行：URLCache 查询 → 过闸门下载 → ImageIO 下采样解码。
     nonisolated private static func fetchAndDecode(_ url: URL) async -> DecodedImage {
-        let req = URLRequest(url: url, cachePolicy: .returnCacheDataElseLoad, timeoutInterval: 20)
+        let req = URLRequest(url: url, cachePolicy: .returnCacheDataElseLoad, timeoutInterval: 10)
         // 1) 命中磁盘/内存缓存直接出图（不占并发名额）
         if let cached = URLCache.shared.cachedResponse(for: req),
            let img = decodeDownsampled(cached.data) {
@@ -161,7 +161,8 @@ public struct CoverImage: View {
         await CoverGate.shared.acquire()
         defer { Task { await CoverGate.shared.release() } }
         do {
-            let (data, resp) = try await URLSession.shared.data(for: req)
+            // 强制直连：封面图（豆瓣/采集站）国内可直连，系统代理境外出口拉图 25s 超时（封面转圈+全站卡慢根因）。
+            let (data, resp) = try await DirectURLSession.shared.data(for: req)
             if let http = resp as? HTTPURLResponse, http.statusCode == 200 {
                 URLCache.shared.storeCachedResponse(CachedURLResponse(response: http, data: data), for: req)
             }
