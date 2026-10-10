@@ -106,6 +106,21 @@ public final class LiveManager: ObservableObject {
         await refresh()
     }
 
+    /// 单选当前启用的直播源（其余自动禁用，避免多源混杂）。
+    public func setActive(id: String) async {
+        let enc = id.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? id
+        let _: [String: String] = (try? await get("\(base)/api/live/setactive?id=\(enc)")) ?? [:]
+        await refresh()
+    }
+
+    /// 单源探活：返回该源解析出的频道数（0 = 失效）。
+    public func testSource(id: String) async -> Int {
+        let enc = id.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? id
+        struct R: Codable { let id: String; let count: String }
+        let r: R? = try? await get("\(base)/api/live/testsource?id=\(enc)")
+        return Int(r?.count ?? "0") ?? 0
+    }
+
     // MARK: - 频道
 
     public func channels() async throws -> [LiveChannel] {

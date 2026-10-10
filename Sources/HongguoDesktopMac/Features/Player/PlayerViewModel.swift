@@ -215,6 +215,13 @@ public final class PlayerViewModel: ObservableObject, ActivePlayer {
                     // 竖版检测统一交给 observeTracks（tracks 就绪后），此处不再调用
                 } else if observed.status == .failed {
                     let raw = observed.error?.localizedDescription ?? "该集无法播放"
+                    // 红果源第 4 集起不可播（IAA 仅前 3 集免费）：自动从内置采集源找同名剧切换全集
+                    if raw.localizedCaseInsensitiveContains("resource unavailable"),
+                       !self.detail.drama.id.hasPrefix("tvbox|"), !self.detail.drama.id.hasPrefix("nas|"),
+                       !self.detail.drama.id.hasPrefix("live|") {
+                        Task { await self.tryFallbackToCollectionSource() }
+                        return
+                    }
                     let msg: String
                     if raw.localizedCaseInsensitiveContains("resource unavailable") {
                         msg = "该集暂无播放资源：可能是源站尚未上线本集，或已被下线/拦截。可换一集（部分剧仅前几集可看），或到「视频源」换源观看"
@@ -391,6 +398,56 @@ public final class PlayerViewModel: ObservableObject, ActivePlayer {
         return union == 0 ? 0 : Double(inter) / Double(union)
     }
 
+    // MARK: - 红果 → 采集源回退（IAA 前 3 集限制兜底）
+
+    /// 红果源某集不可播时：从内置采集源搜同名剧，找到则切换到采集源全集继续播当前集。
+    /// 这是「红果仅前 3 集免费、采集站爬 App 端有全集」的打通：让用户无感续播而非报错。
+    private var isFallingBack = false
+    private func tryFallbackToCollectionSource() async {
+        guard !isFallingBack else { return }
+        isFallingBack = true
+        defer { isFallingBack = false }
+        isBuffering = true
+        error = nil
+        let targetEpIndex = currentIndex  // 记住当前想看的集
+        let keyword = title
+        AppLog.log(.player, "红果《\(keyword)》第\(targetEpIndex + 1)集不可播，尝试从采集源找全集…")
+
+        // 在采集源里搜同名剧（限前 3 个可用源，避免太慢）
+        let sites = SourceManager.shared.enabledSites
+        var matched: DramaDetail?
+        for site in sites.prefix(3) {
+            guard let results = try? await SourceManager.shared.tvboxSearch(siteKey: site.key, query: keyword) else { continue }
+            // 按标题相似度找最佳匹配
+            let best = results
+                .map { ($0, similarity(normalize($0.title), normalize(keyword))) }
+                .filter { $0.1 >= 0.5 }
+                .max { $0.1 < $1.1 }
+            guard let (drama, _) = best else { continue }
+            // 取详情（含全集 vod_play_url）
+            let vodId = drama.id.components(separatedBy: "|").last ?? drama.id
+            if let det = try? await SourceManager.shared.tvboxDetail(siteKey: site.key, vodId: vodId),
+               !det.episodes.isEmpty, det.episodes.count > targetEpIndex {
+                matched = det
+                AppLog.log(.player, "采集源命中：《\(det.drama.title)》\(det.episodes.count) 集（源 \(site.name)）")
+                break
+            }
+        }
+
+        guard let det = matched else {
+            AppLog.log(.error, "采集源未找到《\(keyword)》全集，保持报错")
+            self.error = "该集暂无播放资源：红果仅前 3 集免费，采集源也未收录本剧全集。可换一集或稍后再试"
+            self.isBuffering = false
+            return
+        }
+
+        // 切换到采集源详情继续播当前集（episode id 换成采集源的 index 字符串）
+        self.detail = det
+        self.currentIndex = targetEpIndex
+        AppLog.log(.player, "已切换采集源《\(det.drama.title)》续播第\(targetEpIndex + 1)集")
+        loadEpisode(targetEpIndex, autoplay: true)
+    }
+
     /// 下载当前集（用可分享地址，经网关代理可直接访问）。
     public func downloadCurrentEpisode() {
         guard let ep = currentEpisode, let url = shareablePlayURL else { return }
@@ -477,6 +534,32 @@ public final class PlayerViewModel: ObservableObject, ActivePlayer {
         currentIndex = index
         ExternalPlayerOpener.open(url: playURL, app: app)
         AppLog.log(.player, "第\(ep.index)集已用默认外部播放器 \(app.displayName) 打开")
+        return true
+    }
+
+    /// 静态：若设置了默认外部播放器，直接用其打开指定集并返回 true（不创建内置播放器窗口）。
+    /// 供打开播放器的入口在创建窗口前调用，实现「直接跳外部播放器、不起播内置」。
+    @MainActor
+    public static func openInDefaultExternalPlayerIfSet(detail: DramaDetail, index: Int) -> Bool {
+        let pref = AppSettings.shared.defaultExternalPlayer
+        guard pref != "builtin",
+              let app = ExternalPlayerApp(rawValue: pref),
+              ExternalPlayerOpener.isInstalled(app),
+              detail.episodes.indices.contains(index) else { return false }
+        let ep = detail.episodes[index]
+        var url: URL?
+        if let u = ep.playURL, !u.isEmpty {
+            if u.hasPrefix("file://") || u.lowercased().contains(".m3u8") || detail.drama.id.hasPrefix("nas|") {
+                url = URL(string: u)
+            } else {
+                url = hongguoGatewayMediaURL(u)
+            }
+        } else {
+            url = URL(string: "\(AppConfig.gatewayBaseURL)/api/stream/\(detail.drama.id)/\(ep.id)")
+        }
+        guard let playURL = url else { return false }
+        ExternalPlayerOpener.open(url: playURL, app: app)
+        AppLog.log(.player, "已直接用默认外部播放器 \(app.displayName) 打开第\(ep.index)集（未起内置播放器）")
         return true
     }
 

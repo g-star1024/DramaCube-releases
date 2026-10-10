@@ -40,9 +40,16 @@ public final class DownloadManager: ObservableObject {
     private var progressTimers: [String: Timer] = [:]
 
     // MARK: - 下载目录
+    /// 下载根目录：优先用户自定义（设置中心配置），否则默认 ~/Downloads/剧立方。
     public static var downloadDir: URL {
-        let dir = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("剧立方", isDirectory: true)
+        let custom = UserDefaults.standard.string(forKey: "customDownloadDir") ?? ""
+        let dir: URL
+        if !custom.isEmpty {
+            dir = URL(fileURLWithPath: (custom as NSString).expandingTildeInPath, isDirectory: true)
+        } else {
+            dir = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask)[0]
+                .appendingPathComponent("剧立方", isDirectory: true)
+        }
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir
     }

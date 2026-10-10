@@ -16,6 +16,10 @@ struct LiveBrowseView: View {
     /// 连通性结果：channelId -> true绿/false红；nil=未测试
     @State private var reachability: [String: Bool] = [:]
     @State private var isTesting = false
+    /// 直播源切换弹层
+    @State private var showSourcePicker = false
+    /// 各源探活频道数（sourceId -> count）
+    @State private var sourceCounts: [String: Int] = [:]
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: Spacing.md), count: 5)
 
@@ -44,6 +48,25 @@ struct LiveBrowseView: View {
         .background(Brand.background)
         .navigationTitle("电视直播")
         .toolbar {
+            // 直播源切换按钮（当前源名 + 点击弹源列表）
+            ToolbarItem(placement: .automatic) {
+                Button { showSourcePicker = true } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                            .font(.system(size: 11, weight: .semibold))
+                        Text(activeSourceName)
+                            .font(.system(size: 12, weight: .medium))
+                            .lineLimit(1)
+                    }
+                    .foregroundStyle(Brand.label)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Capsule().fill(Brand.chipFill))
+                    .overlay(Capsule().strokeBorder(Brand.separator.opacity(0.6), lineWidth: 0.5))
+                }
+                .buttonStyle(.plain)
+                .help("当前直播源：\(activeSourceName)，点击切换")
+            }
             ToolbarItem(placement: .automatic) {
                 Button {
                     Task { await runConnectivityTest() }
@@ -58,6 +81,7 @@ struct LiveBrowseView: View {
                 .help("测试所有频道流可达性，绿点=可播，红点=不可达")
             }
         }
+        .popover(isPresented: $showSourcePicker, arrowEdge: .top) { sourcePicker }
         .task { await load() }
         .alert("播放失败", isPresented: Binding(get: { playError != nil }, set: { if !$0 { playError = nil } })) {
             Button("好", role: .cancel) { playError = nil }
@@ -118,6 +142,87 @@ struct LiveBrowseView: View {
     }
 
     // MARK: 加载
+    /// 当前启用的直播源名（单选模式下唯一 enabled 的源）。
+    private var activeSourceName: String {
+        lm.sources.first(where: \.enabled)?.name ?? "未选择"
+    }
+
+    /// 直播源切换弹层：列出全部源（含探活频道数），单选切换。
+    private var sourcePicker: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Text("选择直播源")
+                    .font(.system(size: 13, weight: .semibold))
+                Spacer()
+                Text("同一时刻只用一个源")
+                    .font(.system(size: 10))
+                    .foregroundStyle(Brand.secondaryLabel)
+            }
+            .padding(.horizontal, Spacing.md)
+            .padding(.vertical, Spacing.sm)
+            Divider()
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    ForEach(lm.sources) { s in
+                        let isActive = s.enabled
+                        Button {
+                            Task { await switchSource(s) }
+                        } label: {
+                            HStack(spacing: Spacing.sm) {
+                                Image(systemName: isActive ? "checkmark.circle.fill" : "circle")
+                                    .foregroundStyle(isActive ? Brand.accent : Brand.secondaryLabel)
+                                VStack(alignment: .leading, spacing: 1) {
+                                    Text(s.name).font(Typography.body).lineLimit(1)
+                                    if let c = sourceCounts[s.id] {
+                                        Text(c > 0 ? "\(c) 个频道" : "源失效/无频道")
+                                            .font(.system(size: 10))
+                                            .foregroundStyle(c > 0 ? Brand.secondaryLabel : .red)
+                                    }
+                                }
+                                Spacer()
+                                if isActive {
+                                    Text("当前").font(.system(size: 10)).foregroundStyle(Brand.accent)
+                                }
+                            }
+                            .padding(.horizontal, Spacing.md)
+                            .padding(.vertical, 8)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+            Divider()
+            HStack {
+                Spacer()
+                Text("管理直播源请到「设置 → 电视直播」")
+                    .font(.system(size: 10))
+                    .foregroundStyle(Brand.secondaryLabel)
+                    .padding(.horizontal, Spacing.md)
+                    .padding(.vertical, 6)
+            }
+        }
+        .frame(width: 320, height: 380)
+        .onAppear { Task { await probeSources() } }
+    }
+
+    /// 切换直播源：单选启用该源，重新拉频道。
+    private func switchSource(_ s: LiveManager.LiveSource) async {
+        showSourcePicker = false
+        await lm.setActive(id: s.id)
+        selectedGroup = nil
+        reachability = await lm.savedReachability()
+        await load()
+    }
+
+    /// 探活所有源（后台逐个拉取返回频道数，弹层展示可用性）。
+    private func probeSources() async {
+        for s in lm.sources where sourceCounts[s.id] == nil {
+            let c = await lm.testSource(id: s.id)
+            sourceCounts[s.id] = c
+        }
+    }
+
     private func load() async {
         isLoading = true; error = nil
         lm.load()

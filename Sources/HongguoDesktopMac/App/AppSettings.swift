@@ -51,6 +51,12 @@ public final class AppSettings: ObservableObject {
     /// 仅 Wi-Fi 下自动加载封面（省流量）。
     @Published public var loadCoversOnCellular: Bool { didSet { defaults.set(loadCoversOnCellular, forKey: "loadCoversOnCellular") } }
 
+    // MARK: - 存储路径
+    /// 自定义下载目录（空 = 默认 ~/Downloads/剧立方）。设置后新下载存到该目录。
+    @Published public var customDownloadDir: String { didSet { defaults.set(customDownloadDir, forKey: "customDownloadDir") } }
+    /// 自定义缓存目录（空 = 默认 Application Support/DramaCube/Cache）。设置后新缓存写到该目录。
+    @Published public var customCacheDir: String { didSet { defaults.set(customCacheDir, forKey: "customCacheDir") } }
+
     private init() {
         let d = UserDefaults.standard
         gatewayPort = d.object(forKey: "gatewayPort") == nil ? 8787 : d.integer(forKey: "gatewayPort")
@@ -64,5 +70,7 @@ public final class AppSettings: ObservableObject {
         homeSection = d.object(forKey: "homeSection") == nil ? "discover" : (d.string(forKey: "homeSection") ?? "discover")
         pageSize = d.object(forKey: "pageSize") == nil ? 24 : d.integer(forKey: "pageSize")
         loadCoversOnCellular = d.object(forKey: "loadCoversOnCellular") == nil ? true : d.bool(forKey: "loadCoversOnCellular")
+        customDownloadDir = d.string(forKey: "customDownloadDir") ?? ""
+        customCacheDir = d.string(forKey: "customCacheDir") ?? ""
     }
 }

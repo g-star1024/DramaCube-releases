@@ -333,6 +333,24 @@ public enum GatewayServer {
             return Self.json(GatewayEnvelope(ok: true, data: ["id": id, "on": on ? "1" : "0"]))
         }
 
+        // 单选当前启用的直播源：/api/live/setactive?id=（其余源自动禁用，避免多源混杂）
+        router.get("api/live/setactive") { request, _ async throws -> Response in
+            guard let id = Self.queryValue(request, name: "id"), !id.isEmpty else {
+                throw HTTPError(.badRequest, message: "missing id")
+            }
+            try await LiveEngine.shared.setActiveSource(id: id)
+            return Self.json(GatewayEnvelope(ok: true, data: ["active": id]))
+        }
+
+        // 单源探活：/api/live/testsource?id=（拉源解析返回频道数，切换前判断源是否可用）
+        router.get("api/live/testsource") { request, _ async throws -> Response in
+            guard let id = Self.queryValue(request, name: "id"), !id.isEmpty else {
+                throw HTTPError(.badRequest, message: "missing id")
+            }
+            let count = await LiveEngine.shared.testSource(id: id)
+            return Self.json(GatewayEnvelope(ok: true, data: ["id": id, "count": String(count)]))
+        }
+
         // 频道列表：/api/live/channels  （多源排重合并，按 group 排序）
         router.get("api/live/channels") { _, _ async throws -> Response in
             let list = await LiveEngine.shared.channels()

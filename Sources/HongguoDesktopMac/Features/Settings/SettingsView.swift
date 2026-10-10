@@ -117,6 +117,43 @@ public struct SettingsView: View {
         .contentShape(Rectangle())
     }
 
+    /// 目录选择行控件：显示当前目录（或默认），点「选择」弹 NSOpenPanel 选目录，「还原」清空回默认。
+    private func dirPicker(current: String, defaultLabel: String, onPick: @escaping (String) -> Void) -> some View {
+        HStack(spacing: 6) {
+            Text(current.isEmpty ? defaultLabel : abbreviatePath(current))
+                .font(.system(size: 11))
+                .foregroundStyle(current.isEmpty ? Brand.secondaryLabel : Brand.label)
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .frame(maxWidth: 200, alignment: .trailing)
+                .help(current.isEmpty ? defaultLabel : current)
+            Button("选择") {
+                if let path = pickDirectory() { onPick(path) }
+            }
+            .controlSize(.small)
+            if !current.isEmpty {
+                Button("还原") { onPick("") }
+                    .controlSize(.small)
+                    .foregroundStyle(.red.opacity(0.8))
+            }
+        }
+    }
+
+    private func abbreviatePath(_ p: String) -> String {
+        p.replacingOccurrences(of: NSHomeDirectory(), with: "~")
+    }
+
+    /// 弹 NSOpenPanel 选一个目录，返回路径。
+    private func pickDirectory() -> String? {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.canCreateDirectories = true
+        panel.prompt = "选择"
+        return panel.runModal() == .OK ? panel.url?.path : nil
+    }
+
     /// 可导航行（右侧 chevron，点击动作）。
     private func navRow(_ label: String, value: String? = nil, action: @escaping () -> Void) -> some View {
         Button(action: action) {
@@ -316,6 +353,18 @@ public struct SettingsView: View {
                     }
                 }
                 sectionCard("本地缓存") {
+                    row("下载目录") {
+                        dirPicker(current: s.customDownloadDir, defaultLabel: "默认（下载/剧立方）") { path in
+                            s.customDownloadDir = path
+                        }
+                    }
+                    rowDivider
+                    row("缓存目录") {
+                        dirPicker(current: s.customCacheDir, defaultLabel: "默认（Application Support）") { path in
+                            s.customCacheDir = path
+                        }
+                    }
+                    rowDivider
                     row("清除缓存") {
                         Button(cacheCleared ? "已清除" : "清除列表 / 图片缓存") {
                             Task {
@@ -333,7 +382,7 @@ public struct SettingsView: View {
                     }
                     rowDivider
                     row("说明") {
-                        Text("不影响收藏与播放记录")
+                        Text("自定义目录仅影响新下载/新缓存，已有文件不迁移。清除缓存不影响收藏与播放记录。")
                             .font(.system(size: 12))
                             .foregroundStyle(Brand.secondaryLabel)
                     }

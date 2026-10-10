@@ -118,6 +118,10 @@ public struct CatalogView: View {
             guard let payload else { return }
             pendingPlay = nil
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                // 设置了默认外部播放器：直接跳外部播放器，不创建内置播放器窗口
+                if PlayerViewModel.openInDefaultExternalPlayerIfSet(detail: payload.detail, index: payload.index) {
+                    return
+                }
                 PlayerWindowManager.shared.show(detail: payload.detail, startIndex: payload.index)
             }
         }

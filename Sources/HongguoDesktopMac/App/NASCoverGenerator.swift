@@ -61,9 +61,12 @@ public actor NASCoverGenerator {
     // MARK: - 内部
 
     private static func key(for playURL: String) -> String {
-        // 简单稳定 hash（FNV-1a 64bit），避免引入 CryptoKit 也能用
+        // 简单稳定 hash（FNV-1a 64bit），避免引入 CryptoKit 也能用。
+        // 加版本前缀 v2：裁切为 2:3 封面是 v2 引入的，旧版（v1 未裁切）缓存键不同，
+        // 升级后自动生成新的裁切封面，旧缓存自然失效不再被读取。
+        let versioned = "v2|\(playURL)"
         var hash: UInt64 = 0xcbf29ce484222325
-        for b in playURL.utf8 {
+        for b in versioned.utf8 {
             hash ^= UInt64(b)
             hash = hash &* 0x100000001b3
         }

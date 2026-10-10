@@ -10,9 +10,15 @@ actor DiskCache {
     private let dir: URL
 
     private init() {
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-            ?? URL(fileURLWithPath: NSTemporaryDirectory())
-        dir = base.appendingPathComponent("DramaCube/Cache", isDirectory: true)
+        // 优先用户自定义缓存目录（设置中心配置），否则默认 Application Support/DramaCube/Cache
+        let custom = UserDefaults.standard.string(forKey: "customCacheDir") ?? ""
+        if !custom.isEmpty {
+            dir = URL(fileURLWithPath: (custom as NSString).expandingTildeInPath, isDirectory: true)
+        } else {
+            let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+                ?? URL(fileURLWithPath: NSTemporaryDirectory())
+            dir = base.appendingPathComponent("DramaCube/Cache", isDirectory: true)
+        }
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
     }
 

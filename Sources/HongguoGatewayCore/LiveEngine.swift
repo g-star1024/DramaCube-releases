@@ -138,6 +138,30 @@ public actor LiveEngine {
         try save()
     }
 
+    /// 单选当前启用的直播源（其余全部禁用）——直播源切换语义：
+    /// 同一时刻只用选定的一个源拉频道，避免多源混杂、失效源拖慢/清空列表。
+    public func setActiveSource(id: String) throws {
+        ensureLoaded()
+        for i in sources.indices { sources[i].enabled = (sources[i].id == id) }
+        try save()
+        invalidateCache()
+    }
+
+    /// 当前启用的源（单选模式下唯一 enabled 的源）。
+    public func activeSource() -> SourceInfo? {
+        ensureLoaded()
+        guard let s = sources.first(where: \.enabled) else { return nil }
+        return SourceInfo(id: s.id, url: s.url, name: s.name, enabled: s.enabled, userAgent: s.userAgent)
+    }
+
+    /// 单源探活：拉取该源并解析，返回解析出的频道数（0 = 源失效/格式不识别）。
+    public func testSource(id: String) async -> Int {
+        ensureLoaded()
+        guard let s = sources.first(where: { $0.id == id }) else { return 0 }
+        let list = (try? await Self.fetchChannels(url: s.url, userAgent: fetchUA(for: s))) ?? []
+        return list.count
+    }
+
     private static func hostName(of url: String) -> String {
         URL(string: url)?.host ?? "直播源"
     }
@@ -193,7 +217,11 @@ public actor LiveEngine {
         guard let text = String(data: data, encoding: .utf8) ?? String(data: data, encoding: .isoLatin1) else {
             throw LiveError.parseFailed
         }
-        return Self.parseM3U(text)
+        // 自动识别格式：标准 m3u（#EXTINF）或 txt 格式（名称,URL，#genre# 分组）
+        if text.contains("#EXTINF") {
+            return Self.parseM3U(text)
+        }
+        return Self.parseTXT(text)
     }
 
     /// 解析 m3u：#EXTINF 元数据 + 下一行流地址。
@@ -214,6 +242,34 @@ public actor LiveEngine {
                 out.append(Channel(id: id, name: pendingName, logo: pendingLogo, group: pendingGroup, url: line))
                 pendingName = ""; pendingLogo = nil
             }
+        }
+        return out
+    }
+
+    /// 解析 txt 直播源格式（国内采集站常见）：
+    ///   分组名,#genre#
+    ///   频道名,https://...
+    ///   频道名,https://...
+    /// 每行 `名称,URL`，遇到 `xx,#genre#` 切换当前分组。URL 取第一个逗号后剩余部分。
+    static func parseTXT(_ text: String) -> [Channel] {
+        var out: [Channel] = []
+        var group = "其他"
+        for rawLine in text.components(separatedBy: .newlines) {
+            let line = rawLine.trimmingCharacters(in: .whitespaces)
+            if line.isEmpty || line.hasPrefix("#") && !line.hasPrefix("#genre") { continue }
+            // 分组标记：xxx,#genre#
+            if line.contains("#genre#") {
+                let g = line.components(separatedBy: ",").first?.trimmingCharacters(in: .whitespaces) ?? ""
+                group = g.isEmpty ? "其他" : g
+                continue
+            }
+            // 频道行：名称,URL（URL 内含逗号时取第一个逗号之后整体）
+            guard let comma = line.firstIndex(of: ",") else { continue }
+            let name = String(line[line.startIndex..<comma]).trimmingCharacters(in: .whitespaces)
+            let url = String(line[line.index(after: comma)...]).trimmingCharacters(in: .whitespaces)
+            guard !name.isEmpty, url.hasPrefix("http") else { continue }
+            let id = "\(name)|\(group)"
+            out.append(Channel(id: id, name: name, logo: nil, group: group, url: url))
         }
         return out
     }

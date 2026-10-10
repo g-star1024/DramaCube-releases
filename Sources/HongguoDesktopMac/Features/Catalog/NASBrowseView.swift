@@ -11,9 +11,15 @@ struct NASBrowseView: View {
 
     @State private var currentLibId: String?
     @State private var currentPath: String = ""
-    @State private var items: [Drama] = []
+    @State private var allItems: [Drama] = []     // 当前目录全部视频（一次性从 NAS 列出，轻量）
+    @State private var visibleCount = 30           // 懒加载：首屏只渲染前 30 个，滚动加载更多
     @State private var isLoading = false
     @State private var error: String?
+
+    private let pageSize = 30
+
+    /// 当前可见的卡片（懒加载切片）。封面生成是重活，只渲染可见部分避免一次性打满 CPU/IO。
+    private var items: [Drama] { Array(allItems.prefix(visibleCount)) }
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: Spacing.md), count: 6)
 
@@ -149,9 +155,9 @@ struct NASBrowseView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if let error {
             ErrorView(error, retry: { Task { await load() } })
-        } else if items.isEmpty && isLoading {
+        } else if allItems.isEmpty && isLoading {
             LoadingView("正在扫描媒体库…")
-        } else if items.isEmpty {
+        } else if allItems.isEmpty {
             EmptyState("该目录暂无视频", systemImage: "film", description: "支持 mp4 / mkv / mov / m4v / avi / wmv / flv / ts / m3u8")
         } else {
             ScrollView {
@@ -159,9 +165,32 @@ struct NASBrowseView: View {
                     ForEach(items) { d in
                         NASCard(d)
                             .onTapGesture { onSelect(d) }
+                            .onAppear {
+                                // 懒加载：滚到倒数第 6 个时加载下一批封面/卡片
+                                if d.id == items.dropLast(6).last?.id, visibleCount < allItems.count {
+                                    visibleCount = min(visibleCount + pageSize, allItems.count)
+                                }
+                            }
                     }
                 }
                 .padding(Spacing.lg)
+                // 底部加载更多提示
+                if visibleCount < allItems.count {
+                    HStack(spacing: Spacing.sm) {
+                        ProgressView().controlSize(.small)
+                        Text("加载更多…（\(visibleCount)/\(allItems.count)）")
+                            .font(Typography.caption)
+                            .foregroundStyle(Brand.secondaryLabel)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.bottom, Spacing.lg)
+                } else if allItems.count > pageSize {
+                    Text("共 \(allItems.count) 个视频")
+                        .font(Typography.caption)
+                        .foregroundStyle(Brand.secondaryLabel)
+                        .frame(maxWidth: .infinity)
+                        .padding(.bottom, Spacing.lg)
+                }
             }
         }
     }
@@ -174,10 +203,11 @@ struct NASBrowseView: View {
     }
 
     private func load() async {
-        guard let libId = currentLibId else { items = []; return }
+        guard let libId = currentLibId else { allItems = []; return }
         isLoading = true; error = nil
         do {
-            items = try await nm.browse(id: libId, path: currentPath)
+            allItems = try await nm.browse(id: libId, path: currentPath)
+            visibleCount = min(pageSize, allItems.count)  // 重置懒加载到首屏数量
         } catch {
             self.error = "加载失败：\(error.localizedDescription)"
         }
