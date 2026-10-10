@@ -16,6 +16,8 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/hummingbird-project/hummingbird.git", .upToNextMajor(from: "2.0.0")),
         .package(url: "https://github.com/scinfu/SwiftSoup.git", .upToNextMajor(from: "2.0.0")),
+        // libmpv 播放内核（M2）：MPVKit 提供 MPVKit SwiftUI 视图 + LibMPV C 绑定 + FFmpeg 全家桶。
+        .package(url: "https://github.com/karelrooted/MPVKit.git", branch: "main"),
     ],
     targets: [
         .target(
@@ -41,7 +43,8 @@ let package = Package(
             name: "HongguoDesktopMac",
             dependencies: [
                 .target(name: "HongguoCore"),
-                .target(name: "HongguoGatewayCore")
+                .target(name: "HongguoGatewayCore"),
+                .product(name: "MPVKit", package: "MPVKit"),
             ]
         ),
         // App 可执行入口：打包脚本将其装入 Hongguo.app/Contents/MacOS。

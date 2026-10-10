@@ -1,5 +1,5 @@
 {
-  "originHash" : "c5dc7df8a6d1d74904f11048356defaa50c1b2bc3fabdf99675ff74b6e624982",
+  "originHash" : "662730fe03ac2e944e98131083b9b36dda10600538524fb9418b6d05c0ae164a",
   "pins" : [
     {
       "identity" : "async-http-client",
@@ -17,6 +17,15 @@
       "state" : {
         "revision" : "d1ce7bbd2f1b17f22031ca4c0daeb39eff07a92e",
         "version" : "2.21.1"
+      }
+    },
+    {
+      "identity" : "mpvkit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/karelrooted/MPVKit.git",
+      "state" : {
+        "branch" : "main",
+        "revision" : "12dcbddbee838a212aad98168a1b5a56d213b8c5"
       }
     },
     {
