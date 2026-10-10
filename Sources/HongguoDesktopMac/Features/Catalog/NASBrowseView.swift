@@ -158,7 +158,7 @@ struct NASBrowseView: View {
                 LazyVGrid(columns: columns, spacing: Spacing.md) {
                     ForEach(items) { d in
                         NASCard(d)
-                            .onTapGesture { Task { await play(d) } }
+                            .onTapGesture { onSelect(d) }
                     }
                 }
                 .padding(Spacing.lg)
@@ -183,26 +183,9 @@ struct NASBrowseView: View {
         }
         isLoading = false
     }
-
-    /// 点击视频卡片直接播放（单集，跳过详情页）。
-    private func play(_ drama: Drama) async {
-        // id = nas|<libId>|file|<path>
-        let parts = drama.id.split(separator: "|", omittingEmptySubsequences: false).map(String.init)
-        guard parts.count >= 4 else { return }
-        do {
-            let url = try await nm.playURLString(id: parts[1], path: parts[3])
-            let ep = Episode(id: "1", index: 1, title: drama.title, playURL: url)
-            let detail = DramaDetail(drama: drama, episodes: [ep])
-            await MainActor.run {
-                PlayerWindowManager.shared.show(detail: detail, startIndex: 0)
-            }
-        } catch {
-            self.error = "无法播放：\(error.localizedDescription)"
-        }
-    }
 }
 
-/// NAS 视频卡片（无封面，用文件名+图标占位；点击直接播放）。
+/// NAS 视频卡片（无封面，暖沙底+播放图标占位；点击进详情选集）。
 private struct NASCard: View {
     let drama: Drama
     init(_ d: Drama) { self.drama = d }
@@ -228,10 +211,15 @@ private struct NASCard: View {
                 }
             }
             Text(drama.title)
-                .font(Typography.caption)
+                .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(Brand.label)
-                .lineLimit(2)
-                .multilineTextAlignment(.leading)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .help(drama.title)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            // 固定信息行高度占位，避免卡片高度不一错位
+            Text(" ")
+                .font(.system(size: 12))
         }
         .contentShape(Rectangle())
     }

@@ -85,7 +85,19 @@ public actor HongguoClient {
             return WebParser.parseCardsHTML(html)
         }
         guard let json = WebParser.extractRouterData(html) else { return [] }
-        return WebParser.parseSeriesList(json)
+        return WebParser.parseSeriesList(json).filter { !Self.isActorCard($0) }
+    }
+
+    /// 演员卡片识别（红果 tag 页数据本身混入，非解析 bug）：
+    /// 标题为纯中文人名（2-4 字，可带括号别名如「戴翎玥（戴戴）」）、无封面、无集数。
+    /// 三者缺一不可——「最食人间烟火色」这类短剧名不会被误杀（>4字/有封面）。
+    private static func isActorCard(_ d: Drama) -> Bool {
+        let t = d.title.trimmingCharacters(in: .whitespaces)
+        let isHanName = t.range(of: #"^[\u{4E00}-\u{9FA5}·]{2,4}(（[^）]*）)?$"#, options: .regularExpression) != nil
+        guard isHanName else { return false }
+        let noCover = (d.coverURL ?? "").isEmpty
+        let noCount = d.episodeCount == nil
+        return noCover && noCount
     }
 
     /// 播放直链解析：请求 /player/<sid>/<vid>，提取 video_player_info.main_url（CDN 直链）。

@@ -178,10 +178,42 @@ public actor NASEngine {
 
     // MARK: - 播放地址（前端拼网关代理或直接 file/http）
 
-    /// 把库内相对路径还原成可播 URL（webdav 拼鉴权后的 http 直链，mount 走 file://）。
-    public func playURL(id: String, path: String) throws -> URL {
+    /// 把库内相对路径还原成可播 URL。
+    ///  - mount：file:// 直读（AVPlayer 原生支持 Range）；
+    ///  - webdav：返回 nil —— 飞牛等 WebDAV 需要 Basic 鉴权，裸直链给 AVPlayer 会 401
+    ///    （实测 NSURLError -1013），必须经网关 /api/nas/stream 代理附带鉴权。
+    public func playURL(id: String, path: String) throws -> URL? {
         let lib = try library(id: id)
-        return try fileURL(lib: lib, path: path)
+        switch lib.type {
+        case .mount: return try fileURL(lib: lib, path: path)
+        case .webdav: return nil
+        }
+    }
+
+    /// WebDAV 媒体流式代理：带 Basic 鉴权 + 透传 Range，206/Content-Range 原样返回。
+    /// AVPlayer 的 seek 依赖 Range 支持（与 hongguo 源 proxyMedia 同一套设计）。
+    public func openStream(id: String, path: String, range: String?) async throws -> NASStream {
+        let lib = try library(id: id)
+        guard lib.type == .webdav else { throw NASError.notStreamable }
+        let url = try fileURL(lib: lib, path: path)
+        var req = URLRequest(url: url, timeoutInterval: 60)
+        if let u = lib.username, let p = lib.password, !u.isEmpty {
+            let cred = "\(u):\(p)".data(using: .utf8)!.base64EncodedString()
+            req.setValue("Basic \(cred)", forHTTPHeaderField: "Authorization")
+        }
+        if let range, !range.isEmpty { req.setValue(range, forHTTPHeaderField: "Range") }
+        let (bytes, resp) = try await URLSession.shared.bytes(for: req)
+        let http = resp as? HTTPURLResponse
+        if let code = http?.statusCode, !(200..<300).contains(code) {
+            throw NASError.http(code)
+        }
+        return NASStream(
+            status: http?.statusCode ?? 200,
+            contentType: http?.value(forHTTPHeaderField: "Content-Type") ?? "video/mp4",
+            contentLength: http?.value(forHTTPHeaderField: "Content-Length"),
+            contentRange: http?.value(forHTTPHeaderField: "Content-Range"),
+            bytes: bytes
+        )
     }
 
     // MARK: - 内部：条目列举
@@ -339,13 +371,23 @@ public actor NASEngine {
     }
 
     public enum NASError: LocalizedError {
-        case notFound, badURL, http(Int)
+        case notFound, badURL, notStreamable, http(Int)
         public var errorDescription: String? {
             switch self {
             case .notFound: return "资源库不存在"
             case .badURL: return "地址格式错误"
+            case .notStreamable: return "本机挂载目录不走流式代理"
             case .http(let c): return "服务器返回 \(c)"
             }
         }
     }
+}
+
+/// NAS WebDAV 流式响应（网关代理透传用）。
+public struct NASStream: Sendable {
+    public let status: Int
+    public let contentType: String
+    public let contentLength: String?
+    public let contentRange: String?
+    public let bytes: URLSession.AsyncBytes
 }

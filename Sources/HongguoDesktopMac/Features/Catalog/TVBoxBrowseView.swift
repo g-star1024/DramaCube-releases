@@ -37,7 +37,12 @@ struct TVBoxBrowseView: View {
             // 切换源：轮播缓存按源 key 隔离，切走即清空重拉新源最新
             featured = []
             items = []
-            Task { await load(reset: true); await refreshFeatured() }
+            // 频道也要随源懒加载（此前漏掉，导致手动切源后只剩「最新」，切模块返回才出现）
+            Task {
+                _ = await sm.tvboxCategories(siteKey: sm.currentSource)
+                await load(reset: true)
+                await refreshFeatured()
+            }
         }
         .onChange(of: selectedTypeId) { _, _ in Task { await load(reset: true) } }
         .onChange(of: sm.sites) { _, _ in ensureDefaultSource() }

@@ -64,22 +64,6 @@ public struct CoverImage: View {
         .task(id: url) { await load() }
     }
 
-    /// 占位底色：按标题 hash 从品牌色板取色，保证同一标题稳定同色。
-    private var placeholderColors: [Color] {
-        let palette: [[Color]] = [
-            [Color(red: 0.55, green: 0.45, blue: 0.85), Color(red: 0.40, green: 0.30, blue: 0.70)], // 紫
-            [Color(red: 0.90, green: 0.45, blue: 0.55), Color(red: 0.75, green: 0.28, blue: 0.42)], // 粉
-            [Color(red: 0.40, green: 0.60, blue: 0.88), Color(red: 0.25, green: 0.45, blue: 0.75)], // 蓝
-            [Color(red: 0.45, green: 0.72, blue: 0.60), Color(red: 0.28, green: 0.55, blue: 0.45)], // 青
-            [Color(red: 0.90, green: 0.62, blue: 0.40), Color(red: 0.75, green: 0.45, blue: 0.25)], // 橙
-        ]
-        guard let title, !title.isEmpty else {
-            return [Brand.placeholder, Brand.secondaryBackground]
-        }
-        let h = abs(title.unicodeScalars.reduce(0) { ($0 &* 31 &+ Int($1.value)) & 0x7fffffff })
-        return palette[h % palette.count]
-    }
-
     private var loadingView: some View {
         placeholderView(showSpinner: true)
     }
@@ -88,24 +72,18 @@ public struct CoverImage: View {
         placeholderView(showSpinner: false)
     }
 
-    /// 品牌色渐变底 + 居中标题首字占位（加载中叠 spinner）。
+    /// 占位：暖沙底 + 居中品牌色播放图标（NAS 占位同款，比色块+首字更干净）。
     private func placeholderView(showSpinner: Bool) -> some View {
         ZStack {
             RoundedRectangle(cornerRadius: Radius.sm, style: .continuous)
-                .fill(LinearGradient(colors: placeholderColors,
+                .fill(LinearGradient(colors: [Brand.placeholder, Brand.secondaryBackground],
                                      startPoint: .topLeading, endPoint: .bottomTrailing))
-            if let title, let first = title.first {
-                Text(String(first))
-                    .font(.system(size: 44, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.85))
-            } else {
-                Image(systemName: "film")
-                    .font(.system(size: 28))
-                    .foregroundStyle(.white.opacity(0.6))
-            }
+            Image(systemName: "play.rectangle.fill")
+                .font(.system(size: 34))
+                .foregroundStyle(Brand.accent.opacity(0.5))
             if showSpinner {
                 ProgressView().controlSize(.small)
-                    .tint(.white)
+                    .tint(Brand.accent.opacity(0.7))
                     .frame(maxHeight: .infinity, alignment: .bottom)
                     .padding(.bottom, 8)
             }

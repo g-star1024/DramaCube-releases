@@ -129,6 +129,8 @@ public final class NASManager: ObservableObject {
         let p = path.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
         let r: [String: String] = try await get("\(base)/api/nas/playurl/\(id)?path=\(p)")
         guard let u = r["url"] else { throw HongguoParseError.fieldMissing("url") }
+        // 网关代理路径（/api/nas/stream/...）补全为本机地址；file:// / http(s) 原样返回
+        if u.hasPrefix("/") { return "\(base)\(u)" }
         return u
     }
 

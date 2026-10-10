@@ -217,13 +217,49 @@ public enum GatewayServer {
         }
 
         // 播放地址还原：/api/nas/playurl/:id?path= → {ok, data:{url}}
+        // webdav 返回网关代理地址（/api/nas/stream，附带鉴权）；mount 返回 file:// 直读。
         router.get("api/nas/playurl/:id") { request, ctx async throws -> Response in
             guard let id = ctx.parameters.get("id", as: String.self), !id.isEmpty else {
                 throw HTTPError(.badRequest, message: "missing id")
             }
             let path = Self.queryValue(request, name: "path") ?? ""
-            let url = try await NASEngine.shared.playURL(id: id, path: path)
-            return Self.json(GatewayEnvelope(ok: true, data: ["url": url.absoluteString]))
+            if let url = try await NASEngine.shared.playURL(id: id, path: path) {
+                return Self.json(GatewayEnvelope(ok: true, data: ["url": url.absoluteString]))
+            }
+            let esc = path.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+            return Self.json(GatewayEnvelope(ok: true, data: ["url": "/api/nas/stream/\(id)?path=\(esc)"]))
+        }
+
+        // WebDAV 媒体流式代理：/api/nas/stream/:id?path= —— 带 Basic 鉴权 + Range 透传。
+        // 裸直链给 AVPlayer 会 401（NSURLError -1013），必须经网关附鉴权头。
+        router.get("api/nas/stream/:id") { request, ctx async throws -> Response in
+            guard let id = ctx.parameters.get("id", as: String.self), !id.isEmpty else {
+                throw HTTPError(.badRequest, message: "missing id")
+            }
+            let path = Self.queryValue(request, name: "path") ?? ""
+            let range = request.headers[.range].flatMap { $0.isEmpty ? nil : $0 }
+            let stream = try await NASEngine.shared.openStream(id: id, path: path, range: range)
+            var headers = HTTPFields()
+            headers[.contentType] = stream.contentType
+            if let cl = stream.contentLength { headers[.contentLength] = cl }
+            if let cr = stream.contentRange { headers[.contentRange] = cr }
+            headers[.acceptRanges] = "bytes"
+            let status: HTTPResponse.Status = stream.status == 206 ? .partialContent : .ok
+            let body = ResponseBody { writer in
+                var buffer = [UInt8]()
+                buffer.reserveCapacity(65_536)
+                for try await byte in stream.bytes {
+                    buffer.append(byte)
+                    if buffer.count >= 65_536 {
+                        try await writer.write(ByteBuffer(bytes: buffer))
+                        buffer.removeAll(keepingCapacity: true)
+                    }
+                }
+                if !buffer.isEmpty {
+                    try await writer.write(ByteBuffer(bytes: buffer))
+                }
+            }
+            return Response(status: status, headers: headers, body: body)
         }
 
         return router

@@ -204,10 +204,16 @@ public final class PlayerViewModel: ObservableObject, ActivePlayer {
                     // 竖版检测统一交给 observeTracks（tracks 就绪后），此处不再调用
                 } else if observed.status == .failed {
                     let raw = observed.error?.localizedDescription ?? "该集无法播放"
-                    // resource unavailable = 源站/CDN 资源失效或拦截（常见于 TVBox 采集源过期）
-                    let msg = raw.localizedCaseInsensitiveContains("resource unavailable")
-                        ? "该集资源已失效（源站可能已下线或被拦截），请换源或换集"
-                        : raw
+                    let msg: String
+                    if raw.localizedCaseInsensitiveContains("resource unavailable") {
+                        msg = "该集资源已失效（源站可能已下线或被拦截），请换源或换集"
+                    } else if raw.contains("-1013") {
+                        msg = "资源库鉴权失败：请检查设置中 NAS 的账号密码是否正确"
+                    } else if raw.contains("-1012") || raw.contains("-1003") || raw.contains("-1001") {
+                        msg = "无法连接资源库：请确认 NAS 在线且网络可达"
+                    } else {
+                        msg = raw
+                    }
                     AppLog.log(.error, "第\(self.currentEpisode?.index ?? 0)集播放失败：\(raw)")
                     self.error = msg
                     self.isBuffering = false
