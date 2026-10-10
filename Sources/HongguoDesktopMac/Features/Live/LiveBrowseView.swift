@@ -27,8 +27,10 @@ struct LiveBrowseView: View {
     }
 
     private var shown: [LiveManager.LiveChannel] {
-        guard let g = selectedGroup else { return channels }
-        return channels.filter { $0.group == g }
+        // 已测试且失败的频道不再出现在切换列表（实际不可用）
+        let available = channels.filter { reachability[$0.id] != false }
+        guard let g = selectedGroup else { return available }
+        return available.filter { $0.group == g }
     }
 
     var body: some View {
@@ -119,6 +121,8 @@ struct LiveBrowseView: View {
     private func load() async {
         isLoading = true; error = nil
         lm.load()
+        // 先恢复上次持久化的连通性结果（角标状态重启不丢，失败频道立即被过滤）
+        reachability = await lm.savedReachability()
         do {
             channels = try await lm.channels()
             AppLog.log(.app, "直播频道加载完成：\(channels.count) 个（\(groups.count) 组）")

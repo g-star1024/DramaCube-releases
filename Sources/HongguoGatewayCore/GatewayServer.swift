@@ -73,8 +73,35 @@ public enum GatewayServer {
             guard let url = Self.queryValue(request, name: "url"), !url.isEmpty else {
                 throw HTTPError(.badRequest, message: "missing url")
             }
-            let count = try await TVBoxEngine.shared.importSubscription(url: url)
-            return Self.json(GatewayEnvelope(ok: true, data: ["count": count]))
+            let results = await TVBoxEngine.shared.importSubscriptionDetailed(url: url)
+            let added = results.reduce(0) { $0 + $1.added }
+            // 兼容字段 count + 新明细 results（前端展示每地址成败）
+            struct ImportPayload: Codable {
+                let count: Int
+                let results: [TVBoxEngine.ImportResult]
+            }
+            return Self.json(GatewayEnvelope(ok: true, data: ImportPayload(count: added, results: results)))
+        }
+
+        // 已存订阅地址列表：/api/tvbox/subscriptions
+        router.get("api/tvbox/subscriptions") { _, _ async throws -> Response in
+            let urls = await TVBoxEngine.shared.savedSubscriptionURLs()
+            return Self.json(GatewayEnvelope(ok: true, data: urls))
+        }
+
+        // 删除订阅地址：/api/tvbox/removesub?url=
+        router.get("api/tvbox/removesub") { request, _ async throws -> Response in
+            guard let url = Self.queryValue(request, name: "url"), !url.isEmpty else {
+                throw HTTPError(.badRequest, message: "missing url")
+            }
+            await TVBoxEngine.shared.removeSubscriptionURL(url)
+            return Self.json(GatewayEnvelope(ok: true, data: ["removed": url]))
+        }
+
+        // 重新拉取全部已存订阅：/api/tvbox/refreshsubs
+        router.get("api/tvbox/refreshsubs") { _, _ async throws -> Response in
+            let results = await TVBoxEngine.shared.refreshAllSubscriptions()
+            return Self.json(GatewayEnvelope(ok: true, data: results))
         }
 
         // 站点列表：/api/tvbox/sites
@@ -98,7 +125,9 @@ public enum GatewayServer {
             }
             let page = Int(Self.queryValue(request, name: "page") ?? "1") ?? 1
             let typeId = Self.queryValue(request, name: "t").flatMap { Int($0) }
-            let items = try await TVBoxEngine.shared.latest(siteKey: key, page: page, typeId: typeId)
+            // 容错：个别采集站/频道返回非法 JSON（截断/非 JSON）时，latest 已尽力抢救；
+            // 仍彻底失败则返回空列表而非整页报错，让前端展示「该源暂无内容」而非错误页。
+            let items = (try? await TVBoxEngine.shared.latest(siteKey: key, page: page, typeId: typeId)) ?? []
             return Self.json(GatewayEnvelope(ok: true, data: items))
         }
 
@@ -336,6 +365,12 @@ public enum GatewayServer {
             for (i, id) in ids.enumerated() { map[id] = urls[i] }
             let result = await LiveEngine.shared.testChannels(urls: map)
             return Self.json(GatewayEnvelope(ok: true, data: result))
+        }
+
+        // 已持久化的连通性结果：/api/live/reachability（重启后恢复角标）
+        router.get("api/live/reachability") { _, _ async throws -> Response in
+            let map = await LiveEngine.shared.savedReachability()
+            return Self.json(GatewayEnvelope(ok: true, data: map))
         }
 
         // 直播流代理：/api/live/stream?url= —— 统一 UA（playbackUserAgent，浏览器 UA 实测全源通放）防盗链

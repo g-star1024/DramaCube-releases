@@ -68,6 +68,8 @@ public final class SourceManager: ObservableObject {
     }
     /// 站点频道缓存（siteKey → 频道），进程内缓存，切换站点时懒加载。
     @Published public private(set) var categories: [String: [TVBoxCategory]] = [:]
+    /// 已导入成功的订阅地址（来自网关持久化，重启后展示在订阅管理列表）。
+    @Published public private(set) var subscriptionURLs: [String] = []
 
     private let defaults = UserDefaults.standard
     private let base = AppConfig.gatewayBaseURL
@@ -132,6 +134,18 @@ public final class SourceManager: ObservableObject {
         public let error: String?
     }
 
+    /// 单个订阅地址的导入结果。
+    public struct SubImportResult: Codable, Sendable {
+        public let url: String
+        public let added: Int
+        public let error: String?
+        public var ok: Bool { error == nil }
+    }
+    private struct ImportPayload: Codable, Sendable {
+        let count: Int
+        let results: [SubImportResult]
+    }
+
     // MARK: - 初始化
 
     /// 启动时装载站点列表（状态已在 init 从 UserDefaults 恢复）。
@@ -148,6 +162,7 @@ public final class SourceManager: ObservableObject {
         // 2. 网关就绪后拉真值（重试兜住网关启动竞态：start() 异步，首个请求可能 502/拒绝）
         Task {
             await refreshSitesWithRetry()
+            await refreshSubscriptionURLs()
             maybeAutoTest()
         }
         scheduleAutoTest()
@@ -176,19 +191,50 @@ public final class SourceManager: ObservableObject {
     // MARK: - 订阅
 
     /// 一键导入（或更新）订阅。支持一次粘贴多个地址（换行/逗号/分号分隔），
-    /// 与已有站点按 api 排重合并，返回新增站点数。
-    public func importSubscription(url: String) async throws -> Int {
+    /// 单地址失败跳过继续其余。返回每个地址的导入明细（成功新增数/失败原因）。
+    /// 成功的地址由网关持久化，重启后展示在订阅管理列表。
+    @discardableResult
+    public func importSubscription(url: String) async -> [SubImportResult] {
         isImporting = true
         defer { isImporting = false }
         subscriptionURL = url
         let enc = url.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? url
-        let resp: [String: Int] = try await get("\(base)/api/tvbox/import?url=\(enc)")
-        let count = resp["count"] ?? 0
-        lastImportCount = count
+        do {
+            let payload: ImportPayload = try await get("\(base)/api/tvbox/import?url=\(enc)")
+            lastImportCount = payload.count
+            await refreshSites()
+            await refreshSubscriptionURLs()
+            writeMirror()
+            AppLog.log(.app, "视频源订阅导入完成：新增 \(payload.count) 个站点（\(payload.results.filter(\.ok).count)/\(payload.results.count) 地址成功）")
+            return payload.results
+        } catch {
+            return [SubImportResult(url: url, added: 0, error: error.localizedDescription)]
+        }
+    }
+
+    /// 拉取已存订阅地址列表（订阅管理展示）。
+    public func refreshSubscriptionURLs() async {
+        let urls: [String] = (try? await get("\(base)/api/tvbox/subscriptions")) ?? []
+        subscriptionURLs = urls
+    }
+
+    /// 删除一个订阅地址。
+    public func removeSubscriptionURL(_ url: String) async {
+        let enc = url.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? url
+        let _: [String: String] = (try? await get("\(base)/api/tvbox/removesub?url=\(enc)")) ?? [:]
+        await refreshSubscriptionURLs()
+    }
+
+    /// 重新拉取全部已存订阅（更新订阅）。
+    @discardableResult
+    public func refreshAllSubscriptions() async -> [SubImportResult] {
+        isImporting = true
+        defer { isImporting = false }
+        let results: [SubImportResult] = (try? await get("\(base)/api/tvbox/refreshsubs")) ?? []
         await refreshSites()
+        await refreshSubscriptionURLs()
         writeMirror()
-        AppLog.log(.app, "视频源订阅导入完成：新增 \(count) 个站点（多源排重合并，已写本地镜像）")
-        return count
+        return results
     }
 
     /// 刷新站点列表（导入后 / 启动时）。成功且有数据时写镜像。
@@ -201,7 +247,7 @@ public final class SourceManager: ObservableObject {
             } else if !subscriptionURL.isEmpty {
                 // 网关返回空 = 网关侧订阅缓存丢/被清，用已存订阅 URL 自动重导一次
                 AppLog.log(.net, "网关站点列表为空，用已存订阅 URL 自动重新导入")
-                _ = try? await importSubscription(url: subscriptionURL)
+                _ = await importSubscription(url: subscriptionURL)
             }
         } catch {
             // 未导入订阅或网关未就绪时错误仅记录不打断（镜像数据已先展示）

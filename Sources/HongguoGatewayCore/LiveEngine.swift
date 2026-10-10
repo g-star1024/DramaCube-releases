@@ -39,6 +39,13 @@ public actor LiveEngine {
         return dir.appendingPathComponent("live-sources.json")
     }
 
+    /// 连通性测试结果持久化文件（channelId → 是否可达），重启后保留角标状态。
+    private static var reachabilityURL: URL {
+        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("DramaCube", isDirectory: true)
+        return dir.appendingPathComponent("live-reachability.json")
+    }
+
     private func loadIfNeeded() -> [Source] {
         if let data = try? Data(contentsOf: Self.storeURL),
            let list = try? JSONDecoder().decode([Source].self, from: data) {
@@ -237,6 +244,7 @@ public actor LiveEngine {
     }
 
     /// 批量测试一组频道，返回 [channelId: 是否可达]。限流并发（8 个一组），避免触发 CDN 限流全失败。
+    /// 结果持久化到本地（覆盖旧结果），重启后角标状态保留。
     public func testChannels(urls: [String: String]) async -> [String: Bool] {
         var out: [String: Bool] = [:]
         let entries = Array(urls)
@@ -250,7 +258,21 @@ public actor LiveEngine {
                 for await (id, ok) in group { out[id] = ok }
             }
         }
+        saveReachability(out)
         return out
+    }
+
+    /// 读取已持久化的连通性结果（重启后恢复角标）。
+    public func savedReachability() -> [String: Bool] {
+        guard let data = try? Data(contentsOf: Self.reachabilityURL),
+              let map = try? JSONDecoder().decode([String: Bool].self, from: data) else { return [:] }
+        return map
+    }
+
+    private func saveReachability(_ map: [String: Bool]) {
+        if let data = try? JSONEncoder().encode(map) {
+            try? data.write(to: Self.reachabilityURL, options: .atomic)
+        }
     }
 
     // MARK: - 播放地址

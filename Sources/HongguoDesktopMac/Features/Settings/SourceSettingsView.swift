@@ -1,17 +1,16 @@
 import SwiftUI
 
-/// 视频源管理页：订阅导入/更新、连通性测试、单源开关。
+/// 视频源管理页：订阅源管理（增删/更新/逐地址成败）、连通性测试、单源开关。
 struct SourceSettingsView: View {
     @ObservedObject var sm = SourceManager.shared
     @State private var urlInput = ""
-    @State private var message: String?
-    @State private var msgIsError = false
+    @State private var importResults: [SourceManager.SubImportResult] = []
     @State private var showOnlyFailed = false
 
     var body: some View {
         ScrollView {
             VStack(spacing: Spacing.lg) {
-                importCard
+                subscriptionCard
                 if sm.hasSubscription {
                     testCard
                     siteListCard
@@ -23,36 +22,97 @@ struct SourceSettingsView: View {
         }
         .background(Brand.background)
         .onAppear {
-            if urlInput.isEmpty { urlInput = sm.subscriptionURL }
+            Task { await sm.refreshSubscriptionURLs() }
         }
     }
 
-    // MARK: 订阅导入
-    private var importCard: some View {
+    // MARK: 订阅源管理
+    private var subscriptionCard: some View {
         VStack(alignment: .leading, spacing: Spacing.sm) {
-            Text("TVBox 订阅").font(.system(size: 13, weight: .semibold)).foregroundStyle(Brand.secondaryLabel)
-            // 多行输入：一次可粘贴多个订阅地址（换行/逗号/分号分隔），自动排重合并
+            HStack {
+                Text("订阅源管理").font(.system(size: 13, weight: .semibold)).foregroundStyle(Brand.secondaryLabel)
+                Spacer()
+                if !sm.subscriptionURLs.isEmpty {
+                    Button(sm.isImporting ? "更新中…" : "全部更新") {
+                        Task { await refreshAll() }
+                    }
+                    .controlSize(.small)
+                    .disabled(sm.isImporting)
+                }
+            }
+
+            // 已保存的订阅地址列表（重启后保留）
+            if !sm.subscriptionURLs.isEmpty {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(sm.subscriptionURLs, id: \.self) { url in
+                        HStack(spacing: Spacing.sm) {
+                            Image(systemName: "link").font(.system(size: 11)).foregroundStyle(Brand.secondaryLabel)
+                            Text(url)
+                                .font(.system(size: 11, design: .monospaced))
+                                .foregroundStyle(Brand.label)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                                .help(url)
+                            Spacer()
+                            Button { Task { await sm.removeSubscriptionURL(url) } } label: {
+                                Image(systemName: "trash").font(.system(size: 11))
+                            }
+                            .buttonStyle(.borderless)
+                            .foregroundStyle(.red.opacity(0.8))
+                            .help("删除此订阅地址")
+                        }
+                        .padding(.vertical, 5)
+                        if url != sm.subscriptionURLs.last { Divider() }
+                    }
+                }
+                .padding(.horizontal, Spacing.sm)
+                .padding(.vertical, 4)
+                .background(RoundedRectangle(cornerRadius: 6).fill(Brand.background))
+                .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Brand.separator.opacity(0.6), lineWidth: 0.5))
+            }
+
+            // 新增订阅输入框
             TextEditor(text: $urlInput)
                 .font(.system(size: 12, design: .monospaced))
-                .frame(minHeight: 56, maxHeight: 90)
+                .frame(minHeight: 50, maxHeight: 80)
                 .padding(4)
                 .background(RoundedRectangle(cornerRadius: 6).fill(Brand.background))
                 .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Brand.separator.opacity(0.6), lineWidth: 0.5))
             HStack(spacing: Spacing.sm) {
                 Spacer()
-                Button(sm.isImporting ? "导入中…" : (sm.hasSubscription ? "更新订阅" : "一键导入")) {
+                Button(sm.isImporting ? "导入中…" : "添加订阅") {
                     Task { await doImport() }
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(Brand.accent)
                 .disabled(sm.isImporting || urlInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
-            if let message {
-                Text(message)
-                    .font(Typography.caption)
-                    .foregroundStyle(msgIsError ? .red : .green)
+
+            // 每地址导入明细（成功的绿色、失败的红色，单个失败不影响其余）
+            if !importResults.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(Array(importResults.enumerated()), id: \.offset) { _, r in
+                        HStack(alignment: .top, spacing: 6) {
+                            Image(systemName: r.ok ? "checkmark.circle.fill" : "xmark.circle.fill")
+                                .font(.system(size: 11))
+                                .foregroundStyle(r.ok ? .green : .red)
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(shortURL(r.url))
+                                    .font(.system(size: 11, design: .monospaced))
+                                    .foregroundStyle(Brand.label)
+                                    .lineLimit(1)
+                                Text(r.ok ? "新增 \(r.added) 个站点" : (r.error ?? "失败"))
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(r.ok ? Brand.secondaryLabel : .red)
+                            }
+                        }
+                    }
+                }
+                .padding(8)
+                .background(RoundedRectangle(cornerRadius: 6).fill(Brand.background))
             }
-            Text("支持 TVBox / MoonTV 标准订阅（maccms JSON 接口）。可一次粘贴多个地址（换行/逗号/分号分隔），自动按接口排重合并。导入后站点在侧边栏「视频源」浏览，搜索自动聚合所有启用的源。")
+
+            Text("支持 TVBox / MoonTV 标准订阅（maccms JSON 接口）。可一次粘贴多个地址（换行/逗号/分号分隔），单个失败自动跳过不影响其余，按接口排重合并。已添加的地址保存在上方列表，重启不丢失，可点「全部更新」重新拉取。")
                 .font(Typography.caption)
                 .foregroundStyle(Brand.secondaryLabel)
         }
@@ -60,6 +120,10 @@ struct SourceSettingsView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: Radius.md).fill(Brand.chipFill))
         .overlay(RoundedRectangle(cornerRadius: Radius.md).strokeBorder(Brand.separator.opacity(0.5), lineWidth: 0.5))
+    }
+
+    private func shortURL(_ url: String) -> String {
+        url.replacingOccurrences(of: "https://", with: "").replacingOccurrences(of: "http://", with: "")
     }
 
     // MARK: 连通性测试
@@ -136,7 +200,6 @@ struct SourceSettingsView: View {
 
     private func siteRow(_ s: SourceManager.TVBoxSite) -> some View {
         HStack(spacing: Spacing.sm) {
-            // 状态点
             Circle()
                 .fill(statusColor(s.key))
                 .frame(width: 8, height: 8)
@@ -187,16 +250,12 @@ struct SourceSettingsView: View {
     private func doImport() async {
         let url = urlInput.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !url.isEmpty else { return }
-        message = nil
-        do {
-            let count = try await sm.importSubscription(url: url)
-            message = count > 0
-                ? "导入成功：新增 \(count) 个站点（排重合并后共 \(sm.sites.count) 个）"
-                : "无新增站点（地址中的站点均已收录，共 \(sm.sites.count) 个）"
-            msgIsError = false
-        } catch {
-            message = "导入失败：\(error.localizedDescription)"
-            msgIsError = true
-        }
+        importResults = await sm.importSubscription(url: url)
+        // 成功的地址已保存，清空输入框便于继续添加
+        if importResults.contains(where: \.ok) { urlInput = "" }
+    }
+
+    private func refreshAll() async {
+        importResults = await sm.refreshAllSubscriptions()
     }
 }

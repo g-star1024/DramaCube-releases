@@ -44,6 +44,14 @@ public final class Repository {
         }
     }
 
+    /// 批量删除收藏。
+    public func removeFavorites(dramaIds: Set<String>) {
+        guard !dramaIds.isEmpty else { return }
+        let all = (try? context.fetch(FetchDescriptor<FavoriteItem>())) ?? []
+        for i in all where dramaIds.contains(i.dramaId) { context.delete(i) }
+        try? context.save()
+    }
+
     // MARK: - 历史 / 进度
 
     public func history() -> [HistoryItem] {
@@ -81,6 +89,14 @@ public final class Repository {
     /// 删除单条历史。
     public func removeHistory(_ item: HistoryItem) {
         context.delete(item)
+        try? context.save()
+    }
+
+    /// 批量删除历史（按 key）。
+    public func removeHistories(keys: Set<String>) {
+        guard !keys.isEmpty else { return }
+        let all = (try? context.fetch(FetchDescriptor<HistoryItem>())) ?? []
+        for i in all where keys.contains(i.key) { context.delete(i) }
         try? context.save()
     }
 

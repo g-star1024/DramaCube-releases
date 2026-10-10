@@ -21,6 +21,9 @@ public struct PlayerView: View {
     @State private var wasPlaying = false
     /// 鼠标悬停在视频区时显示左上角悬浮控制（默认隐藏，不挡画面）。
     @State private var isHoveringVideo = false
+    /// 选集批量缓存选择模式
+    @State private var isSelectingDownloads = false
+    @State private var selectedDownloads: Set<Int> = []
 
     private let rateOptions: [Double] = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0]
 
@@ -251,20 +254,59 @@ public struct PlayerView: View {
     // MARK: 选集面板（全宽底部面板，随窗口宽度铺满）
     private var episodePanel: some View {
         VStack(alignment: .leading, spacing: 0) {
-            EpisodePanelHeader(count: vm.episodes.count) {
-                vm.showEpisodes = false
+            HStack {
+                EpisodePanelHeader(count: vm.episodes.count) {
+                    vm.showEpisodes = false
+                }
+                // 批量缓存切换
+                Button(isSelectingDownloads ? "完成" : "批量缓存") {
+                    isSelectingDownloads.toggle()
+                    if !isSelectingDownloads { selectedDownloads.removeAll() }
+                }
+                .controlSize(.small)
+                .font(.system(size: 11))
             }
             .padding(.horizontal, Spacing.lg)
             .padding(.vertical, Spacing.sm)
+            // 批量缓存操作条
+            if isSelectingDownloads {
+                HStack(spacing: Spacing.md) {
+                    Button(selectedDownloads.count == vm.episodes.count ? "取消全选" : "全选") {
+                        selectedDownloads = selectedDownloads.count == vm.episodes.count
+                            ? [] : Set(vm.episodes.indices)
+                    }
+                    .controlSize(.small)
+                    Text("已选 \(selectedDownloads.count) 集")
+                        .font(Typography.caption)
+                        .foregroundStyle(Brand.secondaryLabel)
+                    Spacer()
+                    Button("缓存选中", role: .destructive) {
+                        vm.downloadEpisodes(indices: Array(selectedDownloads).sorted())
+                        selectedDownloads.removeAll()
+                        isSelectingDownloads = false
+                    }
+                    .controlSize(.small)
+                    .disabled(selectedDownloads.isEmpty)
+                }
+                .padding(.horizontal, Spacing.lg)
+                .padding(.vertical, Spacing.xs)
+                .background(Brand.chipFill)
+            }
             Divider()
             ScrollView {
                 ScrollViewReader { proxy in
                     EpisodeGrid(
                         episodes: vm.episodes,
                         currentIndex: vm.currentIndex,
-                        playedIds: playedIds
+                        playedIds: playedIds,
+                        selectedIndices: isSelectingDownloads ? selectedDownloads : nil
                     ) { idx, _ in
-                        vm.loadEpisode(idx)
+                        if isSelectingDownloads {
+                            if selectedDownloads.contains(idx) { selectedDownloads.remove(idx) }
+                            else { selectedDownloads.insert(idx) }
+                        } else {
+                            vm.loadEpisode(idx)
+                        }
                     }
                     .padding(Spacing.lg)
                     .onAppear {

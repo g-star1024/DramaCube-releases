@@ -130,6 +130,8 @@ public final class PlayerViewModel: ObservableObject, ActivePlayer {
 
     public func loadEpisode(_ index: Int, autoplay: Bool = true) {
         guard episodes.indices.contains(index) else { return }
+        // 全局默认外部播放器：选集播放时自动用外部播放器打开，无需每次手动切换
+        if maybeOpenInDefaultExternalPlayer(index: index) { return }
         saveProgress(force: true)
         currentIndex = index
         let ep = episodes[index]
@@ -399,6 +401,31 @@ public final class PlayerViewModel: ObservableObject, ActivePlayer {
         )
     }
 
+    /// 批量下载指定下标的集（选集面板勾选多集批量缓存）。
+    /// 逐集构造可分享地址交给 DownloadManager 排队（并发由下载管理器限流）。
+    public func downloadEpisodes(indices: [Int]) {
+        for index in indices where episodes.indices.contains(index) {
+            let ep = episodes[index]
+            var url: URL?
+            if let u = ep.playURL, !u.isEmpty {
+                if u.hasPrefix("file://") || u.lowercased().contains(".m3u8") || detail.drama.id.hasPrefix("nas|") {
+                    url = URL(string: u)
+                } else {
+                    url = hongguoGatewayMediaURL(u)
+                }
+            } else {
+                url = URL(string: "\(AppConfig.gatewayBaseURL)/api/stream/\(detail.drama.id)/\(ep.id)")
+            }
+            guard let playURL = url else { continue }
+            DownloadManager.shared.addDownload(
+                dramaId: dramaId, episodeId: ep.id,
+                dramaTitle: title, episodeTitle: ep.title,
+                sourceURL: playURL.absoluteString
+            )
+        }
+        AppLog.log(.app, "批量缓存：已加入 \(indices.count) 集到下载队列")
+    }
+
     /// 当前集下载状态（供按钮显示）。
     public var currentDownloadState: DownloadState? {
         guard let ep = currentEpisode else { return nil }
@@ -425,6 +452,32 @@ public final class PlayerViewModel: ObservableObject, ActivePlayer {
     public func openInExternalPlayer(_ app: ExternalPlayerApp) {
         guard let url = shareablePlayURL else { return }
         ExternalPlayerOpener.open(url: url, app: app)
+    }
+
+    /// 若设置中心配置了默认外部播放器，选集播放时自动用其打开该集（返回 true 表示已接管，不再走内置播放器）。
+    private func maybeOpenInDefaultExternalPlayer(index: Int) -> Bool {
+        let pref = AppSettings.shared.defaultExternalPlayer
+        guard pref != "builtin",
+              let app = ExternalPlayerApp(rawValue: pref),
+              ExternalPlayerOpener.isInstalled(app) else { return false }
+        // 构造该集的可分享地址（与 shareablePlayURL 同逻辑，但针对任意 index）
+        guard episodes.indices.contains(index) else { return false }
+        let ep = episodes[index]
+        var url: URL?
+        if let u = ep.playURL, !u.isEmpty {
+            if u.hasPrefix("file://") || u.lowercased().contains(".m3u8") || detail.drama.id.hasPrefix("nas|") {
+                url = URL(string: u)
+            } else {
+                url = hongguoGatewayMediaURL(u)
+            }
+        } else {
+            url = URL(string: "\(AppConfig.gatewayBaseURL)/api/stream/\(detail.drama.id)/\(ep.id)")
+        }
+        guard let playURL = url else { return false }
+        currentIndex = index
+        ExternalPlayerOpener.open(url: playURL, app: app)
+        AppLog.log(.player, "第\(ep.index)集已用默认外部播放器 \(app.displayName) 打开")
+        return true
     }
 
     // MARK: - 下集预缓冲

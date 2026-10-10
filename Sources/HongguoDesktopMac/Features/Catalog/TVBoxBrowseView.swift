@@ -291,7 +291,21 @@ struct TVBoxBrowseView: View {
             hasMore = fresh.count >= 12
             AppLog.log(.app, "视频源 \(src) 第 \(target) 页（频道 \(selectedTypeId ?? -1)）：\(fresh.count) 部")
             if reset { await DiskCache.shared.write(items, key: cacheKey) }
+            // 网关侧已对彻底失败的源返回空列表；空列表视为该源不可用，自动切到最快可用源
+            if reset && fresh.isEmpty, let fast = sm.fastestEnabledSite, fast.key != src {
+                AppLog.log(.app, "视频源 \(src) 无数据，自动切换到最快可用源 \(fast.key)")
+                sm.currentSource = fast.key   // 触发 onChange 重新加载新源
+                isLoading = false
+                return
+            }
         } catch {
+            // 首屏加载失败：当前源挂了，自动切到最快可用源重试（避免整页报错）
+            if reset, let fast = sm.fastestEnabledSite, fast.key != src {
+                AppLog.log(.app, "视频源 \(src) 加载失败（\(error.localizedDescription)），自动切换到最快可用源 \(fast.key)")
+                sm.currentSource = fast.key   // 触发 onChange 重新加载新源
+                isLoading = false
+                return
+            }
             if reset { self.error = "加载失败：\(error.localizedDescription)" }
             AppLog.log(.error, "视频源 \(src) 加载失败：\(error.localizedDescription)")
         }

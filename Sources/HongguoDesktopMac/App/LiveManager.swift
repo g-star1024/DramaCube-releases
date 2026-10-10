@@ -132,6 +132,11 @@ public final class LiveManager: ObservableObject {
         return out
     }
 
+    /// 读取已持久化的连通性结果（重启后恢复角标状态，测试前也能看到上次结果）。
+    public func savedReachability() async -> [String: Bool] {
+        (try? await get("\(base)/api/live/reachability")) ?? [:]
+    }
+
     /// 频道播放地址（经网关直播代理，统一 UA）。
     public func streamURLString(channelURL: String) -> String {
         let enc = channelURL.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? channelURL

@@ -131,12 +131,14 @@ public struct CoverImage: View {
         }
     }
 
-    /// 调网关封面回退接口，拿豆瓣海报代理地址。
+    /// 调网关封面回退接口，拿豆瓣海报代理地址（带 8s 超时，防止一直转圈）。
     nonisolated private static func fetchDoubanCoverURL(title: String) async -> URL? {
         struct CoverResp: Codable { let ok: Bool; let data: [String: String]? }
         guard let q = title.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
               let url = URL(string: "\(AppConfig.gatewayBaseURL)/api/cover?title=\(q)") else { return nil }
-        guard let (data, _) = try? await URLSession.shared.data(from: url),
+        var req = URLRequest(url: url, timeoutInterval: 8)
+        req.cachePolicy = .returnCacheDataElseLoad
+        guard let (data, _) = try? await URLSession.shared.data(for: req),
               let resp = try? JSONDecoder().decode(CoverResp.self, from: data),
               resp.ok, let u = resp.data?["url"], !u.isEmpty else { return nil }
         return URL(string: u)

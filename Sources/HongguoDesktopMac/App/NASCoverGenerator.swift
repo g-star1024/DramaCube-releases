@@ -16,6 +16,8 @@ public actor NASCoverGenerator {
     private let limit = 2
     /// 生成失败的黑名单（避免对损坏/无视频轨文件反复尝试）。
     private var failed: Set<String> = []
+    /// 正在生成中的 key（防止懒加载重复触发同一视频的并发生成）。
+    private var inFlight: Set<String> = []
 
     private static var cacheDir: URL {
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -34,12 +36,16 @@ public actor NASCoverGenerator {
         let dest = Self.cacheURL(for: key)
         if FileManager.default.fileExists(atPath: dest.path) { return dest }
         if failed.contains(key) { return nil }
+        // 已在生成队列中的同一视频不重复排队（懒加载卡片滚回可见区会重复触发）
+        if inFlight.contains(key) { return nil }
 
         await acquire()
         defer { Task { await release() } }
         // 双重检查（等闸门期间可能已被别的任务生成）
         if FileManager.default.fileExists(atPath: dest.path) { return dest }
 
+        inFlight.insert(key)
+        defer { inFlight.remove(key) }
         guard let url = Self.videoURL(from: playURL) else { failed.insert(key); return nil }
         let ok = await Self.generateThumbnail(videoURL: url, to: dest)
         if !ok { failed.insert(key); return nil }
@@ -86,7 +92,9 @@ public actor NASCoverGenerator {
         do {
             let result = try await gen.image(at: time)
             let cg = result.image
-            let img = NSImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height))
+            // 裁剪为 2:3 竖版封面比例（中心裁剪），与卡片占位一致，避免拉伸变形
+            guard let cropped = Self.cropToPoster(cg) else { return false }
+            let img = NSImage(cgImage: cropped, size: NSSize(width: cropped.width, height: cropped.height))
             guard let tiff = img.tiffRepresentation,
                   let rep = NSBitmapImageRep(data: tiff),
                   let jpg = rep.representation(using: .jpeg, properties: [.compressionFactor: 0.8]) else { return false }
@@ -95,6 +103,24 @@ public actor NASCoverGenerator {
         } catch {
             return false
         }
+    }
+
+    /// 中心裁剪为 2:3 竖版封面（宽:高 = 2:3）。竖屏短剧直接取中；横屏视频取中间竖条。
+    private static func cropToPoster(_ cg: CGImage) -> CGImage? {
+        let w = CGFloat(cg.width), h = CGFloat(cg.height)
+        let targetRatio: CGFloat = 2.0 / 3.0  // 宽/高
+        let currentRatio = w / h
+        var rect: CGRect
+        if currentRatio > targetRatio {
+            // 太宽（横屏）：收窄宽度
+            let newW = h * targetRatio
+            rect = CGRect(x: (w - newW) / 2, y: 0, width: newW, height: h)
+        } else {
+            // 太高（竖屏超过 2:3）：收短高度
+            let newH = w / targetRatio
+            rect = CGRect(x: 0, y: (h - newH) / 2, width: w, height: newH)
+        }
+        return cg.cropping(to: rect.integral)
     }
 
     // MARK: - 并发闸门

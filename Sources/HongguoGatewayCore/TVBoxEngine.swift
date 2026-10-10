@@ -39,12 +39,36 @@ public actor TVBoxEngine {
 
     struct Subscription: Codable, Sendable {
         var sites: [Site]
+        var urls: [String]?          // 已导入成功的订阅地址（旧版缓存无此字段，向后兼容）
+    }
+
+    /// 内置默认采集源（路线 D：maccms 联盟采集站）。
+    /// 首次启动且无订阅时自动导入，不直接暴露给用户选择——作为「开箱即用」兜底源。
+    /// 已验证可用的 maccms JSON 接口站。
+    public static let builtinSiteAPIs: [(name: String, api: String)] = [
+        ("光速资源", "https://api.guangsuapi.com/api.php/provide/vod"),
+        ("U酷资源", "https://api.ukuapi.com/api.php/provide/vod"),
+        ("无尽资源", "https://api.wujinapi.cc/api.php/provide/vod"),
+        ("1080资源", "https://api.1080zyku.com/inc/api_mac10.php"),
+    ]
+
+    /// 单个订阅地址的导入结果。
+    public struct ImportResult: Codable, Sendable {
+        public let url: String
+        public let added: Int        // 新增站点数
+        public let error: String?    // nil = 成功
+        public var ok: Bool { error == nil }
+        public init(url: String, added: Int, error: String?) {
+            self.url = url; self.added = added; self.error = error
+        }
     }
 
     // MARK: - 缓存与状态
 
     private var sites: [Site] = []
     private var lastLoad = Date.distantPast
+    /// 已导入成功的订阅地址（持久化，重启后可「更新订阅」重新拉取）。
+    private var subscriptionURLs: [String] = []
 
     private static var cacheURL: URL {
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -58,40 +82,67 @@ public actor TVBoxEngine {
     // MARK: - 订阅管理
 
     /// 从 URL 导入订阅（TVBox 格式）。支持一次传多个地址（换行/逗号分隔），
-    /// 与已有站点按 api 排重合并（重复的不重复计数）。返回新增站点数。
+    /// 与已有站点按 api 排重合并（重复的不重复计数）。
+    /// 单地址失败跳过继续其余，返回每个地址的导入明细（成功的新增数/失败原因）。
+    /// 成功的地址持久化到订阅列表（重启后可「更新订阅」重拉）。
     @discardableResult
-    public func importSubscription(url: String) async throws -> Int {
+    public func importSubscriptionDetailed(url: String) async -> [ImportResult] {
         let urls = url
             .components(separatedBy: CharacterSet(charactersIn: "\n,;，；"))
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { $0.hasPrefix("http") }
-        guard !urls.isEmpty else { throw TVBoxError.badURL }
+        guard !urls.isEmpty else { return [ImportResult(url: url, added: 0, error: "订阅地址无效")] }
 
-        // 逐个拉取解析，合并（单地址失败不拖垮其余）
-        var fetched: [Site] = []
-        for u in urls {
-            if let list = try? await Self.fetchSubscription(url: u) {
-                fetched.append(contentsOf: list)
-            }
-        }
-        // 仅保留 maccms 类源（api 非空）
-        let cleaned = fetched.filter { !$0.api.isEmpty && $0.api.hasPrefix("http") }
-        guard !cleaned.isEmpty else { throw TVBoxError.noSites }
-
-        // 与现有站点按 api 排重合并（已有优先，新源只补未收录的）
         await ensureLoaded()
-        var existingApis = Set(sites.map { Self.normalizeAPI($0.api) })
-        var added = 0
-        for s in cleaned {
-            let key = Self.normalizeAPI(s.api)
-            if existingApis.insert(key).inserted {
-                sites.append(s)
-                added += 1
+        var results: [ImportResult] = []
+        var dirty = false
+        for u in urls {
+            do {
+                let list = try await Self.fetchSubscription(url: u)
+                let cleaned = list.filter { !$0.api.isEmpty && $0.api.hasPrefix("http") }
+                var existingApis = Set(sites.map { Self.normalizeAPI($0.api) })
+                var added = 0
+                for s in cleaned {
+                    let key = Self.normalizeAPI(s.api)
+                    if existingApis.insert(key).inserted {
+                        sites.append(s)
+                        added += 1
+                    }
+                }
+                if !subscriptionURLs.contains(u) { subscriptionURLs.append(u) }
+                dirty = true
+                results.append(ImportResult(url: u, added: added, error: nil))
+            } catch {
+                results.append(ImportResult(url: u, added: 0, error: error.localizedDescription))
             }
         }
-        lastLoad = Date()
-        try JSONEncoder().encode(Subscription(sites: sites)).write(to: Self.cacheURL, options: .atomic)
-        return added
+        if dirty {
+            lastLoad = Date()
+            try? JSONEncoder().encode(Subscription(sites: sites, urls: subscriptionURLs)).write(to: Self.cacheURL, options: .atomic)
+        }
+        return results
+    }
+
+    /// 已导入成功的订阅地址列表。
+    public func savedSubscriptionURLs() async -> [String] {
+        await ensureLoaded()
+        return subscriptionURLs
+    }
+
+    /// 删除一个订阅地址（不删除其已导入的站点——站点可能也被其他地址提供）。
+    public func removeSubscriptionURL(_ url: String) async {
+        await ensureLoaded()
+        subscriptionURLs.removeAll { $0 == url }
+        try? JSONEncoder().encode(Subscription(sites: sites, urls: subscriptionURLs)).write(to: Self.cacheURL, options: .atomic)
+    }
+
+    /// 重新拉取全部已存订阅地址（「更新订阅」），返回每地址明细。
+    @discardableResult
+    public func refreshAllSubscriptions() async -> [ImportResult] {
+        await ensureLoaded()
+        let urls = subscriptionURLs
+        guard !urls.isEmpty else { return [] }
+        return await importSubscriptionDetailed(url: urls.joined(separator: "\n"))
     }
 
     /// api 归一化（去尾斜杠/去协议差异），用于排重键。
@@ -129,10 +180,28 @@ public actor TVBoxEngine {
 
     private func ensureLoaded() async {
         guard sites.isEmpty, Date().timeIntervalSince(lastLoad) > 5 else { return }
-        guard let data = try? Data(contentsOf: Self.cacheURL),
-              let sub = try? JSONDecoder().decode(Subscription.self, from: data) else { return }
-        sites = sub.sites.filter { !$0.api.isEmpty && $0.api.hasPrefix("http") }
+        if let data = try? Data(contentsOf: Self.cacheURL),
+           let sub = try? JSONDecoder().decode(Subscription.self, from: data) {
+            sites = sub.sites.filter { !$0.api.isEmpty && $0.api.hasPrefix("http") }
+            subscriptionURLs = sub.urls ?? []
+            lastLoad = Date()
+        }
+        // 首次使用（无任何站点）：注入内置采集源（路线 D），开箱即用，不直接暴露给用户
+        if sites.isEmpty {
+            await seedBuiltinSites()
+        }
+    }
+
+    /// 注入内置采集源（仅在完全无站点时执行一次）。
+    private func seedBuiltinSites() async {
+        for b in Self.builtinSiteAPIs {
+            let key = Self.normalizeAPI(b.api)
+            if !sites.contains(where: { Self.normalizeAPI($0.api) == key }) {
+                sites.append(Site(key: key, name: b.name, api: b.api))
+            }
+        }
         lastLoad = Date()
+        try? JSONEncoder().encode(Subscription(sites: sites, urls: subscriptionURLs)).write(to: Self.cacheURL, options: .atomic)
     }
 
     private func site(key: String) async throws -> Site {

@@ -200,6 +200,30 @@ public struct SettingsView: View {
                         .frame(width: 170, alignment: .trailing)
                         .controlSize(.small)
                     }
+                    rowDivider
+                    row("默认播放器") {
+                        Picker("", selection: $s.defaultExternalPlayer) {
+                            Text("内置播放器").tag("builtin")
+                            ForEach(ExternalPlayerApp.allCases.filter { $0 != .systemDefault && ExternalPlayerOpener.isInstalled($0) }) { app in
+                                Text(app.displayName).tag(app.rawValue)
+                            }
+                            Text("系统默认播放器").tag(ExternalPlayerApp.systemDefault.rawValue)
+                        }
+                        .labelsHidden()
+                        .frame(width: 160)
+                        .controlSize(.small)
+                    }
+                    HStack(alignment: .top, spacing: 6) {
+                        Image(systemName: "info.circle")
+                            .font(.system(size: 11))
+                            .foregroundStyle(Brand.secondaryLabel)
+                        Text("设为外部播放器后，选集播放时自动用该播放器打开，无需每次在播放界面手动切换。内置播放器 = 在应用内播放。")
+                            .font(.system(size: 11))
+                            .foregroundStyle(Brand.secondaryLabel)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(.horizontal, Spacing.md)
+                    .padding(.vertical, Spacing.sm)
                 }
 
                 sectionCard("缓冲") {

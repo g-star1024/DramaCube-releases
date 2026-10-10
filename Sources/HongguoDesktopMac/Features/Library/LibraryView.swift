@@ -28,10 +28,10 @@ public struct LibraryView: View {
             .padding(.horizontal, Spacing.md)
             .padding(.vertical, Spacing.sm)
             Divider()
-            if segment == .favorite {
-                FavoriteListView()
-            } else {
+            if segment == .history {
                 HistoryListView()
+            } else {
+                FavoriteListView()
             }
         }
         .navigationTitle(segment.title)
@@ -39,11 +39,14 @@ public struct LibraryView: View {
     }
 }
 
-/// 收藏列表。
+/// 收藏列表（支持编辑模式多选批量删除）。
 struct FavoriteListView: View {
     @State private var items: [FavoriteItem] = []
     /// 集数懒回填结果（收藏存储无集数字段，后台经详情接口补全）
     @State private var counts: [String: Int] = [:]
+    /// 编辑（多选删除）模式
+    @State private var isEditing = false
+    @State private var selected: Set<String> = []
 
     var body: some View {
         VStack(spacing: 0) {
@@ -52,20 +55,32 @@ struct FavoriteListView: View {
                            description: "在详情页点击「收藏」，喜欢的内容会在这里")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
+                // 编辑模式工具条
+                if isEditing {
+                    editBar
+                    Divider()
+                }
                 ScrollView {
                     LazyVGrid(
                         columns: [GridItem(.adaptive(minimum: 150, maximum: 180), spacing: Spacing.md)],
                         spacing: Spacing.md
                     ) {
                         ForEach(items) { item in
-                            PosterCard(Drama(id: item.dramaId, title: item.title,
-                                             coverURL: item.coverURL,
-                                             episodeCount: counts[item.dramaId]))
-                                .onTapGesture { open(item) }
-                                .contextMenu {
-                                    Button("查看详情") { open(item) }
-                                    Button("取消收藏", role: .destructive) { remove(item) }
-                                }
+                            ZStack(alignment: .topTrailing) {
+                                PosterCard(Drama(id: item.dramaId, title: item.title,
+                                                 coverURL: item.coverURL,
+                                                 episodeCount: counts[item.dramaId]))
+                                    .onTapGesture {
+                                        if isEditing { toggleSelect(item.dramaId) } else { open(item) }
+                                    }
+                                    .overlay(selectionOverlay(item.dramaId))
+                                    .contextMenu {
+                                        if !isEditing {
+                                            Button("查看详情") { open(item) }
+                                            Button("取消收藏", role: .destructive) { remove(item) }
+                                        }
+                                    }
+                            }
                         }
                     }
                     .padding(Spacing.md)
@@ -73,9 +88,57 @@ struct FavoriteListView: View {
             }
         }
         .frame(minWidth: 640, minHeight: 480)
+        .toolbar {
+            ToolbarItem {
+                if !items.isEmpty {
+                    Button(isEditing ? "完成" : "选择") {
+                        isEditing.toggle()
+                        if !isEditing { selected.removeAll() }
+                    }
+                }
+            }
+        }
         .onAppear { reload() }
         .onReceive(NotificationCenter.default.publisher(for: .hongguoLibraryChanged)) { _ in reload() }
         .task(id: items) { await backfillCounts() }
+    }
+
+    // MARK: 编辑工具条
+    private var editBar: some View {
+        HStack(spacing: Spacing.md) {
+            Button(selected.count == items.count ? "取消全选" : "全选") {
+                selected = selected.count == items.count ? [] : Set(items.map(\.dramaId))
+            }
+            .controlSize(.small)
+            Text("已选 \(selected.count) 项")
+                .font(Typography.caption)
+                .foregroundStyle(Brand.secondaryLabel)
+            Spacer()
+            Button("删除选中", role: .destructive) { removeSelected() }
+                .controlSize(.small)
+                .disabled(selected.isEmpty)
+        }
+        .padding(.horizontal, Spacing.md)
+        .padding(.vertical, Spacing.xs)
+        .background(Brand.chipFill)
+    }
+
+    /// 编辑模式下的选中圈/勾。
+    private func selectionOverlay(_ dramaId: String) -> some View {
+        Group {
+            if isEditing {
+                let on = selected.contains(dramaId)
+                Image(systemName: on ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 22))
+                    .foregroundStyle(on ? Brand.accent : Color.white)
+                    .shadow(color: .black.opacity(0.3), radius: 2)
+                    .padding(8)
+            }
+        }
+    }
+
+    private func toggleSelect(_ id: String) {
+        if selected.contains(id) { selected.remove(id) } else { selected.insert(id) }
     }
 
     private func reload() { items = Repository.shared.favorites() }
@@ -98,11 +161,20 @@ struct FavoriteListView: View {
         Repository.shared.removeFavorite(dramaId: item.dramaId)
         reload()
     }
+
+    private func removeSelected() {
+        Repository.shared.removeFavorites(dramaIds: selected)
+        selected.removeAll()
+        isEditing = false
+        reload()
+    }
 }
 
-/// 历史 / 播放进度列表。
+/// 历史 / 播放进度列表（支持滑动删除 + 编辑模式多选批量删除）。
 struct HistoryListView: View {
     @State private var items: [HistoryItem] = []
+    @State private var isEditing = false
+    @State private var selected: Set<String> = []
 
     var body: some View {
         VStack(spacing: 0) {
@@ -111,25 +183,80 @@ struct HistoryListView: View {
                            description: "播放过的短剧会自动记录进度，可从此续播")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
+                if isEditing {
+                    editBar
+                    Divider()
+                }
                 List {
                     ForEach(items) { item in
-                        HistoryRow(item: item)
+                        HStack(spacing: Spacing.sm) {
+                            if isEditing {
+                                let on = selected.contains(item.key)
+                                Image(systemName: on ? "checkmark.circle.fill" : "circle")
+                                    .font(.system(size: 20))
+                                    .foregroundStyle(on ? Brand.accent : Brand.secondaryLabel)
+                                    .onTapGesture { toggleSelect(item.key) }
+                            }
+                            HistoryRow(item: item)
+                        }
                     }
                     .onDelete { offsets in
-                        for i in offsets { Repository.shared.removeHistory(items[i]) }
-                        reload()
-                    }
-                }
-                .toolbar {
-                    ToolbarItem {
-                        Button("清空") { Repository.shared.clearHistory(); reload() }
+                        if !isEditing {
+                            for i in offsets { Repository.shared.removeHistory(items[i]) }
+                            reload()
+                        }
                     }
                 }
             }
         }
         .frame(minWidth: 640, minHeight: 480)
+        .toolbar {
+            ToolbarItem {
+                if !items.isEmpty {
+                    Button(isEditing ? "完成" : "选择") {
+                        isEditing.toggle()
+                        if !isEditing { selected.removeAll() }
+                    }
+                }
+            }
+            ToolbarItem {
+                if !items.isEmpty && !isEditing {
+                    Button("清空") { Repository.shared.clearHistory(); reload() }
+                }
+            }
+        }
         .onAppear { reload() }
         .onReceive(NotificationCenter.default.publisher(for: .hongguoLibraryChanged)) { _ in reload() }
+    }
+
+    private var editBar: some View {
+        HStack(spacing: Spacing.md) {
+            Button(selected.count == items.count ? "取消全选" : "全选") {
+                selected = selected.count == items.count ? [] : Set(items.map(\.key))
+            }
+            .controlSize(.small)
+            Text("已选 \(selected.count) 项")
+                .font(Typography.caption)
+                .foregroundStyle(Brand.secondaryLabel)
+            Spacer()
+            Button("删除选中", role: .destructive) { removeSelected() }
+                .controlSize(.small)
+                .disabled(selected.isEmpty)
+        }
+        .padding(.horizontal, Spacing.md)
+        .padding(.vertical, Spacing.xs)
+        .background(Brand.chipFill)
+    }
+
+    private func toggleSelect(_ key: String) {
+        if selected.contains(key) { selected.remove(key) } else { selected.insert(key) }
+    }
+
+    private func removeSelected() {
+        Repository.shared.removeHistories(keys: selected)
+        selected.removeAll()
+        isEditing = false
+        reload()
     }
 
     private func reload() { items = Repository.shared.history() }
