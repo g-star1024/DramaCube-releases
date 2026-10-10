@@ -20,6 +20,13 @@ public final class LiveManager: ObservableObject {
 
     private let base = AppConfig.gatewayBaseURL
 
+    /// 直连网关（绕过系统代理；127.0.0.1 本不应走代理，但全局代理可能拦）。
+    private let session: URLSession = {
+        let c = URLSessionConfiguration.default
+        c.connectionProxyDictionary = [:]
+        return URLSession(configuration: c)
+    }()
+
     private static var mirrorURL: URL {
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("DramaCube", isDirectory: true)
@@ -164,7 +171,7 @@ public final class LiveManager: ObservableObject {
         guard let url = URL(string: urlString) else { throw URLError(.badURL) }
         var req = URLRequest(url: url, timeoutInterval: 40)
         req.cachePolicy = .reloadIgnoringLocalCacheData
-        let (data, _) = try await URLSession.shared.data(for: req)
+        let (data, _) = try await session.data(for: req)
         let env = try JSONDecoder().decode(GatewayEnvelope<T>.self, from: data)
         if let e = env.error { throw HongguoParseError.fieldMissing(e) }
         guard let d = env.data else { throw HongguoParseError.fieldMissing("data") }

@@ -24,11 +24,34 @@ final class MediaHubViewModel: ObservableObject {
 
     private var base: URL { URL(string: "http://127.0.0.1:\(AppSettings.shared.gatewayPort)")! }
 
+    /// 直连网关的 URLSession（绕过系统代理；127.0.0.1 本不应走代理，但部分全局代理会拦）。
+    private let session: URLSession = {
+        let c = URLSessionConfiguration.default
+        c.connectionProxyDictionary = [:]
+        c.timeoutIntervalForRequest = 15
+        return URLSession(configuration: c)
+    }()
+
+    /// 等待网关就绪（启动窗口期轮询 health，最多 ~10s），避免网关未起听时请求一次性失败。
+    private func waitGatewayReady() async -> Bool {
+        for _ in 0..<20 {
+            if let (data, resp) = try? await session.data(from: base.appendingPathComponent("api/health")),
+               let http = resp as? HTTPURLResponse, http.statusCode == 200,
+               let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               obj["ok"] != nil {
+                return true
+            }
+            try? await Task.sleep(nanoseconds: 500_000_000)
+        }
+        return false
+    }
+
     /// 拉服务器列表（后端已缓存连接状态秒回；后台异步 probe 刷新）。
     /// 只展示在线源（失败源不显示，符合「首页不展示失败源」要求）。
     func loadServers() async {
+        guard await waitGatewayReady() else { self.error = "网关未就绪"; return }
         do {
-            let (data, _) = try await URLSession.shared.data(from: base.appendingPathComponent("api/servers"))
+            let (data, _) = try await session.data(from: base.appendingPathComponent("api/servers"))
             struct Env: Codable { let ok: Bool; let data: [ServerVO]? }
             let env = try JSONDecoder().decode(Env.self, from: data)
             let all = env.data ?? []
@@ -46,24 +69,39 @@ final class MediaHubViewModel: ObservableObject {
         await loadHome()
     }
 
-    /// 聚合首页（继续观看 + 最新入库）。带 15s 超时，避免被慢源拖死。
+    /// 聚合首页（继续观看 + 最新入库）。等网关就绪 + 失败自动重试，避免启动窗口期一次性失败。
     func loadHome() async {
         isLoading = true; error = nil
         defer { isLoading = false }
-        do {
-            var req = URLRequest(url: base.appendingPathComponent("api/aggregate/home?limit=24"))
-            req.timeoutInterval = 15
-            let (data, _) = try await URLSession.shared.data(for: req)
-            struct HomeVO: Codable { let continueWatching, recentlyAdded: [MediaItem] }
-            struct Env: Codable { let ok: Bool; let data: HomeVO? }
-            let env = try JSONDecoder().decode(Env.self, from: data)
-            continueWatching = env.data?.continueWatching ?? []
-            recentlyAdded = env.data?.recentlyAdded ?? []
-            if continueWatching.isEmpty && recentlyAdded.isEmpty {
-                self.error = "暂无在线源返回内容，请稍后重试或检查服务器连接"
+        guard await waitGatewayReady() else {
+            self.error = "本地网关未启动，请重启应用"
+            return
+        }
+        // 最多尝试 3 次（指数退避），个别慢响应自动重试
+        for attempt in 0..<3 {
+            do {
+                var req = URLRequest(url: base.appendingPathComponent("api/aggregate/home?limit=24"))
+                req.timeoutInterval = 15
+                req.cachePolicy = .reloadIgnoringLocalCacheData
+                let (data, _) = try await session.data(for: req)
+                struct HomeVO: Codable { let continueWatching, recentlyAdded: [MediaItem] }
+                struct Env: Codable { let ok: Bool; let data: HomeVO? }
+                let env = try JSONDecoder().decode(Env.self, from: data)
+                continueWatching = env.data?.continueWatching ?? []
+                recentlyAdded = env.data?.recentlyAdded ?? []
+                if continueWatching.isEmpty && recentlyAdded.isEmpty {
+                    self.error = "暂无在线源返回内容，请稍后重试或检查服务器连接"
+                } else {
+                    self.error = nil
+                }
+                return  // 成功即返回
+            } catch {
+                if attempt < 2 {
+                    try? await Task.sleep(nanoseconds: UInt64((attempt + 1)) * 1_000_000_000)
+                    continue
+                }
+                self.error = "聚合首页加载失败（源响应超时，可重试）"
             }
-        } catch {
-            self.error = "聚合首页加载失败（源响应超时，可重试）"
         }
     }
 }

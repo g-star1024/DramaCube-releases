@@ -21,6 +21,29 @@ public final class NASManager: ObservableObject {
 
     private let base = AppConfig.gatewayBaseURL
 
+    /// 直连网关的 URLSession（绕过系统代理；127.0.0.1 本不应走代理，但全局代理可能拦）。
+    private let session: URLSession = {
+        let c = URLSessionConfiguration.default
+        c.connectionProxyDictionary = [:]
+        c.timeoutIntervalForRequest = 60
+        return URLSession(configuration: c)
+    }()
+
+    /// 等待网关就绪（启动窗口期轮询 health，最多 ~10s），避免网关未起听时请求一次性失败。
+    private func waitGatewayReady() async -> Bool {
+        guard let healthURL = URL(string: "\(base)/api/health") else { return false }
+        for _ in 0..<20 {
+            if let (data, resp) = try? await session.data(from: healthURL),
+               let http = resp as? HTTPURLResponse, http.statusCode == 200,
+               let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               obj["ok"] != nil {
+                return true
+            }
+            try? await Task.sleep(nanoseconds: 500_000_000)
+        }
+        return false
+    }
+
     private static var mirrorURL: URL {
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("DramaCube", isDirectory: true)
@@ -116,7 +139,18 @@ public final class NASManager: ObservableObject {
 
     public func browse(id: String, path: String = "") async throws -> [Drama] {
         let p = path.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-        return try await get("\(base)/api/nas/browse/\(id)?path=\(p)")
+        // 等网关就绪 + 失败自动重试 3 次（启动窗口期/偶发慢响应）
+        _ = await waitGatewayReady()
+        var lastErr: Error = URLError(.cannotConnectToHost)
+        for attempt in 0..<3 {
+            do {
+                return try await get("\(base)/api/nas/browse/\(id)?path=\(p)")
+            } catch {
+                lastErr = error
+                if attempt < 2 { try? await Task.sleep(nanoseconds: UInt64(attempt + 1) * 1_000_000_000) }
+            }
+        }
+        throw lastErr
     }
 
     public func detail(id: String, dirPath: String) async throws -> DramaDetail {
@@ -141,7 +175,7 @@ public final class NASManager: ObservableObject {
         // 大库递归扫描可能耗时，给 60s 超时（默认 60s 但显式声明更清晰，且避免偶发挂起）
         var req = URLRequest(url: url, timeoutInterval: 60)
         req.cachePolicy = .reloadIgnoringLocalCacheData
-        let (data, _) = try await URLSession.shared.data(for: req)
+        let (data, _) = try await session.data(for: req)
         let env = try JSONDecoder().decode(GatewayEnvelope<T>.self, from: data)
         if let e = env.error { throw HongguoParseError.fieldMissing(e) }
         guard let d = env.data else { throw HongguoParseError.fieldMissing("data") }

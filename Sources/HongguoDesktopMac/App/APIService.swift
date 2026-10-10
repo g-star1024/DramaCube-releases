@@ -13,6 +13,13 @@ public final class CatalogService: ObservableObject {
     public static let shared = CatalogService()
     private let base = AppConfig.gatewayBaseURL
 
+    /// 直连网关（绕过系统代理；127.0.0.1 本不应走代理，但全局代理可能拦）。
+    private let session: URLSession = {
+        let c = URLSessionConfiguration.default
+        c.connectionProxyDictionary = [:]
+        return URLSession(configuration: c)
+    }()
+
     private init() {}
 
     /// 把网关响应统一解包；对连接类错误重试以覆盖网关冷启动。
@@ -24,7 +31,7 @@ public final class CatalogService: ObservableObject {
         for attempt in 0..<max(1, retries) {
             let t0 = Date()
             do {
-                let (data, resp) = try await URLSession.shared.data(from: url)
+                let (data, resp) = try await session.data(from: url)
                 let code = (resp as? HTTPURLResponse)?.statusCode ?? -1
                 let env = try await Task.detached(priority: .userInitiated) {
                     try JSONDecoder().decode(GatewayEnvelope<T>.self, from: data)

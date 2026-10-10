@@ -98,6 +98,12 @@ public final class SourceManager: ObservableObject {
 
     private let defaults = UserDefaults.standard
     private let base = AppConfig.gatewayBaseURL
+    /// 直连网关（绕过系统代理；127.0.0.1 本不应走代理，但全局代理可能拦）。
+    private let session: URLSession = {
+        let c = URLSessionConfiguration.default
+        c.connectionProxyDictionary = [:]
+        return URLSession(configuration: c)
+    }()
     private var autoTestTimer: Timer?
 
     /// 站点列表本地镜像（Application Support，升级重装不丢，网关不可达时兜底）。
@@ -428,7 +434,7 @@ public final class SourceManager: ObservableObject {
 
     private func get<T: Codable & Sendable>(_ urlString: String) async throws -> T {
         guard let url = URL(string: urlString) else { throw URLError(.badURL) }
-        let (data, _) = try await URLSession.shared.data(from: url)
+        let (data, _) = try await session.data(from: url)
         let env = try JSONDecoder().decode(GatewayEnvelope<T>.self, from: data)
         if let e = env.error { throw HongguoParseError.fieldMissing(e) }
         guard let d = env.data else { throw HongguoParseError.fieldMissing("data") }
