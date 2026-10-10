@@ -85,10 +85,10 @@ public final class CatalogService: ObservableObject {
     }
 
     /// 拉豆瓣热门列表（kind: movie/tv；category/type 对齐 MoonTVPlus）。
-    public func doubanHot(kind: String, category: String, type: String, limit: Int = 18) async throws -> [DoubanHotItem] {
+    public func doubanHot(kind: String, category: String, type: String, limit: Int = 18, start: Int = 0) async throws -> [DoubanHotItem] {
         let cat = category.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? category
         let typ = type.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? type
-        guard let url = URL(string: "\(base)/api/douban/hot?kind=\(kind)&category=\(cat)&type=\(typ)&limit=\(limit)") else {
+        guard let url = URL(string: "\(base)/api/douban/hot?kind=\(kind)&category=\(cat)&type=\(typ)&limit=\(limit)&start=\(start)") else {
             throw HongguoParseError.fieldMissing("url")
         }
         return try await decode(url)

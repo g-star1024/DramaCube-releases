@@ -30,7 +30,8 @@ public struct SettingsView: View {
             serviceTab.tabItem { Label("服务", systemImage: "stethoscope") }
             aboutTab.tabItem { Label("关于", systemImage: "info.circle") }
         }
-        .frame(width: 640, height: 520)
+        .frame(minWidth: 780, idealWidth: 920, maxWidth: .infinity,
+               minHeight: 600, idealHeight: 720, maxHeight: .infinity)
     }
 
     // MARK: - 通用（菜单栏 / Dock / 窗口行为）

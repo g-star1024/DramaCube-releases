@@ -21,7 +21,8 @@ struct NASBrowseView: View {
     /// 当前可见的卡片（懒加载切片）。封面生成是重活，只渲染可见部分避免一次性打满 CPU/IO。
     private var items: [Drama] { Array(allItems.prefix(visibleCount)) }
 
-    private let columns = Array(repeating: GridItem(.flexible(), spacing: Spacing.md), count: 6)
+    // 自适应网格（对齐发现频道）：按宽度自动分列，不再固定每行 6 个
+    private let columns = [GridItem(.adaptive(minimum: 130, maximum: 160), spacing: Spacing.md)]
 
     var body: some View {
         VStack(spacing: 0) {

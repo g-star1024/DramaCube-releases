@@ -21,7 +21,8 @@ struct TVBoxBrowseView: View {
     /// 首屏是否已完成过一次加载（区分「从未加载」与「切源中途」），用于切源时也显示加载态而非暂无内容
     @State private var hasInitiallyLoaded = false
 
-    private let columns = Array(repeating: GridItem(.flexible(), spacing: Spacing.md), count: 6)
+    // 自适应网格（对齐发现频道）：按宽度自动分列，不再固定每行 6 个
+    private let columns = [GridItem(.adaptive(minimum: 130, maximum: 160), spacing: Spacing.md)]
 
     var body: some View {
         VStack(spacing: 0) {
@@ -143,6 +144,12 @@ struct TVBoxBrowseView: View {
         .padding(.vertical, Spacing.xs)
     }
 
+    /// 当前选中频道名（空数据提示用）。
+    private var selectedCategoryName: String {
+        guard let id = selectedTypeId else { return "最新" }
+        return (sm.categories[sm.currentSource] ?? []).first { $0.typeId == id }?.name ?? "该频道"
+    }
+
     private func catChip(id: Int?, name: String) -> some View {
         let active = selectedTypeId == id
         return Button { selectedTypeId = id } label: {
@@ -190,7 +197,13 @@ struct TVBoxBrowseView: View {
             // 切换源/频道的中途（异步任务已发出但 isLoading 尚未置位）也显示加载态，不闪「暂无内容」
             LoadingView("正在加载 \(sm.currentSourceName)…")
         } else if items.isEmpty {
-            EmptyState("该源暂无内容", systemImage: "tray", description: "可能是站点无数据或接口异常，可在设置中做连通性测试")
+            if selectedTypeId != nil {
+                // 二级频道空数据：不跳默认源，提示用户换其他频道
+                EmptyState("该频道暂无内容", systemImage: "tray",
+                           description: "「\(selectedCategoryName)」分类下没有数据，试试上方其他频道或「最新」")
+            } else {
+                EmptyState("该源暂无内容", systemImage: "tray", description: "可能是站点无数据或接口异常，可在设置中做连通性测试")
+            }
         } else {
             grid
         }
@@ -291,22 +304,23 @@ struct TVBoxBrowseView: View {
             hasMore = fresh.count >= 12
             AppLog.log(.app, "视频源 \(src) 第 \(target) 页（频道 \(selectedTypeId ?? -1)）：\(fresh.count) 部")
             if reset { await DiskCache.shared.write(items, key: cacheKey) }
-            // 网关侧已对彻底失败的源返回空列表；空列表视为该源不可用，自动切到最快可用源
-            if reset && fresh.isEmpty, let fast = sm.fastestEnabledSite, fast.key != src {
+            // 仅「最新」首页（未选二级频道）空数据时才自动切默认源；
+            // 二级频道空数据不跳源，由 content 显示空提示引导用户换频道（见 emptyCategoryHint）
+            if reset && fresh.isEmpty && selectedTypeId == nil, let fast = sm.fastestEnabledSite, fast.key != src {
                 AppLog.log(.app, "视频源 \(src) 无数据，自动切换到最快可用源 \(fast.key)")
                 sm.currentSource = fast.key   // 触发 onChange 重新加载新源
                 isLoading = false
                 return
             }
         } catch {
-            // 首屏加载失败：当前源挂了，自动切到最快可用源重试（避免整页报错）
-            if reset, let fast = sm.fastestEnabledSite, fast.key != src {
+            // 仅「最新」首页加载失败才自动切默认源；二级频道失败不跳源，报错引导换频道
+            if reset && selectedTypeId == nil, let fast = sm.fastestEnabledSite, fast.key != src {
                 AppLog.log(.app, "视频源 \(src) 加载失败（\(error.localizedDescription)），自动切换到最快可用源 \(fast.key)")
                 sm.currentSource = fast.key   // 触发 onChange 重新加载新源
                 isLoading = false
                 return
             }
-            if reset { self.error = "加载失败：\(error.localizedDescription)" }
+            if reset { self.error = "该频道加载失败：\(error.localizedDescription)" }
             AppLog.log(.error, "视频源 \(src) 加载失败：\(error.localizedDescription)")
         }
         isLoading = false

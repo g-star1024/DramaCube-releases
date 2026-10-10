@@ -88,12 +88,12 @@ public actor CoverEngine {
     ///   - kind: movie / tv
     ///   - category: 热门 / tv / show（MoonTVPlus：电影=热门，剧集=tv，综艺=show）
     ///   - type: 全部 / tv / show
-    public func doubanHot(kind: String, category: String, type: String, limit: Int = 18) async -> [DoubanHotItem] {
-        let key = "\(kind)|\(category)|\(type)|\(limit)"
+    public func doubanHot(kind: String, category: String, type: String, limit: Int = 18, start: Int = 0) async -> [DoubanHotItem] {
+        let key = "\(kind)|\(category)|\(type)|\(limit)|\(start)"
         if let c = hotCache[key], Date().timeIntervalSince(c.at) < 3600 { return c.items }
         let cat = category.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? category
         let typ = type.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? type
-        let urlStr = "https://m.douban.com/rexxar/api/v2/subject/recent_hot/\(kind)?start=0&limit=\(limit)&category=\(cat)&type=\(typ)"
+        let urlStr = "https://m.douban.com/rexxar/api/v2/subject/recent_hot/\(kind)?start=\(start)&limit=\(limit)&category=\(cat)&type=\(typ)"
         guard let url = URL(string: urlStr) else { return [] }
         var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 10)
         req.setValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15", forHTTPHeaderField: "User-Agent")

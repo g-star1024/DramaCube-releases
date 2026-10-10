@@ -23,10 +23,13 @@ public struct RankView: View {
 
     let onSelect: (Drama) -> Void
 
-    @State private var tab: Tab = .duanju
+    @State private var tab: Tab = .movie   // 默认进热门电影（非短剧）
     @State private var doubanItems: [CatalogService.DoubanHotItem] = []
     @State private var duanjuItems: [Drama] = []
     @State private var isLoading = false
+    @State private var isLoadingMore = false
+    @State private var page = 1
+    private let pageSize = 50   // 每页 50，滚动到底加载更多
 
     public init(onSelect: @escaping (Drama) -> Void) { self.onSelect = onSelect }
 
@@ -66,6 +69,9 @@ public struct RankView: View {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 130, maximum: 160), spacing: Spacing.md)], spacing: Spacing.lg) {
                 ForEach(Array(doubanItems.enumerated()), id: \.element.id) { idx, item in
                     VStack(alignment: .leading, spacing: Spacing.sm) {
+                        // 滚动到最后几个时触发加载更多
+                        Color.clear.frame(width: 0, height: 0)
+                            .onAppear { if idx >= doubanItems.count - 6 { Task { await loadMore() } } }
                         Color.clear
                             .aspectRatio(3.0 / 4.0, contentMode: .fit)
                             .overlay { CoverImage(proxied(item.poster), title: item.title) }
@@ -88,6 +94,9 @@ public struct RankView: View {
                 }
             }
             .padding(Spacing.lg)
+            if isLoadingMore {
+                ProgressView().controlSize(.small).frame(maxWidth: .infinity).padding(.bottom, 12)
+            }
         }
     }
 
@@ -139,17 +148,44 @@ public struct RankView: View {
 
     private func load() async {
         isLoading = true
+        page = 0
+        doubanItems = []
         let svc = CatalogService.shared
         switch tab {
         case .movie:
-            doubanItems = (try? await svc.doubanHot(kind: "movie", category: "热门", type: "全部", limit: 24)) ?? []
+            doubanItems = (try? await svc.doubanHot(kind: "movie", category: "热门", type: "全部", limit: pageSize, start: 0)) ?? []
         case .tv:
-            doubanItems = (try? await svc.doubanHot(kind: "tv", category: "tv", type: "tv", limit: 24)) ?? []
+            doubanItems = (try? await svc.doubanHot(kind: "tv", category: "tv", type: "tv", limit: pageSize, start: 0)) ?? []
         case .variety:
-            doubanItems = (try? await svc.doubanHot(kind: "tv", category: "show", type: "show", limit: 24)) ?? []
+            doubanItems = (try? await svc.doubanHot(kind: "tv", category: "show", type: "show", limit: pageSize, start: 0)) ?? []
         case .duanju:
-            duanjuItems = await SourceManager.shared.duanjuRecommends(limit: 24)
+            duanjuItems = await SourceManager.shared.duanjuRecommends(limit: pageSize)
         }
         isLoading = false
+    }
+
+    /// 滚动到底加载更多（豆瓣 start 分页，去重追加，封顶 100）。
+    private func loadMore() async {
+        guard !isLoading, !isLoadingMore, tab != .duanju else { return }
+        guard doubanItems.count < 100 else { return }   // 封顶前 100
+        isLoadingMore = true
+        defer { isLoadingMore = false }
+        let next = doubanItems.count
+        let svc = CatalogService.shared
+        let batch: [CatalogService.DoubanHotItem]
+        switch tab {
+        case .movie:
+            batch = (try? await svc.doubanHot(kind: "movie", category: "热门", type: "全部", limit: pageSize, start: next)) ?? []
+        case .tv:
+            batch = (try? await svc.doubanHot(kind: "tv", category: "tv", type: "tv", limit: pageSize, start: next)) ?? []
+        case .variety:
+            batch = (try? await svc.doubanHot(kind: "tv", category: "show", type: "show", limit: pageSize, start: next)) ?? []
+        case .duanju:
+            return
+        }
+        // 去重追加（豆瓣推荐流可能返回重复）
+        var seen = Set(doubanItems.map { $0.id })
+        let fresh = batch.filter { seen.insert($0.id).inserted }
+        doubanItems.append(contentsOf: fresh)
     }
 }

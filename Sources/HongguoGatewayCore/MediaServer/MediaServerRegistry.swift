@@ -56,6 +56,44 @@ public actor MediaServerRegistry {
         return enabledServers()
     }
 
+    /// 聚合作用域（过滤失败源）：probe 已判定 offline 的源不纳入聚合，
+    /// 避免首页/搜索被 150 个低质死源拖垮或展示失败源内容。
+    private func liveScope() -> [any MediaServerProtocol] {
+        scope().filter { s in
+            guard let cap = capabilities[s.config.id] else { return true }  // 未探测=纳入
+            return cap.online
+        }
+    }
+
+    /// 首页聚合作用域（先返回+异步补全）：只用「已判定在线」的源。
+    /// 未探测的源不纳入（避免对 150 个未知源逐一 HTTP 导致首页超时），
+    /// 由 probeAll 后台标定后，后续请求自然纳入在线源。
+    private func homeScope() -> [any MediaServerProtocol] {
+        scope().filter { capabilities[$0.config.id]?.online == true }
+    }
+
+    /// 首屏快速源：内置红果 + NAS(mount 本地直读) 无需 HTTP 即可视为在线，
+    /// 保证首次启动（probeAll 未标定前）首页也能立即出数据。
+    private func quickScope() -> [any MediaServerProtocol] {
+        scope().filter { s in
+            switch s.config.kind {
+            case .hongguo, .mount: return true
+            default: return capabilities[s.config.id]?.online == true
+            }
+        }
+    }
+
+    /// 快速标定首屏快速源的在线状态（只 probe 红果/NAS 等，秒级返回）。
+    public func probeQuick() async {
+        let quick = scope().filter { [.hongguo, .mount, .webdav].contains($0.config.kind) }
+        await withTaskGroup(of: (String, ServerCapability).self) { group in
+            for s in quick {
+                group.addTask { (s.config.id, await s.probe()) }
+            }
+            for await (k, cap) in group { capabilities[k] = cap }
+        }
+    }
+
     // MARK: - 连接状态
 
     /// 探测单个并缓存。
@@ -86,21 +124,42 @@ public actor MediaServerRegistry {
 
     public func capability(key: String) -> ServerCapability? { capabilities[key] }
 
+    /// 已缓存的连接状态快照（秒回，不触发探测）。
+    public func cachedCapabilities() -> [String: ServerCapability] { capabilities }
+
     // MARK: - 聚合搜索
 
     /// 跨服务器聚合搜索：并发查作用域内所有源，按相关性归并，标注来源。
     /// 失败源静默跳过（单源挂不影响整体）。
     public func aggregateSearch(query: String, filter: SearchFilter) async -> [MediaItem] {
-        let targets = scope().filter { _ in true }
+        let targets = liveScope()   // 只搜在线源，失败源不纳入
         return await withTaskGroup(of: [MediaItem].self) { group in
             for s in targets {
                 group.addTask {
-                    (try? await s.search(query: query, filter: filter)) ?? []
+                    // 单源搜索超时保护（12s），慢源及时放弃不拖垮整体
+                    await Self.withTimeout(seconds: 12) {
+                        (try? await s.search(query: query, filter: filter)) ?? []
+                    } ?? []
                 }
             }
             var merged: [MediaItem] = []
             for await items in group { merged.append(contentsOf: items) }
             return Self.rank(merged, query: query)
+        }
+    }
+
+    /// 超时包装：超时返回 nil。
+    private static func withTimeout<T: Sendable>(seconds: UInt64,
+                                                 _ work: @escaping @Sendable () async -> T) async -> T? {
+        await withTaskGroup(of: T?.self) { group in
+            group.addTask { await work() }
+            group.addTask {
+                try? await Task.sleep(nanoseconds: seconds * 1_000_000_000)
+                return nil
+            }
+            let first = await group.next() ?? nil
+            group.cancelAll()
+            return first
         }
     }
 
@@ -132,8 +191,11 @@ public actor MediaServerRegistry {
 
     private func collect(limit: Int,
                          _ fetch: @escaping @Sendable (any MediaServerProtocol) async -> [MediaItem]?) async -> [MediaItem] {
-        await withTaskGroup(of: [MediaItem].self) { group in
-            for s in scope() {
+        // 首屏用快速源（红果/NAS 即时 + 已在线源），probeAll 标定后自然纳入更多
+        let targets = quickScope()
+        guard !targets.isEmpty else { return [] }
+        return await withTaskGroup(of: [MediaItem].self) { group in
+            for s in targets {
                 group.addTask { await fetch(s) ?? [] }
             }
             var merged: [MediaItem] = []

@@ -24,13 +24,17 @@ final class MediaHubViewModel: ObservableObject {
 
     private var base: URL { URL(string: "http://127.0.0.1:\(AppSettings.shared.gatewayPort)")! }
 
-    /// 拉服务器列表（含 probe 实时连接状态）。
+    /// 拉服务器列表（后端已缓存连接状态秒回；后台异步 probe 刷新）。
+    /// 只展示在线源（失败源不显示，符合「首页不展示失败源」要求）。
     func loadServers() async {
         do {
             let (data, _) = try await URLSession.shared.data(from: base.appendingPathComponent("api/servers"))
             struct Env: Codable { let ok: Bool; let data: [ServerVO]? }
             let env = try JSONDecoder().decode(Env.self, from: data)
-            servers = env.data ?? []
+            let all = env.data ?? []
+            // 过滤失败源：在线 或 未标定(刚启动) 的显示；明确 offline 的不显示
+            servers = all.filter { $0.online }
+            if servers.isEmpty { servers = all }  // 全失败时也兜底显示，避免空侧栏
         } catch {
             self.error = "服务器列表加载失败"
         }
@@ -42,19 +46,24 @@ final class MediaHubViewModel: ObservableObject {
         await loadHome()
     }
 
-    /// 聚合首页（继续观看 + 最新入库）。
+    /// 聚合首页（继续观看 + 最新入库）。带 15s 超时，避免被慢源拖死。
     func loadHome() async {
         isLoading = true; error = nil
         defer { isLoading = false }
         do {
-            let (data, _) = try await URLSession.shared.data(from: base.appendingPathComponent("api/aggregate/home?limit=24"))
+            var req = URLRequest(url: base.appendingPathComponent("api/aggregate/home?limit=24"))
+            req.timeoutInterval = 15
+            let (data, _) = try await URLSession.shared.data(for: req)
             struct HomeVO: Codable { let continueWatching, recentlyAdded: [MediaItem] }
             struct Env: Codable { let ok: Bool; let data: HomeVO? }
             let env = try JSONDecoder().decode(Env.self, from: data)
             continueWatching = env.data?.continueWatching ?? []
             recentlyAdded = env.data?.recentlyAdded ?? []
+            if continueWatching.isEmpty && recentlyAdded.isEmpty {
+                self.error = "暂无在线源返回内容，请稍后重试或检查服务器连接"
+            }
         } catch {
-            self.error = "聚合首页加载失败"
+            self.error = "聚合首页加载失败（源响应超时，可重试）"
         }
     }
 }

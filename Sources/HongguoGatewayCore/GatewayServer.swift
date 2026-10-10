@@ -401,8 +401,11 @@ public enum GatewayServer {
 
         // MARK: - 统一媒体服务器（新架构聚合层）
         // 服务器列表+连接状态：/api/servers → {ok, data:[{id,kind,name,online,latencyMs,...}]}
+        // 秒回：先返回已缓存的连接状态，同时后台触发全量 probe 刷新（下次请求拿到新状态），
+        // 避免媒体中枢首屏被 150 源全量探测卡住。
         router.get("api/servers") { _, _ async throws -> Response in
-            let caps = await MediaServerRegistry.shared.probeAll()
+            Task { _ = await MediaServerRegistry.shared.probeAll() }   // 后台刷新
+            let caps = await MediaServerRegistry.shared.cachedCapabilities()
             let servers = await MediaServerRegistry.shared.allServers()
             struct ServerVO: Codable {
                 let id, kind, name: String
@@ -527,7 +530,8 @@ public enum GatewayServer {
             let category = Self.queryValue(request, name: "category") ?? "热门"
             let type = Self.queryValue(request, name: "type") ?? "全部"
             let limit = Int(Self.queryValue(request, name: "limit") ?? "") ?? 18
-            let items = await CoverEngine.shared.doubanHot(kind: kind, category: category, type: type, limit: limit)
+            let start = Int(Self.queryValue(request, name: "start") ?? "") ?? 0
+            let items = await CoverEngine.shared.doubanHot(kind: kind, category: category, type: type, limit: limit, start: start)
             return Self.json(GatewayEnvelope(ok: true, data: items))
         }
 
@@ -701,6 +705,10 @@ public enum GatewayServer {
     }
     public static func run(port: Int) async throws {
         await MediaServerBootstrap.assemble()
+        // 先快速标定首屏源（红果/NAS，秒级），保证首页立即有数据；
+        // 再后台并发标定全部源（150 TVBox 慢源不阻塞起听），标定后聚合逐步纳入。
+        await MediaServerRegistry.shared.probeQuick()
+        Task { _ = await MediaServerRegistry.shared.probeAll() }
         var configuration = ApplicationConfiguration()
         configuration.address = .hostname("127.0.0.1", port: port)
         var app = Application(router: makeRouter(), configuration: configuration)
