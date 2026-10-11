@@ -21,6 +21,8 @@ struct NASBrowseView: View {
     private let pageSize = 30
     /// 扫描结果磁盘缓存有效期（10 分钟内不重复全库扫描）
     private let scanCacheTTL: TimeInterval = 600
+    /// 用户手动选择的库 id 持久化 key（避免每次访问被重置回第一个库）
+    private let lastLibKey = "nas.lastLibId"
 
     /// 当前可见的卡片（懒加载切片）。封面生成是重活，只渲染可见部分避免一次性打满 CPU/IO。
     private var items: [Drama] { Array(allItems.prefix(visibleCount)) }
@@ -37,15 +39,35 @@ struct NASBrowseView: View {
         .background(Brand.background)
         .task {
             nm.load()
-            // 默认选第一个启用的库
+            // 优先恢复用户上次手动选择的库；没有才默认第一个启用的库
             if currentLibId == nil {
-                currentLibId = nm.libraries.first(where: { $0.enabled })?.id ?? nm.libraries.first?.id
+                let saved = UserDefaults.standard.string(forKey: lastLibKey)
+                if let saved, nm.libraries.contains(where: { $0.id == saved }) {
+                    currentLibId = saved
+                } else {
+                    currentLibId = nm.libraries.first(where: { $0.enabled })?.id ?? nm.libraries.first?.id
+                }
             }
             await load()
         }
-        .onChange(of: currentLibId) { _, _ in currentPath = ""; Task { await load() } }
+        .onChange(of: currentLibId) { _, newId in
+            currentPath = ""
+            // 持久化用户选择（含 .task 里的默认选择）
+            if let newId { UserDefaults.standard.set(newId, forKey: lastLibKey) }
+            Task { await load() }
+        }
         .onChange(of: nm.libraries) { _, libs in
-            if currentLibId == nil || !libs.contains(where: { $0.id == currentLibId }) {
+            if currentLibId == nil {
+                // 首次加载：优先恢复持久化选择
+                let saved = UserDefaults.standard.string(forKey: lastLibKey)
+                if let saved, libs.contains(where: { $0.id == saved }) {
+                    currentLibId = saved
+                } else {
+                    currentLibId = libs.first(where: { $0.enabled })?.id ?? libs.first?.id
+                }
+                Task { await load() }
+            } else if !libs.contains(where: { $0.id == currentLibId }) {
+                // 当前库被删除了才回退第一个启用库
                 currentLibId = libs.first(where: { $0.enabled })?.id ?? libs.first?.id
                 Task { await load() }
             }

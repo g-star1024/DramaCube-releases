@@ -6,31 +6,26 @@ import HongguoGatewayCore
 // 数据源走网关统一聚合层（/api/servers、/api/aggregate/*），
 // 把红果/TVBox/NAS/IPTV/Emby/Jellyfin/AList/Subsonic/audiobookshelf 收敛到一个入口。
 
-/// 服务器连接状态视图对象（对端 /api/servers）。
-struct ServerVO: Codable, Identifiable {
-    let id, kind, name: String
-    let online: Bool, latencyMs: Int
-    let canTranscode, canSearch: Bool
-}
-
 @MainActor
 final class MediaHubViewModel: ObservableObject {
-    @Published var servers: [ServerVO] = []
+    @Published var servers: [CatalogService.MediaServerVO] = []
     @Published var focusedID: String? = nil          // nil = 聚合模式
     @Published var continueWatching: [MediaItem] = []
     @Published var recentlyAdded: [MediaItem] = []
     @Published var isLoading = false
     @Published var error: String?
 
-    /// 拉服务器列表（后端已缓存连接状态秒回；后台异步 probe 刷新）。
+    private let svc = CatalogService.shared
+
+    /// 拉服务器列表（走 CatalogService 已验证可用的网络通道）。
     /// 只展示在线源（失败源不显示，符合「首页不展示失败源」要求）。
     func loadServers() async {
-        _ = await GatewayHTTP.waitReady()
         do {
-            let all: [ServerVO] = try await GatewayHTTP.get("/api/servers", retries: 3)
+            let all = try await svc.mediaServers()
             // 过滤失败源：在线 或 未标定(刚启动) 的显示；明确 offline 的不显示
             servers = all.filter { $0.online }
             if servers.isEmpty { servers = all }  // 全失败时也兜底显示，避免空侧栏
+            self.error = nil
         } catch {
             self.error = "服务器列表加载失败"
         }
@@ -42,17 +37,12 @@ final class MediaHubViewModel: ObservableObject {
         await loadHome()
     }
 
-    /// 聚合首页（继续观看 + 最新入库）。走统一直连+就绪等待+自动重试。
+    /// 聚合首页（继续观看 + 最新入库）。走 CatalogService 通道（含冷启动重试）。
     func loadHome() async {
         isLoading = true; error = nil
         defer { isLoading = false }
-        guard await GatewayHTTP.waitReady() else {
-            self.error = "本地网关未启动，请重启应用"
-            return
-        }
         do {
-            struct HomeVO: Codable { let continueWatching, recentlyAdded: [MediaItem] }
-            let vo: HomeVO = try await GatewayHTTP.get("/api/aggregate/home?limit=24", retries: 3, timeout: 25)
+            let vo = try await svc.aggregateHome(limit: 24)
             continueWatching = vo.continueWatching
             recentlyAdded = vo.recentlyAdded
             self.error = (continueWatching.isEmpty && recentlyAdded.isEmpty)
