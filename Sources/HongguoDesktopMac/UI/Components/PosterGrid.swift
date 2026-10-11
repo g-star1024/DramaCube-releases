@@ -12,11 +12,13 @@ public struct PosterGrid: View {
     }
 
     @Environment(\.uiCardScale) private var cardScale
+    // 稳定 columns 引用（计算属性每次 body 求值新建会致 LazyVGrid 重建）
+    @State private var columns: [GridItem] = [GridItem(.adaptive(minimum: 150, maximum: 180), spacing: Spacing.md)]
 
     public var body: some View {
         ScrollView {
             LazyVGrid(
-                columns: [GridItem(.adaptive(minimum: 150 * cardScale, maximum: 180 * cardScale), spacing: Spacing.md)],
+                columns: columns,
                 spacing: Spacing.md
             ) {
                 ForEach(items) { drama in
@@ -33,5 +35,11 @@ public struct PosterGrid: View {
             }
             .padding(Spacing.md)
         }
+        .onAppear { rebuild() }
+        .onChange(of: cardScale) { _, _ in rebuild() }
+    }
+
+    private func rebuild() {
+        columns = [GridItem(.adaptive(minimum: 150 * cardScale, maximum: 180 * cardScale), spacing: Spacing.md)]
     }
 }

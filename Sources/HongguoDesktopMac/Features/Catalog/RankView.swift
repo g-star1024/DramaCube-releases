@@ -35,8 +35,10 @@ public struct RankView: View {
     private let sectionLimit = 18
     private let sectionLimitFull = 54
     @Environment(\.uiCardScale) private var cardScale
-    private var columns: [GridItem] {
-        [GridItem(.adaptive(minimum: 130 * cardScale, maximum: 160 * cardScale), spacing: Spacing.md)]
+    // 稳定 columns 引用（计算属性每次 body 求值新建会致 LazyVGrid 重建）
+    @State private var columns: [GridItem] = [GridItem(.adaptive(minimum: 130, maximum: 160), spacing: Spacing.md)]
+    private func rebuildColumns() {
+        columns = [GridItem(.adaptive(minimum: 130 * cardScale, maximum: 160 * cardScale), spacing: Spacing.md)]
     }
 
     public var body: some View {
@@ -55,7 +57,8 @@ public struct RankView: View {
             .padding(.bottom, Spacing.xl)
         }
         .background(Brand.background)
-        .task { await loadAll() }
+        .task { rebuildColumns(); await loadAll() }
+        .onChange(of: cardScale) { _, _ in rebuildColumns() }
         .sheet(item: $searchRequest) { req in
             // 详情浮层自管播放（点源即播，发播放通知开播放器，不再回调详情页）
             SearchDetailSheet(request: req, onClose: { searchRequest = nil })

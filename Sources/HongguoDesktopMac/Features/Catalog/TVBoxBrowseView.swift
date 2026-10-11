@@ -21,10 +21,14 @@ struct TVBoxBrowseView: View {
     /// 首屏是否已完成过一次加载（区分「从未加载」与「切源中途」），用于切源时也显示加载态而非暂无内容
     @State private var hasInitiallyLoaded = false
 
-    // 自适应网格（对齐发现频道）：按宽度自动分列，不再固定每行 6 个
+    // 自适应网格（对齐发现频道）：按宽度自动分列，不再固定每行 6 个。
+    // columns 必须是稳定引用：v2.1.2 曾改成读 @Environment 的计算属性，
+    // 每次 body 求值都新建 GridItem 数组 → LazyVGrid 检测到 columns 变化即重建，
+    // 复位懒加载状态/滚动位置，导致滚动加载哨兵失效。改 @State 持有 + onChange 才重建。
     @Environment(\.uiCardScale) private var cardScale
-    private var columns: [GridItem] {
-        [GridItem(.adaptive(minimum: 130 * cardScale, maximum: 160 * cardScale), spacing: Spacing.md)]
+    @State private var columns: [GridItem] = [GridItem(.adaptive(minimum: 130, maximum: 160), spacing: Spacing.md)]
+    private func rebuildColumns() {
+        columns = [GridItem(.adaptive(minimum: 130 * cardScale, maximum: 160 * cardScale), spacing: Spacing.md)]
     }
 
     var body: some View {
@@ -37,7 +41,8 @@ struct TVBoxBrowseView: View {
             content
         }
         .background(Brand.background)
-        .task { await initialLoad() }
+        .task { rebuildColumns(); await initialLoad() }
+        .onChange(of: cardScale) { _, _ in rebuildColumns() }
         .onChange(of: sm.currentSource) { _, _ in
             selectedTypeId = nil
             // 切换源：轮播缓存按源 key 隔离，切走即清空重拉新源最新
@@ -218,13 +223,15 @@ struct TVBoxBrowseView: View {
                     ForEach(items) { d in
                         PosterCard(d)
                             .onTapGesture { onSelect(d) }
-                            .onAppear {
-                                // 滚动加载：滚到倒数第 8 个时自动加载下一页
-                                if d.id == items.dropLast(8).last?.id, hasMore, !isLoading {
-                                    Task { await load(reset: false) }
-                                }
-                            }
                     }
+                }
+
+                // 滚动加载哨兵：滚到底部这个空视图进视口即触发下一页。
+                // （卡片 onAppear 在 LazyVGrid 大屏下不可靠，底部哨兵必随滚动进视口）
+                if hasMore && !isLoading {
+                    Color.clear
+                        .frame(height: 1)
+                        .onAppear { Task { await load(reset: false) } }
                 }
             }
             .padding(Spacing.lg)

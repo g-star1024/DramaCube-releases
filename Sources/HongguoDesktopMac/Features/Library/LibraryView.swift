@@ -48,6 +48,8 @@ struct FavoriteListView: View {
     @State private var isEditing = false
     @State private var selected: Set<String> = []
     @Environment(\.uiCardScale) private var cardScale
+    // 稳定 columns 引用（计算属性每次 body 求值新建会致 LazyVGrid 重建）
+    @State private var columns: [GridItem] = [GridItem(.adaptive(minimum: 150, maximum: 180), spacing: Spacing.md)]
 
     var body: some View {
         VStack(spacing: 0) {
@@ -63,7 +65,7 @@ struct FavoriteListView: View {
                 }
                 ScrollView {
                     LazyVGrid(
-                        columns: [GridItem(.adaptive(minimum: 150 * cardScale, maximum: 180 * cardScale), spacing: Spacing.md)],
+                        columns: columns,
                         spacing: Spacing.md
                     ) {
                         ForEach(items) { item in
@@ -99,9 +101,14 @@ struct FavoriteListView: View {
                 }
             }
         }
-        .onAppear { reload() }
+        .onAppear { rebuildColumns(); reload() }
+        .onChange(of: cardScale) { _, _ in rebuildColumns() }
         .onReceive(NotificationCenter.default.publisher(for: .hongguoLibraryChanged)) { _ in reload() }
         .task(id: items) { await backfillCounts() }
+    }
+
+    private func rebuildColumns() {
+        columns = [GridItem(.adaptive(minimum: 150 * cardScale, maximum: 180 * cardScale), spacing: Spacing.md)]
     }
 
     // MARK: 编辑工具条

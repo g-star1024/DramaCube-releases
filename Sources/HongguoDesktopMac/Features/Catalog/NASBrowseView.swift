@@ -27,10 +27,13 @@ struct NASBrowseView: View {
     /// 当前可见的卡片（懒加载切片）。封面生成是重活，只渲染可见部分避免一次性打满 CPU/IO。
     private var items: [Drama] { Array(allItems.prefix(visibleCount)) }
 
-    // 自适应网格（对齐发现频道）：按宽度自动分列，不再固定每行 6 个
+    // 自适应网格（对齐发现频道）：按宽度自动分列，不再固定每行 6 个。
+    // columns 必须是稳定引用（见 TVBoxBrowseView 同注释）：计算属性每次 body 求值新建
+    // GridItem 数组会致 LazyVGrid 重建、复位懒加载状态。改 @State 持有 + onChange 才重建。
     @Environment(\.uiCardScale) private var cardScale
-    private var columns: [GridItem] {
-        [GridItem(.adaptive(minimum: 130 * cardScale, maximum: 160 * cardScale), spacing: Spacing.md)]
+    @State private var columns: [GridItem] = [GridItem(.adaptive(minimum: 130, maximum: 160), spacing: Spacing.md)]
+    private func rebuildColumns() {
+        columns = [GridItem(.adaptive(minimum: 130 * cardScale, maximum: 160 * cardScale), spacing: Spacing.md)]
     }
 
     var body: some View {
@@ -40,7 +43,9 @@ struct NASBrowseView: View {
             content
         }
         .background(Brand.background)
+        .onChange(of: cardScale) { _, _ in rebuildColumns() }
         .task {
+            rebuildColumns()
             nm.load()
             // 优先恢复用户上次手动选择的库；没有才默认第一个启用的库
             if currentLibId == nil {
