@@ -186,7 +186,9 @@ public final class PlayerViewModel: ObservableObject, ActivePlayer {
         if let prog = Repository.shared.progress(dramaId: dramaId, episodeId: ep.id) {
             pendingSeek = prog.position
         } else {
-            pendingSeek = 0
+            // 无进度（新集起播）：按设置跳过片头（introSkipSeconds 秒，0=不跳）
+            let skip = AppSettings.shared.introSkipSeconds
+            pendingSeek = skip > 0 ? skip : 0
         }
 
         observeItemStatus()

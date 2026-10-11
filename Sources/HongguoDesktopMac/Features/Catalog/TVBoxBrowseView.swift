@@ -22,7 +22,10 @@ struct TVBoxBrowseView: View {
     @State private var hasInitiallyLoaded = false
 
     // 自适应网格（对齐发现频道）：按宽度自动分列，不再固定每行 6 个
-    private let columns = [GridItem(.adaptive(minimum: 130, maximum: 160), spacing: Spacing.md)]
+    @Environment(\.uiCardScale) private var cardScale
+    private var columns: [GridItem] {
+        [GridItem(.adaptive(minimum: 130 * cardScale, maximum: 160 * cardScale), spacing: Spacing.md)]
+    }
 
     var body: some View {
         VStack(spacing: 0) {

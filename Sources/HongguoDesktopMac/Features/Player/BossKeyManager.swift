@@ -21,6 +21,14 @@ final class BossKeyManager {
         }
     }
 
+    /// 按设置项启停老板键监听（AppSettings.bossKeyEnabled）。
+    func setEnabled(_ on: Bool) {
+        if on { start() } else if let m = monitor {
+            NSEvent.removeMonitor(m)
+            monitor = nil
+        }
+    }
+
     func toggle() {
         if !hidden {
             NotificationCenter.default.post(name: .hongguoBossKeyHide, object: nil)

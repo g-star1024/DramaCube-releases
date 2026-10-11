@@ -14,13 +14,8 @@ public struct HongguoApp: App {
             CatalogView()
                 .frame(minWidth: 1024, minHeight: 640)
                 .preferredColorScheme(settings.preferredColorScheme)
-                .environment(\.uiFontScale, settings.uiFontScale)
-                // 全局 UI 缩放：容器级 scaleEffect，整站字体/图标/封面随滑杆放大缩小即时生效
-                .scaleEffect(settings.uiFontScale, anchor: .topLeading)
-                .frame(
-                    minWidth: 1024 * settings.uiFontScale,
-                    minHeight: 640 * settings.uiFontScale
-                )
+                // 界面密度注入：网格卡片宽度随「全局界面缩放」档位变化（不动窗口、不用 transform）
+                .environment(\.uiCardScale, settings.uiFontScale)
                 .modelContainer(PersistenceController.shared.container)
                 .task {
                     AppLog.log(.app, "App 启动，版本 \(AppConfig.appVersion)，macOS \(ProcessInfo.processInfo.operatingSystemVersionString)")
@@ -58,6 +53,7 @@ public struct HongguoApp: App {
                     BossKeyManager.shared.toggle()
                 }
                 .keyboardShortcut("h", modifiers: [.command, .shift])
+                .disabled(!settings.bossKeyEnabled)
             }
             // 注：搜索框聚焦由 .searchable 原生提供（⌘F），无需自定义菜单项。
         }

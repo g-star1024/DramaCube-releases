@@ -64,19 +64,44 @@ public struct SettingsView: View {
                             .foregroundStyle(Brand.secondaryLabel)
                             .frame(width: 44, alignment: .trailing)
                     }
+                    HStack(alignment: .top, spacing: 6) {
+                        Image(systemName: "info.circle")
+                            .font(.system(size: 11))
+                            .foregroundStyle(Brand.secondaryLabel)
+                        Text("调整封面/卡片大小与列表密度，不改变窗口尺寸；100% 为标准。")
+                            .font(.system(size: 11))
+                            .foregroundStyle(Brand.secondaryLabel)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(.horizontal, Spacing.md)
+                    .padding(.vertical, Spacing.sm)
                 }
                 sectionCard("弹幕") {
+                    HStack(alignment: .top, spacing: 6) {
+                        Image(systemName: "exclamationmark.triangle")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.orange)
+                        Text("在线弹幕服务（弹弹play）接口已失效（403），当前版本弹幕为后台预留接口、默认关闭。待接入可用弹幕源后开放。")
+                            .font(.system(size: 11))
+                            .foregroundStyle(Brand.secondaryLabel)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(.horizontal, Spacing.md)
+                    .padding(.vertical, Spacing.sm)
                     row("开启弹幕") {
                         Toggle("", isOn: $s.danmakuEnabled).labelsHidden().toggleStyle(.switch).controlSize(.small)
+                            .disabled(true)
                     }
                     rowDivider
                     row("在线弹幕（弹弹play）") {
                         Toggle("", isOn: $s.danmakuOnline).labelsHidden().toggleStyle(.switch).controlSize(.small)
+                            .disabled(true)
                     }
                     rowDivider
                     row("弹幕字号") {
                         Slider(value: $s.danmakuFontScale, in: 0.6...2.0, step: 0.1)
                             .frame(width: 140)
+                            .disabled(true)
                         Text("\(s.danmakuFontScale, specifier: "%.1f")x")
                             .font(.system(size: 12, design: .monospaced))
                             .foregroundStyle(Brand.secondaryLabel)
@@ -86,6 +111,7 @@ public struct SettingsView: View {
                     row("弹幕不透明度") {
                         Slider(value: $s.danmakuOpacity, in: 0.2...1.0, step: 0.05)
                             .frame(width: 140)
+                            .disabled(true)
                         Text("\(Int(s.danmakuOpacity * 100))%")
                             .font(.system(size: 12, design: .monospaced))
                             .foregroundStyle(Brand.secondaryLabel)
@@ -390,28 +416,6 @@ public struct SettingsView: View {
     private var browseTab: some View {
         ScrollView {
             VStack(spacing: Spacing.lg) {
-                sectionCard("浏览偏好") {
-                    row("启动默认分区") {
-                        Picker("", selection: $s.homeSection) {
-                            Text("发现").tag("discover")
-                            Text("排行榜").tag("rank")
-                        }
-                        .labelsHidden()
-                        .frame(width: 110)
-                        .controlSize(.small)
-                    }
-                    rowDivider
-                    row("每页数量") {
-                        Picker("", selection: $s.pageSize) {
-                            ForEach([12, 24, 36, 48], id: \.self) { n in
-                                Text("\(n) 部").tag(n)
-                            }
-                        }
-                        .labelsHidden()
-                        .frame(width: 110)
-                        .controlSize(.small)
-                    }
-                }
                 sectionCard("本地缓存") {
                     row("缓存时长") {
                         HStack(spacing: Spacing.sm) {

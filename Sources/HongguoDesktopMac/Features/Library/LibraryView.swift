@@ -47,6 +47,7 @@ struct FavoriteListView: View {
     /// 编辑（多选删除）模式
     @State private var isEditing = false
     @State private var selected: Set<String> = []
+    @Environment(\.uiCardScale) private var cardScale
 
     var body: some View {
         VStack(spacing: 0) {
@@ -62,7 +63,7 @@ struct FavoriteListView: View {
                 }
                 ScrollView {
                     LazyVGrid(
-                        columns: [GridItem(.adaptive(minimum: 150, maximum: 180), spacing: Spacing.md)],
+                        columns: [GridItem(.adaptive(minimum: 150 * cardScale, maximum: 180 * cardScale), spacing: Spacing.md)],
                         spacing: Spacing.md
                     ) {
                         ForEach(items) { item in

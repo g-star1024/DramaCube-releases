@@ -206,15 +206,26 @@ public actor TVBoxEngine {
 
     // MARK: - 连通性测试
 
-    /// 单源测试：请求首页列表，校验 JSON 结构。超时 12s。
+    /// 单源测试：先测首页列表，再测搜索接口（ac=videolist&wd=），两者都通才算可用。
+    /// 只测首页会漏掉「首页 ok 但搜索超时/403」的假在线源（采集站锁大陆 IP 时典型）。
+    /// 首页/搜索各 8s 短超时。
     public func test(site s: Site) async -> TestResult {
         let t0 = Date()
         do {
-            // 测速用 8s 短超时（全量 154 站时大幅缩短总耗时；正常浏览仍用 15s）。
-            let list = try await fetchList(site: s, page: 1, timeoutSecs: 8)
+            // ① 首页列表：校验 JSON 结构（快速判活）
+            _ = try await fetchList(site: s, page: 1, timeoutSecs: 8)
+            // ② 搜索接口：ac=videolist&wd=，真实检索能力（决定该源能不能被搜索到）
+            var comps = URLComponents(string: s.api)
+            comps?.queryItems = [
+                URLQueryItem(name: "ac", value: "videolist"),
+                URLQueryItem(name: "wd", value: "电影"),
+                URLQueryItem(name: "pg", value: "1"),
+            ]
+            guard let u = comps?.url else { throw TVBoxError.badURL }
+            let vods = try await fetchResponse(u, timeoutSecs: 8).list ?? []
             return TestResult(key: s.key, ok: true,
                               latencyMs: Int(Date().timeIntervalSince(t0) * 1000),
-                              count: list.count, error: nil)
+                              count: vods.count, error: nil)
         } catch {
             return TestResult(key: s.key, ok: false,
                               latencyMs: Int(Date().timeIntervalSince(t0) * 1000),

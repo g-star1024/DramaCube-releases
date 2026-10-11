@@ -84,9 +84,13 @@ public struct CatalogView: View {
                                            diskPath: "dramacube-images")
             }
             GatewayController.shared.start()
-            BossKeyManager.shared.start()
+            // 老板键按设置项启停（关闭时不注册监听）
+            BossKeyManager.shared.setEnabled(AppSettings.shared.bossKeyEnabled)
             SourceManager.shared.load()
             MenuBarController.shared.start()
+        }
+        .onReceive(AppSettings.shared.$bossKeyEnabled) { on in
+            BossKeyManager.shared.setEnabled(on)
         }
         .onReceive(NotificationCenter.default.publisher(for: .hongguoOpenDrama)) { note in
             if let d = note.object as? Drama { selected = d }

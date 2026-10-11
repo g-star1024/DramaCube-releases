@@ -35,7 +35,8 @@ public final class AppSettings: ObservableObject {
     /// 内置播放内核（M2）：mpv（libmpv，全格式/ASS字幕/多音轨/硬解）或 avplayer（系统，稳定回退）。
     @Published public var playbackEngine: String { didSet { defaults.set(playbackEngine, forKey: "playbackEngine") } }
 
-    // MARK: - 弹幕（M4）
+    // MARK: - 弹幕（M4；当前为后台预留接口，默认全关，未在 UI 开放）
+    // 弹弹play 接口现 403 不可用、且只在 mpv 内核生效；保留实现，想接时再开。
     /// 弹幕总开关。
     @Published public var danmakuEnabled: Bool { didSet { defaults.set(danmakuEnabled, forKey: "danmakuEnabled") } }
     /// 在线弹幕（弹弹play）。
@@ -55,18 +56,10 @@ public final class AppSettings: ObservableObject {
         }
     }
 
-    // MARK: - 浏览偏好
-    /// 首页默认分区（discover/rank/new）。
-    @Published public var homeSection: String { didSet { defaults.set(homeSection, forKey: "homeSection") } }
-    /// 列表每页数量。
-    @Published public var pageSize: Int { didSet { defaults.set(pageSize, forKey: "pageSize") } }
-    /// 仅 Wi-Fi 下自动加载封面（省流量）。
-    @Published public var loadCoversOnCellular: Bool { didSet { defaults.set(loadCoversOnCellular, forKey: "loadCoversOnCellular") } }
-
     // MARK: - 外观（M4：深浅主题 + 全局字体调节）
     /// 外观模式：system / light / dark。
     @Published public var appearance: String { didSet { defaults.set(appearance, forKey: "appearance") } }
-    /// 全局字体缩放（0.85 ~ 1.3，1.0 为默认）。
+    /// 全局界面缩放（0.85 ~ 1.3，1.0 为默认）：驱动网格卡片宽度/列表密度。
     @Published public var uiFontScale: Double { didSet { defaults.set(uiFontScale, forKey: "uiFontScale") } }
 
     /// 外观对应的 ColorScheme（nil=跟随系统）。
@@ -101,13 +94,10 @@ public final class AppSettings: ObservableObject {
         prefetchNextEpisode = d.object(forKey: "prefetchNextEpisode") == nil ? true : d.bool(forKey: "prefetchNextEpisode")
         defaultExternalPlayer = d.string(forKey: "defaultExternalPlayer") ?? "builtin"
         playbackEngine = d.string(forKey: "playbackEngine") ?? "avplayer"   // M2：默认仍 avplayer，mpv 需手动开启验证
-        danmakuEnabled = d.object(forKey: "danmakuEnabled") == nil ? true : d.bool(forKey: "danmakuEnabled")
-        danmakuOnline = d.object(forKey: "danmakuOnline") == nil ? true : d.bool(forKey: "danmakuOnline")
+        danmakuEnabled = d.object(forKey: "danmakuEnabled") == nil ? false : d.bool(forKey: "danmakuEnabled")
+        danmakuOnline = d.object(forKey: "danmakuOnline") == nil ? false : d.bool(forKey: "danmakuOnline")
         danmakuFontScale = d.object(forKey: "danmakuFontScale") == nil ? 1.0 : d.double(forKey: "danmakuFontScale")
         danmakuOpacity = d.object(forKey: "danmakuOpacity") == nil ? 0.85 : d.double(forKey: "danmakuOpacity")
-        homeSection = d.object(forKey: "homeSection") == nil ? "discover" : (d.string(forKey: "homeSection") ?? "discover")
-        pageSize = d.object(forKey: "pageSize") == nil ? 24 : d.integer(forKey: "pageSize")
-        loadCoversOnCellular = d.object(forKey: "loadCoversOnCellular") == nil ? true : d.bool(forKey: "loadCoversOnCellular")
         appearance = d.string(forKey: "appearance") ?? "system"
         uiFontScale = d.object(forKey: "uiFontScale") == nil ? 1.0 : d.double(forKey: "uiFontScale")
         customDownloadDir = d.string(forKey: "customDownloadDir") ?? ""

@@ -163,7 +163,8 @@ struct LiveBrowseView: View {
             Divider()
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
-                    ForEach(lm.sources) { s in
+                    // 后台被关闭（enabled=false）的源不在切换弹层展示
+                    ForEach(lm.sources.filter(\.enabled)) { s in
                         let isActive = s.enabled
                         Button {
                             Task { await switchSource(s) }
@@ -215,9 +216,9 @@ struct LiveBrowseView: View {
         await load()
     }
 
-    /// 探活所有源（后台逐个拉取返回频道数，弹层展示可用性）。
+    /// 探活所有源（后台逐个拉取返回频道数，弹层展示可用性）。只探启用源。
     private func probeSources() async {
-        for s in lm.sources where sourceCounts[s.id] == nil {
+        for s in lm.sources where s.enabled && sourceCounts[s.id] == nil {
             let c = await lm.testSource(id: s.id)
             sourceCounts[s.id] = c
         }

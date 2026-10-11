@@ -11,10 +11,12 @@ public struct PosterGrid: View {
         self.onSelect = onSelect
     }
 
+    @Environment(\.uiCardScale) private var cardScale
+
     public var body: some View {
         ScrollView {
             LazyVGrid(
-                columns: [GridItem(.adaptive(minimum: 150, maximum: 180), spacing: Spacing.md)],
+                columns: [GridItem(.adaptive(minimum: 150 * cardScale, maximum: 180 * cardScale), spacing: Spacing.md)],
                 spacing: Spacing.md
             ) {
                 ForEach(items) { drama in

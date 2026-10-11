@@ -34,7 +34,10 @@ public struct RankView: View {
 
     private let sectionLimit = 18
     private let sectionLimitFull = 54
-    private let columns = [GridItem(.adaptive(minimum: 130, maximum: 160), spacing: Spacing.md)]
+    @Environment(\.uiCardScale) private var cardScale
+    private var columns: [GridItem] {
+        [GridItem(.adaptive(minimum: 130 * cardScale, maximum: 160 * cardScale), spacing: Spacing.md)]
+    }
 
     public var body: some View {
         ScrollView {
