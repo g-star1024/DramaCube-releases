@@ -226,7 +226,9 @@ struct NASBrowseView: View {
                     }
                 }
                 .padding(Spacing.lg)
-                // 底部加载更多哨兵：进入视口即触发下一批（修：卡片 onAppear 在 LazyVGrid 大屏下不可靠）
+                // 底部加载更多哨兵：进入视口即触发下一批。
+                // 用 Task 异步改 visibleCount（onAppear 同步改 @State 会被 SwiftUI 更新周期吞掉/延迟，
+                // 表现为「只转圈不加载」），isExpanding 防抖防连续触发。
                 if visibleCount < allItems.count {
                     HStack(spacing: Spacing.sm) {
                         ProgressView().controlSize(.small)
@@ -236,10 +238,11 @@ struct NASBrowseView: View {
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.bottom, Spacing.lg)
-                    .onAppear {
-                        // 哨兵入视口 → 加载下一批
-                        visibleCount = min(visibleCount + pageSize, allItems.count)
-                    }
+                    // 关键：visibleCount 变化强制哨兵重建，使 onAppear 能重复触发——
+                    // 否则大屏下首屏卡片不足以把哨兵顶出视口，哨兵常驻视口不再触发，
+                    // 表现为「偶尔只加载一次就不动了」。重建后若仍在视口则连续加载直到填满。
+                    .id("sentinel-\(visibleCount)")
+                    .onAppear { loadMore() }
                 } else if allItems.count > pageSize {
                     Text("共 \(allItems.count) 个视频")
                         .font(Typography.caption)
@@ -248,6 +251,19 @@ struct NASBrowseView: View {
                         .padding(.bottom, Spacing.lg)
                 }
             }
+        }
+    }
+
+    /// 加载下一批可见卡片（懒渲染，数据已在 allItems，只是控制渲染数量）。
+    @State private var isExpanding = false
+    private func loadMore() {
+        guard !isExpanding, visibleCount < allItems.count else { return }
+        isExpanding = true
+        Task { @MainActor in
+            // 让出当前更新周期，避免 onAppear 内同步改 State 被吞
+            try? await Task.sleep(nanoseconds: 30_000_000)
+            visibleCount = min(visibleCount + pageSize, allItems.count)
+            isExpanding = false
         }
     }
 

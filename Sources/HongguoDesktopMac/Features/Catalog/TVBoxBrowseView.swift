@@ -227,10 +227,12 @@ struct TVBoxBrowseView: View {
                 }
 
                 // 滚动加载哨兵：滚到底部这个空视图进视口即触发下一页。
-                // （卡片 onAppear 在 LazyVGrid 大屏下不可靠，底部哨兵必随滚动进视口）
+                // 加 .id(items.count) 强制重建——否则大屏下首屏卡片不足以把哨兵顶出视口，
+                // 哨兵常驻视口 onAppear 只触发一次，表现为「只加载一页就不动了」。
                 if hasMore && !isLoading {
                     Color.clear
                         .frame(height: 1)
+                        .id("sentinel-\(items.count)")
                         .onAppear { Task { await load(reset: false) } }
                 }
             }
