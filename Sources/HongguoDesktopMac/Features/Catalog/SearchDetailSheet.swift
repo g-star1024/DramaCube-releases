@@ -241,10 +241,11 @@ public struct SearchDetailSheet: View {
     private func streamSearchSources() async {
         isSearchingSources = true; sourcesDone = false
         let sm = SourceManager.shared
-        // 只搜在线源：已测通的（ok==true）；未测过的也纳入（避免一刀切漏掉好源），但排除已知失效源
+        // 只搜在线源：已测通的（ok==true）；未测过的也纳入（避免一刀切漏掉好源）；
+        // 已测失败但未被禁用的（可能是临时抖动）也重试；只有「测失败且已禁用」的确定失效源才跳过
         let onlineSites = sm.enabledSites.filter { site in
-            guard let r = sm.testResults[site.key] else { return true }  // 未测过：纳入
-            return r.ok                                                   // 已知失效：跳过
+            guard let r = sm.testResults[site.key] else { return true }      // 未测过：纳入
+            return r.ok || !sm.disabled.contains(site.key)                    // 失败且已禁用：跳过
         }
         guard !onlineSites.isEmpty else {
             isSearchingSources = false; sourcesDone = true; return

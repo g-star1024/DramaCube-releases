@@ -18,6 +18,7 @@ public final class SourceManager: ObservableObject {
         currentSource = d.string(forKey: "src.current") ?? "hongguo"
         subscriptionURL = d.string(forKey: "src.subURL") ?? ""
         disabled = Set(d.stringArray(forKey: "src.disabled") ?? [])
+        manualDisabled = Set(d.stringArray(forKey: "src.manualDisabled") ?? [])
         autoTestIntervalHours = d.double(forKey: "src.autoTestHours") // 0 = 关闭
         lastAutoTest = d.object(forKey: "src.lastAutoTest") as? Date
         // 测速结果从 Application Support 文件恢复（兼容旧的 UserDefaults 迁移一次）。
@@ -45,9 +46,14 @@ public final class SourceManager: ObservableObject {
     @Published public var subscriptionURL: String {
         didSet { defaults.set(subscriptionURL, forKey: "src.subURL") }
     }
-    /// 单源开关（key → enabled），默认开。
+    /// 单源开关（key → disabled）。由测试结果与用户手动操作共同驱动：
+    /// 测失败 → 自动禁用；测成功 → 自动恢复（除非在 manualDisabled 里）。
     @Published public private(set) var disabled: Set<String> {
         didSet { defaults.set(Array(disabled), forKey: "src.disabled") }
+    }
+    /// 用户手动关闭的源（尊重用户意图：测成功也不会自动重新启用，需用户手动打开）。
+    @Published public private(set) var manualDisabled: Set<String> {
+        didSet { defaults.set(Array(manualDisabled), forKey: "src.manualDisabled") }
     }
     /// 最近一次连通性测试结果（key → result）。
     /// 持久化到 Application Support 文件（v1.2.3 修：原 UserDefaults 在字典下标赋值时不触发 didSet，
@@ -289,32 +295,49 @@ public final class SourceManager: ObservableObject {
     // MARK: - 开关与测试
 
     public func setEnabled(_ key: String, _ on: Bool) {
-        if on { disabled.remove(key) } else { disabled.insert(key) }
+        if on {
+            disabled.remove(key)
+            manualDisabled.remove(key)
+        } else {
+            disabled.insert(key)
+            manualDisabled.insert(key)
+        }
         // 关掉的源如果正在用，切到最快可用源（红果内容源已清除，不再回退红果）
         if !on && currentSource == key, let fast = fastestEnabledSite {
             currentSource = fast.key
         }
     }
 
+    /// 按测试结果应用自动开关：失败一律禁用（压过手动开启），成功自动恢复（除非用户手动关过）。
+    private func applyTestResults(_ results: [SiteTestResult]) {
+        var newDisabled = disabled
+        var newManual = manualDisabled
+        for r in results {
+            if r.ok {
+                if !newManual.contains(r.key) { newDisabled.remove(r.key) }
+            } else {
+                // 测失败的源如果用户手动开过，这次失败说明它已失效——清除手动标记并禁用
+                newDisabled.insert(r.key)
+                newManual.remove(r.key)
+            }
+        }
+        disabled = newDisabled
+        manualDisabled = newManual
+        if disabled.contains(currentSource), let fast = fastestEnabledSite {
+            currentSource = fast.key
+        }
+    }
+
     /// 测试全部站点（限流由网关侧控制）。
-    /// 测完自动：失败的置为禁用、手动曾禁用的尊重用户选择不动、按延迟排序由 enabledSites 实时计算。
+    /// 测完自动：失败源一律禁用（含手动开着的失效源）、成功源自动恢复（除非用户手动关过）、按延迟排序。
     public func testAll() async {
         isTesting = true
         defer { isTesting = false }
         do {
             let results: [SiteTestResult] = try await get("\(base)/api/tvbox/test")
             testResults = Dictionary(uniqueKeysWithValues: results.map { ($0.key, $0) })
-            // 自动禁用失败源（用户手动关掉且本次仍失败的维持禁用；手动关掉但成功的也维持禁用——尊重用户）
-            var newDisabled = disabled
-            for r in results where !r.ok {
-                newDisabled.insert(r.key)
-            }
-            disabled = newDisabled
-            // 当前正在用的源若刚被禁用，切到最快可用源
-            if disabled.contains(currentSource), let fast = fastestEnabledSite {
-                currentSource = fast.key
-            }
-            AppLog.log(.app, "视频源全量测试完成：\(results.filter(\.ok).count)/\(results.count) 可用，已自动禁用失败源")
+            applyTestResults(results)
+            AppLog.log(.app, "视频源全量测试完成：\(results.filter(\.ok).count)/\(results.count) 可用，失败源已自动禁用")
         } catch {
             AppLog.log(.error, "视频源测试失败：\(error.localizedDescription)")
         }
@@ -345,6 +368,7 @@ public final class SourceManager: ObservableObject {
         do {
             let results: [SiteTestResult] = try await get("\(base)/api/tvbox/test?keys=\(key)")
             for r in results { testResults[key] = r }
+            applyTestResults(results)
         } catch {
             testResults[key] = SiteTestResult(key: key, ok: false, latencyMs: 0, count: 0,
                                              error: error.localizedDescription)

@@ -107,16 +107,25 @@ public final class DownloadManager: ObservableObject {
 
     private func start(_ task: DownloadTask) {
         update(task.id) { $0.state = .downloading; $0.progress = 0; $0.errorMessage = nil }
-        let lower = task.sourceURL.lowercased()
-        let isDirectFile = lower.contains(".mp4") && !lower.contains("/api/")
-        if isDirectFile {
-            // mp4 直链：URLSession 直接下载（有真实文件大小，进度准确）
-            runDirectDownload(task)
-        } else if let ffmpeg = Self.ffmpegPath {
-            // m3u8 / 网关代理流：ffmpeg 自动处理分片/AES-128/合并转 mp4
-            runFFmpeg(task, ffmpeg: ffmpeg)
-        } else {
-            runDirectDownload(task)
+        Task {
+            // 先快速探测源地址（8s）：失效/防盗链立刻报明确原因，不丢给 ffmpeg 硬等
+            if let reason = await Self.probeSource(task.sourceURL) {
+                update(task.id) { $0.state = .failed; $0.errorMessage = reason }
+                persist(); schedule()
+                AppLog.log(.error, "下载预检失败[\(task.dramaTitle) \(task.episodeTitle)]：\(reason)")
+                return
+            }
+            let lower = task.sourceURL.lowercased()
+            let isDirectFile = lower.contains(".mp4") && !lower.contains("/api/")
+            if isDirectFile {
+                // mp4 直链：URLSession 直接下载（有真实文件大小，进度准确）
+                runDirectDownload(task)
+            } else if let ffmpeg = Self.ffmpegPath {
+                // m3u8 / 网关代理流：ffmpeg 自动处理分片/AES-128/合并转 mp4
+                runFFmpeg(task, ffmpeg: ffmpeg)
+            } else {
+                runDirectDownload(task)
+            }
         }
     }
 
@@ -139,7 +148,17 @@ public final class DownloadManager: ObservableObject {
         proc.arguments = args
         let outPipe = Pipe()
         proc.standardOutput = outPipe
-        proc.standardError = FileHandle.nullDevice
+        // stderr 不再丢 null：失败时把 ffmpeg 真实错误（403/404/地址失效/超时）透出给用户
+        let errPipe = Pipe()
+        proc.standardError = errPipe
+        final class ErrBox: @unchecked Sendable { var text = "" }
+        let errBox = ErrBox()
+        errPipe.fileHandleForReading.readabilityHandler = { fh in
+            let d = fh.availableData
+            guard !d.isEmpty, let s = String(data: d, encoding: .utf8) else { return }
+            errBox.text += s
+            if errBox.text.count > 4096 { errBox.text = String(errBox.text.suffix(4096)) }
+        }
         // 解析 -progress 输出更新进度（out_time_ms / total）
         let durationHint = estimateDurationSeconds(task)
         outPipe.fileHandleForReading.readabilityHandler = { [weak self, durationHint] fh in
@@ -158,6 +177,7 @@ public final class DownloadManager: ObservableObject {
             }
         }
         proc.terminationHandler = { [weak self] p in
+            let stderrTail = Self.friendlyFFmpegError(errBox.text, exitCode: p.terminationStatus)
             Task { @MainActor in
                 guard let self else { return }
                 self.running[task.id] = nil
@@ -166,11 +186,12 @@ public final class DownloadManager: ObservableObject {
                 self.update(task.id) {
                     $0.state = ok ? .completed : .failed
                     $0.progress = ok ? 1 : $0.progress
-                    $0.errorMessage = ok ? nil : "ffmpeg 退出码 \(p.terminationStatus)"
+                    $0.errorMessage = ok ? nil : stderrTail
                 }
                 self.persist()
                 self.schedule()
                 if ok { AppLog.log(.app, "下载完成：\(task.dramaTitle) \(task.episodeTitle)") }
+                else { AppLog.log(.error, "下载失败[\(task.dramaTitle) \(task.episodeTitle)]：\(stderrTail)") }
             }
         }
         do {
@@ -263,6 +284,59 @@ public final class DownloadManager: ObservableObject {
     private func persist() {
         if let data = try? JSONEncoder().encode(tasks) {
             try? data.write(to: Self.tasksURL, options: .atomic)
+        }
+    }
+
+    /// 把 ffmpeg stderr 翻译成用户能看懂的失败原因（兜底带退出码）。
+    private nonisolated static func friendlyFFmpegError(_ stderr: String, exitCode: Int32) -> String {
+        let raw = stderr.trimmingCharacters(in: .whitespacesAndNewlines)
+        // 取最后一条非空行做细节展示
+        let lastLine = raw.split(separator: "\n").last.map(String.init) ?? ""
+        let low = raw.lowercased()
+        if low.contains("403") || low.contains("forbidden") {
+            return "源站拒绝访问（403 防盗链）"
+        } else if low.contains("404") || low.contains("not found") {
+            return "源地址已失效（404）"
+        } else if low.contains("timed out") || low.contains("timeout") {
+            return "连接源站超时"
+        } else if low.contains("server returned 5") || low.contains(" 500") || low.contains(" 502") || low.contains(" 503") {
+            return "源站服务器错误（5xx）"
+        } else if low.contains("invalid data") || low.contains("moov atom") {
+            return "源内容不是有效视频流"
+        } else if low.contains("name or service") || low.contains("could not resolve") || low.contains("nodename") {
+            return "源站域名无法解析（站点已下线）"
+        } else if !lastLine.isEmpty {
+            let detail = lastLine.count > 120 ? String(lastLine.prefix(120)) + "…" : lastLine
+            return "下载失败：\(detail)"
+        }
+        return "ffmpeg 退出码 \(exitCode)"
+    }
+
+    /// 起播前快速探测源地址是否可用（HEAD/Range 8s 超时），失败直接报因，
+    /// 避免把失效地址丢给 ffmpeg 等 60s+ 才得到一个看不懂的退出码。
+    private nonisolated static func probeSource(_ urlString: String) async -> String? {
+        guard let url = URL(string: urlString) else { return "地址无效" }
+        var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 8)
+        req.httpMethod = "GET"
+        req.setValue("bytes=0-0", forHTTPHeaderField: "Range")
+        req.setValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15", forHTTPHeaderField: "User-Agent")
+        let session = URLSession(configuration: {
+            let c = URLSessionConfiguration.default
+            c.connectionProxyDictionary = [:]   // 本机网关地址绕过系统代理
+            return c
+        }())
+        do {
+            let (_, resp) = try await session.data(for: req)
+            let code = (resp as? HTTPURLResponse)?.statusCode ?? 0
+            if (200..<400).contains(code) { return nil }
+            if code == 403 { return "源站拒绝访问（403 防盗链）" }
+            if code == 404 { return "源地址已失效（404）" }
+            return "源站返回异常状态码 \(code)"
+        } catch {
+            let e = error as NSError
+            if e.code == NSURLErrorTimedOut { return "连接源站超时" }
+            if e.code == NSURLErrorCannotFindHost || e.code == NSURLErrorDNSLookupFailed { return "源站域名无法解析（站点已下线）" }
+            return "无法连接源站：\(error.localizedDescription)"
         }
     }
 

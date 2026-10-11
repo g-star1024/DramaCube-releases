@@ -166,7 +166,7 @@ struct SourceSettingsView: View {
                         .foregroundStyle(Brand.secondaryLabel)
                 }
             }
-            Text("测速完成后自动禁用失败源，成功源按延迟从低到高排序（视频源页默认展示最快源）。")
+            Text("测速完成后失败源一律自动禁用（含手动开启的失效源）；恢复可用的源会自动重新启用，除非您手动关过。")
                 .font(Typography.caption)
                 .foregroundStyle(Brand.secondaryLabel)
         }
@@ -199,24 +199,35 @@ struct SourceSettingsView: View {
     }
 
     private func siteRow(_ s: SourceManager.TVBoxSite) -> some View {
-        HStack(spacing: Spacing.sm) {
+        let off = sm.disabled.contains(s.key)
+        return HStack(spacing: Spacing.sm) {
             Circle()
                 .fill(statusColor(s.key))
                 .frame(width: 8, height: 8)
             Text(s.name)
                 .font(Typography.body)
                 .lineLimit(1)
+                .foregroundStyle(off ? Brand.secondaryLabel : Brand.label)
+            if off {
+                Text("已禁用")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 1)
+                    .background(Capsule().fill(Brand.secondaryLabel.opacity(0.6)))
+            }
             if let r = sm.testResults[s.key] {
                 Text(r.ok ? "\(r.latencyMs)ms" : "失败")
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundStyle(r.ok ? Brand.secondaryLabel : .red)
+                    .help(r.ok ? "延迟 \(r.latencyMs)ms" : (r.error ?? "测试失败"))
             }
             Spacer()
             Button("测试") { Task { await sm.testOne(s.key) } }
                 .controlSize(.small)
                 .buttonStyle(.borderless)
             Toggle("", isOn: Binding(
-                get: { !sm.disabled.contains(s.key) },
+                get: { !off },
                 set: { sm.setEnabled(s.key, $0) }
             ))
             .labelsHidden()
@@ -224,6 +235,7 @@ struct SourceSettingsView: View {
             .controlSize(.small)
         }
         .padding(.vertical, 6)
+        .opacity(off ? 0.55 : 1)
     }
 
     private func statusColor(_ key: String) -> Color {

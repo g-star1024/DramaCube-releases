@@ -401,7 +401,8 @@ public final class PlayerViewModel: ObservableObject, ActivePlayer {
         // 只搜在线源（已知失效跳过；未测过的纳入）
         let sites = sm.enabledSites.filter { site in
             guard let r = sm.testResults[site.key] else { return true }
-            return r.ok
+            // 已测失败 + 已禁用：确定失效，跳过；已测失败但未禁用：可能是临时抖动，纳入重试
+            return r.ok || !sm.disabled.contains(site.key)
         }
         await withTaskGroup(of: (String, [SourceMatch]).self) { group in
             var pending = sites.makeIterator()
