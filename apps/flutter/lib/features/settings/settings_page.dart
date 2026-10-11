@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/persistence/backup_service.dart';
 import '../catalog/source_manager.dart';
 
 /// 设置中心：TVBox 订阅导入 + 站点管理（M1），播放设置 / 数据备份（M2）。
@@ -17,6 +18,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   bool _testingKey = false;
   String? _testingSiteKey;
   final Map<String, bool?> _testResults = {};
+  String? _backupMessage;
+  bool _backupIsError = false;
 
   @override
   void dispose() {
@@ -57,6 +60,45 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       _testingKey = false;
       _testingSiteKey = null;
     });
+  }
+
+  Future<void> _exportBackup() async {
+    try {
+      final path = await BackupService.exportToFile();
+      if (!mounted) return;
+      setState(() {
+        _backupMessage = path != null ? '已导出到：$path' : '已取消';
+        _backupIsError = false;
+      });
+    } catch (e) {
+      setState(() {
+        _backupMessage = '导出失败：$e';
+        _backupIsError = true;
+      });
+    }
+  }
+
+  Future<void> _importBackup() async {
+    try {
+      final path = await BackupService.importFromFile();
+      if (!mounted) return;
+      if (path != null) {
+        setState(() {
+          _backupMessage = '导入成功，重启应用后生效';
+          _backupIsError = false;
+        });
+      } else {
+        setState(() {
+          _backupMessage = '已取消';
+          _backupIsError = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _backupMessage = '导入失败：$e';
+        _backupIsError = true;
+      });
+    }
   }
 
   @override
@@ -141,28 +183,66 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             ),
           ],
 
-          // MARK: 播放设置 / 数据备份（M2 占位）
+          // MARK: 数据备份
           const SizedBox(height: 24),
-          _SectionHeader(title: '其他'),
+          _SectionHeader(title: '数据备份'),
           Card(
             child: Column(
               children: [
                 ListTile(
-                  leading: const Icon(Icons.play_circle_outline),
-                  title: const Text('播放设置'),
-                  subtitle: const Text('默认倍速 / 跳片头 / 自动连播（M2）'),
+                  leading: const Icon(Icons.upload_outlined),
+                  title: const Text('导出数据'),
+                  subtitle: const Text('设置 + 收藏 + 历史 → JSON 文件'),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () {},
+                  onTap: _exportBackup,
                 ),
                 const Divider(height: 1, indent: 16, endIndent: 16),
                 ListTile(
-                  leading: const Icon(Icons.backup_outlined),
-                  title: const Text('数据备份'),
-                  subtitle: const Text('导出 / 导入本地数据（M2）'),
+                  leading: const Icon(Icons.download_outlined),
+                  title: const Text('导入数据'),
+                  subtitle: const Text('从 JSON 备份文件恢复'),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () {},
+                  onTap: _importBackup,
                 ),
+                if (_backupMessage != null) ...[
+                  const Divider(height: 1, indent: 16, endIndent: 16),
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Row(
+                      children: [
+                        Icon(
+                          _backupIsError ? Icons.error_outline : Icons.check_circle_outline,
+                          size: 18,
+                          color: _backupIsError ? Theme.of(context).colorScheme.error : Colors.green,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _backupMessage!,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: _backupIsError ? Theme.of(context).colorScheme.error : null,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ],
+            ),
+          ),
+
+          // MARK: 播放设置（M3 占位）
+          const SizedBox(height: 24),
+          _SectionHeader(title: '其他'),
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.play_circle_outline),
+              title: const Text('播放设置'),
+              subtitle: const Text('默认倍速 / 跳片头 / 自动连播（M3）'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {},
             ),
           ),
         ],
