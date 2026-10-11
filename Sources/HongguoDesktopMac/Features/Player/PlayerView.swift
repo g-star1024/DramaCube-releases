@@ -105,57 +105,6 @@ public struct PlayerView: View {
         }
         .task { refreshPlayed() }
         .sheet(isPresented: $vm.showOtherSeasons) { otherSeasonsSheet }
-        .sheet(isPresented: $vm.showSourceSwitcher) { sourceSwitcherSheet }
-    }
-
-    // MARK: 切换视频源面板
-    private var sourceSwitcherSheet: some View {
-        VStack(alignment: .leading, spacing: Spacing.md) {
-            HStack {
-                Text("切换视频源").font(Typography.title)
-                Spacer()
-                Button("关闭") { vm.showSourceSwitcher = false }
-            }
-            Text("正在播放第 \(vm.currentIndex + 1) 集，选择其他源将从该集续播")
-                .font(Typography.caption).foregroundStyle(Brand.secondaryLabel)
-            if vm.isSearchingSources {
-                HStack(spacing: Spacing.sm) {
-                    ProgressView().controlSize(.small)
-                    Text("正在跨源搜索「\(vm.title)」…").font(Typography.caption)
-                }
-                .frame(maxWidth: .infinity, minHeight: 120)
-            } else if vm.sourceCandidates.isEmpty {
-                Text("其他视频源未收录该剧").font(Typography.caption).foregroundStyle(Brand.secondaryLabel)
-                    .frame(maxWidth: .infinity, minHeight: 120)
-            } else {
-                List(vm.sourceCandidates) { m in
-                    Button { Task { await vm.switchToSource(m) } } label: {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(m.drama.title).font(.system(size: 14, weight: .medium)).lineLimit(1)
-                                HStack(spacing: 8) {
-                                    Text(m.siteName)
-                                        .font(.system(size: 11, weight: .semibold))
-                                        .padding(.horizontal, 6).padding(.vertical, 2)
-                                        .background(Capsule().fill(Brand.accent.opacity(0.12)))
-                                        .foregroundStyle(Brand.accent)
-                                    if let cnt = m.drama.episodeCount {
-                                        Text("\(cnt) 集").font(.system(size: 11)).foregroundStyle(Brand.secondaryLabel)
-                                    }
-                                }
-                            }
-                            Spacer()
-                            Image(systemName: "play.circle").foregroundStyle(Brand.accent)
-                        }
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                }
-                .listStyle(.plain)
-            }
-        }
-        .padding(Spacing.lg)
-        .frame(minWidth: 460, minHeight: 360)
     }
 
     /// 播放失败覆盖层：重试 / 换下一集 / 关闭，避免只能干瞪眼。
@@ -270,6 +219,9 @@ public struct PlayerView: View {
             .help("查找其他季 / 相似剧")
 
             Button {
+                // 打开选集面板并切到「切换源」tab（复用预搜缓存，不另弹窗）
+                panelTab = .sources
+                vm.showEpisodes = true
                 Task { await vm.openSourceSwitcher() }
             } label: { Image(systemName: "arrow.triangle.2.circlepath.circle") }
             .help("切换视频源（换源续播当前集）")
@@ -284,6 +236,7 @@ public struct PlayerView: View {
                 Image(systemName: "play.rectangle.on.rectangle")
             }
             .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)   // 去掉下拉箭头，只留播放器图标
             .frame(width: 28)
             .help("在外部播放器中打开当前集")
 
@@ -307,25 +260,44 @@ public struct PlayerView: View {
         .controlSize(.regular)
     }
 
-    // MARK: 选集面板（全宽底部面板，随窗口宽度铺满）
+    /// 选集面板底部 tab：选集 / 切换源（同一面板内切换，不另弹窗）。
+    private enum PanelTab { case episodes, sources }
+    @State private var panelTab: PanelTab = .episodes
+
+    // MARK: 选集面板（全宽底部面板，含「选集 / 切换源」两个 tab）
     private var episodePanel: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                EpisodePanelHeader(count: vm.episodes.count) {
-                    vm.showEpisodes = false
+            HStack(spacing: Spacing.md) {
+                // 选集 / 切换源 分段切换（同一面板）
+                HStack(spacing: 0) {
+                    panelTabButton("选集", tab: .episodes)
+                    panelTabButton("切换源", tab: .sources)
                 }
-                // 批量缓存切换
-                Button(isSelectingDownloads ? "完成" : "批量缓存") {
-                    isSelectingDownloads.toggle()
-                    if !isSelectingDownloads { selectedDownloads.removeAll() }
+                if panelTab == .episodes {
+                    Text("\(vm.episodes.count) 集").font(Typography.caption).foregroundStyle(Brand.secondaryLabel)
+                } else {
+                    Text("正在播放第 \(vm.currentIndex + 1) 集，选源从该集续播")
+                        .font(.system(size: 11)).foregroundStyle(Brand.secondaryLabel)
                 }
-                .controlSize(.small)
-                .font(.system(size: 11))
+                Spacer()
+                if panelTab == .episodes {
+                    Button(isSelectingDownloads ? "完成" : "批量缓存") {
+                        isSelectingDownloads.toggle()
+                        if !isSelectingDownloads { selectedDownloads.removeAll() }
+                    }
+                    .controlSize(.small)
+                    .font(.system(size: 11))
+                }
+                Button { vm.showEpisodes = false } label: {
+                    Image(systemName: "xmark.circle.fill").foregroundStyle(Brand.secondaryLabel)
+                }
+                .buttonStyle(.plain)
             }
             .padding(.horizontal, Spacing.lg)
             .padding(.vertical, Spacing.sm)
+
             // 批量缓存操作条
-            if isSelectingDownloads {
+            if panelTab == .episodes && isSelectingDownloads {
                 HStack(spacing: Spacing.md) {
                     Button(selectedDownloads.count == vm.episodes.count ? "取消全选" : "全选") {
                         selectedDownloads = selectedDownloads.count == vm.episodes.count
@@ -349,34 +321,104 @@ public struct PlayerView: View {
                 .background(Brand.chipFill)
             }
             Divider()
-            ScrollView {
-                ScrollViewReader { proxy in
-                    EpisodeGrid(
-                        episodes: vm.episodes,
-                        currentIndex: vm.currentIndex,
-                        playedIds: playedIds,
-                        selectedIndices: isSelectingDownloads ? selectedDownloads : nil
-                    ) { idx, _ in
-                        if isSelectingDownloads {
-                            if selectedDownloads.contains(idx) { selectedDownloads.remove(idx) }
-                            else { selectedDownloads.insert(idx) }
-                        } else {
-                            vm.loadEpisode(idx)
-                        }
-                    }
-                    .padding(Spacing.lg)
-                    .onAppear {
-                        proxy.scrollTo(vm.currentIndex, anchor: .center)
-                    }
-                    .onChange(of: vm.currentIndex) { _, new in
-                        withAnimation { proxy.scrollTo(new, anchor: .center) }
-                    }
-                }
+
+            if panelTab == .episodes {
+                episodeGridView
+            } else {
+                sourceListPane
             }
         }
         .frame(maxWidth: .infinity)
         .frame(height: 280)
         .background(Brand.secondaryBackground)
+    }
+
+    private func panelTabButton(_ title: String, tab: PanelTab) -> some View {
+        Button { panelTab = tab } label: {
+            Text(title)
+                .font(.system(size: 13, weight: panelTab == tab ? .semibold : .regular))
+                .padding(.horizontal, 14).padding(.vertical, 6)
+                .background(Capsule().fill(panelTab == tab ? Brand.accent : Color.clear))
+                .foregroundStyle(panelTab == tab ? .white : Brand.secondaryLabel)
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// 选集网格。
+    private var episodeGridView: some View {
+        ScrollView {
+            ScrollViewReader { proxy in
+                EpisodeGrid(
+                    episodes: vm.episodes,
+                    currentIndex: vm.currentIndex,
+                    playedIds: playedIds,
+                    selectedIndices: isSelectingDownloads ? selectedDownloads : nil
+                ) { idx, _ in
+                    if isSelectingDownloads {
+                        if selectedDownloads.contains(idx) { selectedDownloads.remove(idx) }
+                        else { selectedDownloads.insert(idx) }
+                    } else {
+                        vm.loadEpisode(idx)
+                    }
+                }
+                .padding(Spacing.lg)
+                .onAppear { proxy.scrollTo(vm.currentIndex, anchor: .center) }
+                .onChange(of: vm.currentIndex) { _, new in
+                    withAnimation { proxy.scrollTo(new, anchor: .center) }
+                }
+            }
+        }
+    }
+
+    /// 切换源列表（复用预搜缓存，搜到一个显一个；无结果时滚动显示正在检索的源）。
+    private var sourceListPane: some View {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
+            if vm.isSearchingSources && vm.sourceCandidates.isEmpty {
+                // 无结果时滚动展示正在检索的源（让用户知道在工作）
+                HStack(spacing: Spacing.sm) {
+                    ProgressView().controlSize(.small)
+                    Text(vm.searchingSiteName.isEmpty
+                         ? "正在跨在线源检索「\(vm.title)」…"
+                         : "正在检索：\(vm.searchingSiteName) …")
+                        .font(Typography.caption).foregroundStyle(Brand.secondaryLabel)
+                        .lineLimit(1)
+                        .id(vm.searchingSiteName)   // 源名变化触发过渡动画
+                        .transition(.opacity)
+                        .animation(.easeInOut(duration: 0.2), value: vm.searchingSiteName)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if vm.sourceCandidates.isEmpty {
+                Text("其他视频源未收录该剧").font(Typography.caption).foregroundStyle(Brand.secondaryLabel)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 6) {
+                        ForEach(vm.sourceCandidates) { m in
+                            Button { Task { await vm.switchToSource(m) } } label: {
+                                HStack {
+                                    Text(m.siteName)
+                                        .font(.system(size: 11, weight: .semibold))
+                                        .padding(.horizontal, 6).padding(.vertical, 2)
+                                        .background(Capsule().fill(Brand.accent.opacity(0.12)))
+                                        .foregroundStyle(Brand.accent)
+                                    Text(m.drama.title).font(.system(size: 13, weight: .medium)).lineLimit(1)
+                                    if let cnt = m.drama.episodeCount {
+                                        Text("\(cnt) 集").font(.system(size: 11)).foregroundStyle(Brand.secondaryLabel)
+                                    }
+                                    Spacer()
+                                    Image(systemName: "play.circle").foregroundStyle(Brand.accent)
+                                }
+                                .contentShape(Rectangle())
+                                .padding(.vertical, 6).padding(.horizontal, Spacing.sm)
+                                .background(RoundedRectangle(cornerRadius: 8).fill(Brand.chipFill))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.horizontal, Spacing.lg).padding(.vertical, Spacing.sm)
+                }
+            }
+        }
     }
 
     // MARK: 其他季

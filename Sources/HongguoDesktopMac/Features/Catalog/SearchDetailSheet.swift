@@ -25,6 +25,7 @@ public struct SearchDetailSheet: View {
     @State private var isLoadingDetail = false
     @State private var detailError: String?
     @State private var searchTask: Task<Void, Never>?
+    @State private var searchingSiteName = ""      // 正在检索的源名（滚动展示）
 
     init(request: SearchRequest,
          onClose: @escaping () -> Void) {
@@ -167,7 +168,13 @@ public struct SearchDetailSheet: View {
                 Text("可播放源").font(Typography.headline)
                 if isSearchingSources {
                     ProgressView().controlSize(.small)
-                    Text("正在检索在线源…").font(.system(size: 12)).foregroundStyle(Brand.secondaryLabel)
+                    // 滚动显示正在检索的源名（让用户知道在工作）
+                    Text(searchingSiteName.isEmpty ? "正在检索在线源…" : "正在检索：\(searchingSiteName) …")
+                        .font(.system(size: 12)).foregroundStyle(Brand.secondaryLabel)
+                        .lineLimit(1)
+                        .id(searchingSiteName)
+                        .transition(.opacity)
+                        .animation(.easeInOut(duration: 0.2), value: searchingSiteName)
                 } else {
                     Text("\(matches.count) 个").font(Typography.caption).foregroundStyle(Brand.secondaryLabel)
                 }
@@ -175,7 +182,7 @@ public struct SearchDetailSheet: View {
 
             if matches.isEmpty {
                 if isSearchingSources {
-                    // 不整页转圈，只此区域提示
+                    // 不整页转圈，只此区域提示（源名见上方滚动）
                     Text("正在跨在线视频源检索，搜到即显示…")
                         .font(Typography.caption).foregroundStyle(Brand.secondaryLabel)
                         .frame(maxWidth: .infinity, minHeight: 80)
@@ -243,18 +250,19 @@ public struct SearchDetailSheet: View {
             isSearchingSources = false; sourcesDone = true; return
         }
         // 并发搜，单源 8s 超时，先到先显
-        await withTaskGroup(of: [SourceMatch].self) { group in
+        await withTaskGroup(of: (String, [SourceMatch]).self) { group in
             var pending = onlineSites.makeIterator()
             func enqueue() {
                 if let s = pending.next() {
                     group.addTask {
                         let list = await Self.searchOne(sm: sm, site: s, query: request.title)
-                        return list
+                        return (s.name, list)
                     }
                 }
             }
             for _ in 0..<6 { enqueue() }
-            while let chunk = await group.next() {
+            while let (siteName, chunk) = await group.next() {
+                searchingSiteName = siteName
                 if !chunk.isEmpty {
                     // 流式追加 + 去重 + 排序（精确优先/集数多优先）
                     matches.append(contentsOf: chunk)
@@ -269,6 +277,7 @@ public struct SearchDetailSheet: View {
                 enqueue()
             }
         }
+        searchingSiteName = ""
         isSearchingSources = false; sourcesDone = true
     }
 

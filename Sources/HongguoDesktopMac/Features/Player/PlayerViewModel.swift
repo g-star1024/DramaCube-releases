@@ -90,6 +90,8 @@ public final class PlayerViewModel: ObservableObject, ActivePlayer {
         loadEpisode(idx, autoplay: true)
         NowPlayingManager.shared.bind(self)
         observeRemoteAndBoss()
+        // 后台预搜可切换源（不阻塞起播），点「切换源」时直接用缓存秒显
+        presearchSourcesIfNeeded()
     }
 
     deinit {
@@ -368,46 +370,91 @@ public final class PlayerViewModel: ObservableObject, ActivePlayer {
     @Published public var sourceCandidates: [SourceMatch] = []
     @Published public var isSearchingSources = false
     @Published public var showSourceSwitcher = false
+    /// 当前正在检索的源名（无结果时滚动展示「正在查 X」让用户知道在工作）。
+    @Published public var searchingSiteName: String = ""
+    /// 是否已预搜过（预搜缓存：切源直接用，不重复搜）。
+    private var hasSearchedSources = false
 
-    /// 打开切源面板：跨 TVBox 源搜同名剧（红果内容源已清除，只在 TVBox 里找）。
+    /// 打开播放器时后台预搜源（不阻塞起播）：搜到缓存进 sourceCandidates，
+    /// 用户点「切换源」时直接用缓存秒显，不再单独搜一遍。
+    public func presearchSourcesIfNeeded() {
+        guard !hasSearchedSources else { return }
+        hasSearchedSources = true
+        Task { await searchSources() }
+    }
+
+    /// 打开切源面板：有缓存直接用（秒显），无缓存则触发搜索。
     public func openSourceSwitcher() async {
         showSourceSwitcher = true
+        // 已有结果（预搜完成）直接用；还在搜就等它；完全没搜过才重新搜
+        if !sourceCandidates.isEmpty || isSearchingSources { return }
+        await searchSources()
+    }
+
+    /// 跨 TVBox 源搜同名剧（流式追加 + 只搜在线源 + 单源超时）。可重入（供预搜与手动切源共用）。
+    private func searchSources() async {
+        if isSearchingSources { return }
         isSearchingSources = true
         sourceCandidates = []
-        defer { isSearchingSources = false }
         let keyword = title
-        let sites = SourceManager.shared.enabledSites
-        await withTaskGroup(of: [SourceMatch].self) { group in
+        let sm = SourceManager.shared
+        // 只搜在线源（已知失效跳过；未测过的纳入）
+        let sites = sm.enabledSites.filter { site in
+            guard let r = sm.testResults[site.key] else { return true }
+            return r.ok
+        }
+        await withTaskGroup(of: (String, [SourceMatch]).self) { group in
             var pending = sites.makeIterator()
-            for _ in 0..<5 {
+            func enqueue() {
                 if let s = pending.next() {
                     group.addTask {
-                        let list = (try? await SourceManager.shared.tvboxSearch(siteKey: s.key, query: keyword)) ?? []
-                        return list.map { SourceMatch(drama: $0, siteKey: s.key, siteName: s.name) }
+                        let list = await Self.searchOneSite(sm: sm, site: s, query: keyword)
+                        return (s.name, list)
                     }
                 }
             }
-            while let chunk = await group.next() {
-                sourceCandidates.append(contentsOf: chunk)
-                if let s = pending.next() {
-                    group.addTask {
-                        let list = (try? await SourceManager.shared.tvboxSearch(siteKey: s.key, query: keyword)) ?? []
-                        return list.map { SourceMatch(drama: $0, siteKey: s.key, siteName: s.name) }
+            for _ in 0..<5 { enqueue() }
+            while let (siteName, chunk) = await group.next() {
+                searchingSiteName = siteName
+                if !chunk.isEmpty {
+                    sourceCandidates.append(contentsOf: chunk)
+                    var seen = Set<String>()
+                    let q = keyword
+                    sourceCandidates = sourceCandidates.filter { seen.insert($0.id).inserted }.sorted { a, b in
+                        let ea = a.drama.title == q, eb = b.drama.title == q
+                        if ea != eb { return ea }
+                        return (a.drama.episodeCount ?? 0) > (b.drama.episodeCount ?? 0)
                     }
                 }
+                enqueue()
             }
         }
-        // 标题精确优先、集数多优先
-        let q = title
-        sourceCandidates.sort { a, b in
-            let ea = a.drama.title == q, eb = b.drama.title == q
-            if ea != eb { return ea }
-            return (a.drama.episodeCount ?? 0) > (b.drama.episodeCount ?? 0)
+        searchingSiteName = ""
+        isSearchingSources = false
+    }
+
+    /// 单源搜索（8s 超时，慢源/失效源及时放弃）。
+    private static func searchOneSite(sm: SourceManager, site: SourceManager.TVBoxSite, query: String) async -> [SourceMatch] {
+        await withTaskGroup(of: [SourceMatch]?.self) { g in
+            g.addTask {
+                let list = (try? await sm.tvboxSearch(siteKey: site.key, query: query)) ?? []
+                return list.map { SourceMatch(drama: $0, siteKey: site.key, siteName: site.name) }
+            }
+            g.addTask { try? await Task.sleep(nanoseconds: 8_000_000_000); return nil }
+            let first = await g.next() ?? nil
+            g.cancelAll()
+            return first ?? []
         }
     }
 
+    /// 切源防抖：正在切源时忽略重复点击，避免连点触发多次 detail 重建卡死。
+    private var isSwitchingSource = false
+
     /// 切到指定源：加载该源详情，从当前集续播。
     public func switchToSource(_ match: SourceMatch) async {
+        guard !isSwitchingSource else { return }
+        isSwitchingSource = true
+        defer { isSwitchingSource = false }
         let targetEp = currentIndex
         showSourceSwitcher = false
         isBuffering = true; error = nil
