@@ -49,4 +49,6 @@ extension Notification.Name {
     static let hongguoRemoteToggle = Notification.Name("hongguoRemoteToggle")
     static let hongguoRemoteNext = Notification.Name("hongguoRemoteNext")
     static let hongguoRemotePrev = Notification.Name("hongguoRemotePrev")
+    /// mpv 链路切源/切换其他季：用新 detail 重建播放窗口（userInfo: detail / startIndex）
+    static let hongguoSwitchSource = Notification.Name("hongguoSwitchSource")
 }

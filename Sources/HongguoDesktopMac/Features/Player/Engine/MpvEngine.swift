@@ -78,6 +78,9 @@ public final class MpvEngine: NSObject, PlaybackEngine, ObservableObject {
         mpv_set_property_string(mpv, "gpu-context", "moltenvk")
         mpv_set_property_string(mpv, "hwdec", "videotoolbox")   // Apple 硬解
         mpv_set_property_string(mpv, "profile", "fast")
+        // 保持视频比例（wid 渲染到 NSView layer 时默认填满，显式开 keepaspect 防拉伸变形）
+        mpv_set_property_string(mpv, "keepaspect", "yes")
+        mpv_set_property_string(mpv, "keepaspect-window", "no")  // 不随窗口比例改视频比例
         // HDR / Dolby Vision 直通
         mpv_set_property_string(mpv, "target-colorspace-hint", "yes")
 

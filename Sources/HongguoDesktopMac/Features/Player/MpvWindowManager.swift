@@ -13,6 +13,7 @@ final class MpvWindowManager {
     private var savedFrame: NSRect?
     private var savedStyleMask: NSWindow.StyleMask?
     private var escMonitor: Any?
+    private var switchSourceObserver: NSObjectProtocol?
 
     func show(detail: DramaDetail, startIndex: Int) {
         close()
@@ -41,6 +42,15 @@ final class MpvWindowManager {
         NSApp.activate(ignoringOtherApps: true)
         window = w
         installEscMonitor()
+        // 监听切源/切换其他季通知：用新 detail 重建窗口（MpvPlayerShellView 的 detail 是 let，只能重建）
+        switchSourceObserver = NotificationCenter.default.addObserver(
+            forName: .hongguoSwitchSource, object: nil, queue: .main
+        ) { [weak self] note in
+            guard let self,
+                  let newDetail = note.userInfo?["detail"] as? DramaDetail,
+                  let idx = note.userInfo?["startIndex"] as? Int else { return }
+            MainActor.assumeIsolated { self.show(detail: newDetail, startIndex: idx) }
+        }
     }
 
     private func installEscMonitor() {
@@ -108,6 +118,10 @@ final class MpvWindowManager {
             savedStyleMask = nil
         }
         removeEscMonitor()
+        if let obs = switchSourceObserver {
+            NotificationCenter.default.removeObserver(obs)
+            switchSourceObserver = nil
+        }
         window?.delegate = nil
         window?.close()
         window = nil
