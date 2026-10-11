@@ -21,7 +21,7 @@ public enum DirectURLSession {
             kCFNetworkProxiesSOCKSEnable as String: false,
         ] as [String: Any]
         cfg.timeoutIntervalForRequest = 20
-        cfg.timeoutIntervalForResource = 60
+        cfg.timeoutIntervalForResource = 30
         return URLSession(configuration: cfg)
     }()
 }

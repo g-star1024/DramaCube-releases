@@ -32,6 +32,8 @@ public final class SourceManager: ObservableObject {
         } else {
             testResults = [:]
         }
+        // 启动即把已有失败测试记录的源并入禁用（不依赖手动测速按钮）
+        reconcileDisabledWithTestResults()
     }
 
     // MARK: - 状态
@@ -126,6 +128,25 @@ public final class SourceManager: ObservableObject {
     /// 启用的站点（参与聚合搜索），已测过的按延迟升序排前。
     public var enabledSites: [TVBoxSite] {
         sortedByLatency(sites.filter { !disabled.contains($0.key) })
+    }
+
+    /// 某源是否「确定失效」：有测试记录且失败。（未测过的不算）
+    public func isFailed(_ key: String) -> Bool {
+        testResults[key].map { !$0.ok } ?? false
+    }
+
+    /// 启动时把「有失败测试记录」的源一次性并入禁用——不依赖用户手动点「全部连通性测试」。
+    /// 用户手动开着但已测失败的源同样禁用（渲染时即生效，不让失效源再进检索/勾选）。
+    private func reconcileDisabledWithTestResults() {
+        var d = disabled
+        var changed = false
+        for (key, r) in testResults where !r.ok {
+            if !d.contains(key) { d.insert(key); changed = true }
+        }
+        if changed {
+            disabled = d
+            AppLog.log(.app, "已将 \(d.count) 个失效源并入禁用（基于已有测试记录）")
+        }
     }
 
     /// 全部站点按延迟排序（有结果的升序在前，未测的按原名在后）。

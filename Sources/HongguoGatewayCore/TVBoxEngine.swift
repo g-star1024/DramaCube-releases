@@ -305,7 +305,7 @@ public actor TVBoxEngine {
         return cats
     }
 
-    /// 搜索：`?ac=videolist&wd=q&pg=n`。
+    /// 搜索：`?ac=videolist&wd=q&pg=n`。短超时 8s（坏源快速让位，不拖垮聚合）。
     public func search(siteKey: String, query: String, page: Int = 1) async throws -> [Drama] {
         let s = try await site(key: siteKey)
         var comps = URLComponents(string: s.api)
@@ -315,7 +315,7 @@ public actor TVBoxEngine {
             URLQueryItem(name: "pg", value: String(page)),
         ]
         guard let u = comps?.url else { throw TVBoxError.badURL }
-        let vods = try await fetchVods(u)
+        let vods = try await fetchResponse(u, timeoutSecs: 8).list ?? []
         return vods.map { Self.toDrama($0, siteKey: s.key) }
     }
 
@@ -447,6 +447,21 @@ public actor TVBoxEngine {
     /// 整体解码会抛 dataCorrupted「correct format」。此时按「最后一个完整 list 条目」
     /// 截断数据、丢弃坏尾巴，抢救已完整解析出的条目，而不是整页报错。
     private func fetchResponse(_ url: URL, timeoutSecs: Int = 15) async throws -> VodListResponse {
+        // 硬上限：请求级 + 资源级 + 任务级三重封顶，坏源最多 timeoutSecs+1s 必返回，不再挂起 15s+。
+        let cap = timeoutSecs + 1
+        return try await withThrowingTaskGroup(of: VodListResponse.self) { group in
+            group.addTask { try await self.fetchResponseInner(url, timeoutSecs: timeoutSecs) }
+            group.addTask {
+                try await Task.sleep(nanoseconds: UInt64(cap) * 1_000_000_000)
+                throw TVBoxError.fetchFailed(-2)  // -2 = 硬超时
+            }
+            let first = try await group.next()!
+            group.cancelAll()
+            return first
+        }
+    }
+
+    private func fetchResponseInner(_ url: URL, timeoutSecs: Int) async throws -> VodListResponse {
         var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: TimeInterval(timeoutSecs))
         req.setValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36", forHTTPHeaderField: "User-Agent")
         req.setValue("application/json", forHTTPHeaderField: "Accept")

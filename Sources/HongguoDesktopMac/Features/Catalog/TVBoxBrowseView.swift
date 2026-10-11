@@ -87,7 +87,9 @@ struct TVBoxBrowseView: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     ForEach(sm.sortedSites) { s in
-                        let off = sm.disabled.contains(s.key)
+                        // 已禁用 或 已测失败 的源都视为不可用：不可勾选、置灰
+                        let failed = sm.isFailed(s.key)
+                        let off = sm.disabled.contains(s.key) || failed
                         Button {
                             if !off {
                                 sm.currentSource = s.key
@@ -116,7 +118,7 @@ struct TVBoxBrowseView: View {
                         }
                         .buttonStyle(.plain)
                         .disabled(off)
-                        .opacity(off ? 0.5 : 1)
+                        .opacity(off ? 0.45 : 1)
                     }
                 }
             }
