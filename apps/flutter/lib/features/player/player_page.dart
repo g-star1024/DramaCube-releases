@@ -132,50 +132,52 @@ class _PlayerPageState extends State<PlayerPage> {
             ),
           ),
           // 控制条
-          Container(
-            color: Colors.black87,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child: Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.skip_previous, color: Colors.white),
-                  onPressed: _currentIndex > 0 ? () => _loadEpisode(_currentIndex - 1) : null,
-                ),
-                StreamBuilder<bool>(
-                  stream: _player.stream.playing,
-                  builder: (context, snap) => IconButton(
-                    icon: Icon(snap.data == true ? Icons.pause : Icons.play_arrow, color: Colors.white, size: 32),
-                    onPressed: () => _player.playOrPause(),
+          SafeArea(
+            child: Container(
+              color: Colors.black87,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.skip_previous, color: Colors.white),
+                    onPressed: _currentIndex > 0 ? () => _loadEpisode(_currentIndex - 1) : null,
                   ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.skip_next, color: Colors.white),
-                  onPressed: _currentIndex < widget.detail.episodes.length - 1
-                      ? () => _loadEpisode(_currentIndex + 1)
-                      : null,
-                ),
-                const Spacer(),
-                // 倍速
-                StreamBuilder<double>(
-                  stream: _player.stream.rate,
-                  builder: (context, snap) => PopupMenuButton<double>(
-                    initialValue: snap.data ?? 1.0,
-                    onSelected: (rate) => _player.setRate(rate),
-                    itemBuilder: (_) => [
-                      for (final r in [0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0])
-                        PopupMenuItem(value: r, child: Text('${r}x')),
-                    ],
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      child: Text('${snap.data ?? 1.0}x',
-                          style: const TextStyle(color: Colors.white, fontSize: 13)),
+                  StreamBuilder<bool>(
+                    stream: _player.stream.playing,
+                    builder: (context, snap) => IconButton(
+                      icon: Icon(snap.data == true ? Icons.pause : Icons.play_arrow, color: Colors.white, size: 32),
+                      onPressed: () => _player.playOrPause(),
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Text('第${ep.index}集 / 共${widget.detail.episodes.length}集',
-                    style: const TextStyle(color: Colors.white70, fontSize: 12)),
-              ],
+                  IconButton(
+                    icon: const Icon(Icons.skip_next, color: Colors.white),
+                    onPressed: _currentIndex < widget.detail.episodes.length - 1
+                        ? () => _loadEpisode(_currentIndex + 1)
+                        : null,
+                  ),
+                  const Spacer(),
+                  // 倍速
+                  StreamBuilder<double>(
+                    stream: _player.stream.rate,
+                    builder: (context, snap) => PopupMenuButton<double>(
+                      initialValue: snap.data ?? 1.0,
+                      onSelected: (rate) => _player.setRate(rate),
+                      itemBuilder: (_) => [
+                        for (final r in [0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0])
+                          PopupMenuItem(value: r, child: Text('${r}x')),
+                      ],
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: Text('${snap.data ?? 1.0}x',
+                            style: const TextStyle(color: Colors.white, fontSize: 13)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text('第${ep.index}集 / 共${widget.detail.episodes.length}集',
+                      style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                ],
+              ),
             ),
           ),
         ],

@@ -168,8 +168,8 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
                     : GridView.builder(
                         controller: _scrollCtrl,
                         padding: const EdgeInsets.all(16),
-                        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                          maxCrossAxisExtent: 160,
+                        gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+                          maxCrossAxisExtent: MediaQuery.of(context).size.width < 720 ? 120 : 160,
                           childAspectRatio: 0.65,
                           crossAxisSpacing: 12,
                           mainAxisSpacing: 12,

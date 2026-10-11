@@ -20,6 +20,7 @@ class _LivePageState extends ConsumerState<LivePage> {
   @override
   Widget build(BuildContext context) {
     final live = ref.watch(liveManagerProvider);
+    final isWide = MediaQuery.of(context).size.width >= 720;
     return Scaffold(
       appBar: AppBar(
         title: const Text('电视直播'),
@@ -55,29 +56,44 @@ class _LivePageState extends ConsumerState<LivePage> {
                       text: '暂无频道',
                       hint: live.error ?? '直播源已添加但未解析到频道，试试刷新',
                     )
-                  : Row(
-                      children: [
-                        // 频道列表
-                        SizedBox(
-                          width: 280,
-                          child: _ChannelList(
-                            grouped: live.grouped,
-                            currentChannel: _currentChannel,
-                            onSelect: (ch) => setState(() => _currentChannel = ch),
-                          ),
-                        ),
-                        const VerticalDivider(width: 1),
-                        // 播放器
-                        Expanded(
-                          child: _currentChannel == null
-                              ? _emptyState(
-                                  icon: Icons.play_circle_outline,
-                                  text: '选择频道开始播放',
-                                )
-                              : _LivePlayer(key: ValueKey(_currentChannel!.id), channel: _currentChannel!),
-                        ),
-                      ],
-                    ),
+                  : isWide
+                      ? _buildWideLayout(live)
+                      : _buildNarrowLayout(live),
+    );
+  }
+
+  /// 宽屏（桌面/平板）：左右分栏。
+  Widget _buildWideLayout(LiveState live) {
+    return Row(
+      children: [
+        SizedBox(
+          width: 280,
+          child: _ChannelList(
+            grouped: live.grouped,
+            currentChannel: _currentChannel,
+            onSelect: (ch) => setState(() => _currentChannel = ch),
+          ),
+        ),
+        const VerticalDivider(width: 1),
+        Expanded(
+          child: _currentChannel == null
+              ? _emptyState(icon: Icons.play_circle_outline, text: '选择频道开始播放')
+              : _LivePlayer(key: ValueKey(_currentChannel!.id), channel: _currentChannel!),
+        ),
+      ],
+    );
+  }
+
+  /// 窄屏（手机）：频道列表全屏，点频道进全屏播放页。
+  Widget _buildNarrowLayout(LiveState live) {
+    return _ChannelList(
+      grouped: live.grouped,
+      currentChannel: null,
+      onSelect: (ch) {
+        Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => _LivePlayerFullPage(channel: ch),
+        ));
+      },
     );
   }
 
@@ -150,7 +166,7 @@ class _ChannelList extends StatelessWidget {
   }
 }
 
-/// 直播播放器（media_kit）。
+/// 直播播放器（media_kit，嵌入宽屏布局）。
 class _LivePlayer extends StatefulWidget {
   final LiveChannel channel;
   const _LivePlayer({super.key, required this.channel});
@@ -204,6 +220,71 @@ class _LivePlayerState extends State<_LivePlayer> {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// 直播全屏播放页（窄屏手机用，带返回按钮）。
+class _LivePlayerFullPage extends StatefulWidget {
+  final LiveChannel channel;
+  const _LivePlayerFullPage({required this.channel});
+
+  @override
+  State<_LivePlayerFullPage> createState() => _LivePlayerFullPageState();
+}
+
+class _LivePlayerFullPageState extends State<_LivePlayerFullPage> {
+  late final _player = Player();
+  late final _controller = VideoController(_player);
+
+  @override
+  void initState() {
+    super.initState();
+    _player.open(Media(widget.channel.url, httpHeaders: {
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15',
+    }));
+    _player.play();
+  }
+
+  @override
+  void dispose() {
+    _player.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        title: Text(widget.channel.name),
+      ),
+      body: Column(
+        children: [
+          Expanded(child: Video(controller: _controller)),
+          SafeArea(
+            child: Container(
+              color: Colors.black87,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  StreamBuilder<bool>(
+                    stream: _player.stream.playing,
+                    builder: (context, snap) => IconButton(
+                      icon: Icon(snap.data == true ? Icons.pause : Icons.play_arrow,
+                          color: Colors.white, size: 32),
+                      onPressed: () => _player.playOrPause(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
