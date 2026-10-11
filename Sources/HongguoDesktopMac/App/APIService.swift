@@ -100,4 +100,27 @@ public final class CatalogService: ObservableObject {
         }
         return try await decode(url)
     }
+
+    /// 豆瓣条目详情（剧情简介，详情页异步补）。
+    public struct DoubanSubject: Codable, Sendable {
+        public let id, title, intro, cardSubtitle: String
+        private enum CodingKeys: String, CodingKey {
+            case id, title, intro
+            case cardSubtitle = "cardSubtitle"
+        }
+    }
+    public func doubanSubject(id: String, kind: String) async throws -> DoubanSubject? {
+        guard let url = URL(string: "\(base)/api/douban/subject?id=\(id)&kind=\(kind)") else {
+            throw HongguoParseError.fieldMissing("url")
+        }
+        return try await decode(url)
+    }
+
+    /// 哔哩哔哩番剧榜（发现页「热门动漫」数据源）。复用 DoubanHotItem 结构。
+    public func bilibiliBangumi(limit: Int = 54) async throws -> [DoubanHotItem] {
+        guard let url = URL(string: "\(base)/api/bilibili/bangumi?limit=\(limit)") else {
+            throw HongguoParseError.fieldMissing("url")
+        }
+        return try await decode(url)
+    }
 }

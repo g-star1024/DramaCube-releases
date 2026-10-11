@@ -84,6 +84,12 @@ public final class AppSettings: ObservableObject {
     /// 自定义缓存目录（空 = 默认 Application Support/DramaCube/Cache）。设置后新缓存写到该目录。
     @Published public var customCacheDir: String { didSet { defaults.set(customCacheDir, forKey: "customCacheDir") } }
 
+    /// 页面内容缓存时长（分钟，默认 360=6 小时）。发现页/视频源/轮播/详情等
+    /// cache-then-network 的 TTL：此时间内直接读缓存秒显，过期后台静默刷新。
+    @Published public var cacheMaxAgeMinutes: Int { didSet { defaults.set(cacheMaxAgeMinutes, forKey: "cacheMaxAgeMinutes") } }
+    /// 缓存时长（秒），给 DiskCache.readFresh 用。
+    public var cacheMaxAgeSeconds: TimeInterval { TimeInterval(cacheMaxAgeMinutes * 60) }
+
     private init() {
         let d = UserDefaults.standard
         gatewayPort = d.object(forKey: "gatewayPort") == nil ? 8787 : d.integer(forKey: "gatewayPort")
@@ -106,5 +112,6 @@ public final class AppSettings: ObservableObject {
         uiFontScale = d.object(forKey: "uiFontScale") == nil ? 1.0 : d.double(forKey: "uiFontScale")
         customDownloadDir = d.string(forKey: "customDownloadDir") ?? ""
         customCacheDir = d.string(forKey: "customCacheDir") ?? ""
+        cacheMaxAgeMinutes = d.object(forKey: "cacheMaxAgeMinutes") == nil ? 360 : d.integer(forKey: "cacheMaxAgeMinutes")
     }
 }

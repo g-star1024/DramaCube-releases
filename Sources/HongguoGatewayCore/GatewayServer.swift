@@ -535,6 +535,23 @@ public enum GatewayServer {
             return Self.json(GatewayEnvelope(ok: true, data: items))
         }
 
+        // 豆瓣条目详情（剧情简介，详情页异步补）：/api/douban/subject?id=<id>&kind=movie|tv
+        router.get("api/douban/subject") { request, _ async throws -> Response in
+            guard let id = Self.queryValue(request, name: "id") else {
+                throw HTTPError(.badRequest, message: "missing id")
+            }
+            let kind = Self.queryValue(request, name: "kind") ?? "movie"
+            let item = await CoverEngine.shared.doubanSubject(id: id, kind: kind)
+            return Self.json(GatewayEnvelope(ok: true, data: item))
+        }
+
+        // 哔哩哔哩番剧榜（发现页「热门动漫」数据源）：/api/bilibili/bangumi?limit=
+        router.get("api/bilibili/bangumi") { request, _ async throws -> Response in
+            let limit = Int(Self.queryValue(request, name: "limit") ?? "") ?? 54
+            let items = await CoverEngine.shared.bilibiliBangumiRank(limit: limit)
+            return Self.json(GatewayEnvelope(ok: true, data: items))
+        }
+
         // 图片代理：/api/image-proxy?url= —— 转发豆瓣等防盗链图片（带 Referer）。
         router.get("api/image-proxy") { request, _ async throws -> Response in
             guard let urlStr = Self.queryValue(request, name: "url"),
@@ -546,6 +563,10 @@ public enum GatewayServer {
             // 豆瓣图片防盗链：Referer 设为豆瓣主站
             if url.host?.contains("doubanio.com") == true {
                 req.setValue("https://movie.douban.com/", forHTTPHeaderField: "Referer")
+            }
+            // B站图床防盗链：Referer 设为 bilibili 主站
+            if url.host?.contains("hdslb.com") == true || url.host?.contains("bilibili.com") == true {
+                req.setValue("https://www.bilibili.com", forHTTPHeaderField: "Referer")
             }
             // 强制直连：豆瓣/采集站图床国内可直连，系统代理境外出口拉图 25s 超时（封面转圈根因）。
             // 用 data() 而非 bytes()：封面图小（KB 级），全量读一次即可；bytes() 流式请求在系统代理下

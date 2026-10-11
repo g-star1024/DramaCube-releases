@@ -121,4 +121,77 @@ public actor CoverEngine {
         if !out.isEmpty { hotCache[key] = (out, Date()) }
         return out
     }
+
+    // MARK: - 豆瓣条目详情（简介/演职员，详情页异步补）
+
+    /// 豆瓣条目详情（简介 + 副标题）。
+    public struct DoubanSubject: Codable, Sendable {
+        public let id: String
+        public let title: String
+        public let intro: String         // 剧情简介
+        public let cardSubtitle: String  // 年代/地区/类型/导演/主演
+        public init(id: String, title: String, intro: String, cardSubtitle: String) {
+            self.id = id; self.title = title; self.intro = intro; self.cardSubtitle = cardSubtitle
+        }
+    }
+
+    private var subjectCache: [String: (item: DoubanSubject?, at: Date)] = [:]
+
+    /// 拉豆瓣条目详情（rexxar /movie/<id> 或 /tv/<id>），拿剧情简介。
+    /// 与 recent_hot 同通道（m.douban.com rexxar 直连），结果缓存 6h。
+    public func doubanSubject(id: String, kind: String) async -> DoubanSubject? {
+        let key = "\(kind)|\(id)"
+        if let c = subjectCache[key], Date().timeIntervalSince(c.at) < 21600 { return c.item }
+        let path = kind == "tv" ? "tv" : "movie"
+        guard let url = URL(string: "https://m.douban.com/rexxar/api/v2/\(path)/\(id)") else { return nil }
+        var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 10)
+        req.setValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15", forHTTPHeaderField: "User-Agent")
+        req.setValue("https://m.douban.com/", forHTTPHeaderField: "Referer")
+        guard let (data, resp) = try? await DirectURLSession.shared.data(for: req),
+              let http = resp as? HTTPURLResponse, (200..<300).contains(http.statusCode),
+              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return subjectCache[key]?.item ?? nil
+        }
+        let title = (obj["title"] as? String) ?? ""
+        let intro = (obj["intro"] as? String) ?? ""
+        let cardSub = (obj["card_subtitle"] as? String) ?? ""
+        let item = DoubanSubject(id: id, title: title, intro: intro, cardSubtitle: cardSub)
+        subjectCache[key] = (item, Date())
+        return item
+    }
+
+    // MARK: - 哔哩哔哩番剧榜（发现页「热门动漫」数据源）
+
+    /// B站番剧榜条目（对齐 DoubanHotItem 复用前端卡片）。
+    /// season_type=1 番剧；day=3 三天榜（更稳定）。
+    public func bilibiliBangumiRank(limit: Int = 54) async -> [DoubanHotItem] {
+        let key = "bili|bangumi|\(limit)"
+        if let c = hotCache[key], Date().timeIntervalSince(c.at) < 3600 { return c.items }
+        guard let url = URL(string: "https://api.bilibili.com/pgc/web/rank/list?season_type=1&day=3") else { return [] }
+        var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 10)
+        req.setValue("Mozilla/5.0 (Macintosh) AppleWebKit/537.36", forHTTPHeaderField: "User-Agent")
+        req.setValue("https://www.bilibili.com", forHTTPHeaderField: "Referer")
+        guard let (data, resp) = try? await DirectURLSession.shared.data(for: req),
+              let http = resp as? HTTPURLResponse, (200..<300).contains(http.statusCode),
+              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              (obj["code"] as? Int) == 0,
+              let result = obj["result"] as? [String: Any],
+              let list = result["list"] as? [[String: Any]] else {
+            return hotCache[key]?.items ?? []
+        }
+        let out: [DoubanHotItem] = list.prefix(limit).compactMap { it in
+            let title = (it["title"] as? String) ?? ""
+            guard !title.isEmpty else { return nil }
+            var id = (it["season_id"] as? Int).map { String($0) } ?? ""
+            if id.isEmpty, let n = it["season_id"] as? Int64 { id = String(n) }
+            var poster = (it["cover"] as? String) ?? ""
+            if poster.hasPrefix("http://") { poster = "https://" + poster.dropFirst("http://".count) }
+            // rating 是 "9.4分" 字符串，去掉「分」
+            var rate = (it["rating"] as? String) ?? ""
+            rate = rate.replacingOccurrences(of: "分", with: "")
+            return DoubanHotItem(id: id, title: title, poster: poster, rate: rate, year: "")
+        }
+        if !out.isEmpty { hotCache[key] = (out, Date()) }
+        return out
+    }
 }

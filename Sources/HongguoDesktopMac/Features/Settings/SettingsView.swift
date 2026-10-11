@@ -193,6 +193,16 @@ public struct SettingsView: View {
         p.replacingOccurrences(of: NSHomeDirectory(), with: "~")
     }
 
+    /// 缓存时长人性化显示（分钟 → "6 小时" / "30 分钟" / "1 天"）。
+    private func cacheDurationLabel(_ minutes: Int) -> String {
+        if minutes >= 1440 { return "\(minutes / 1440) 天" }
+        if minutes >= 60 {
+            let h = minutes / 60, m = minutes % 60
+            return m == 0 ? "\(h) 小时" : "\(h) 小时 \(m) 分"
+        }
+        return "\(minutes) 分钟"
+    }
+
     /// 弹 NSOpenPanel 选一个目录，返回路径。
     private func pickDirectory() -> String? {
         let panel = NSOpenPanel()
@@ -403,6 +413,20 @@ public struct SettingsView: View {
                     }
                 }
                 sectionCard("本地缓存") {
+                    row("缓存时长") {
+                        HStack(spacing: Spacing.sm) {
+                            Slider(value: Binding(
+                                get: { Double(s.cacheMaxAgeMinutes) },
+                                set: { s.cacheMaxAgeMinutes = Int($0) }
+                            ), in: 10...1440, step: 10)
+                            .frame(width: 180)
+                            Text(cacheDurationLabel(s.cacheMaxAgeMinutes))
+                                .font(.system(size: 12))
+                                .foregroundStyle(Brand.secondaryLabel)
+                                .frame(width: 90, alignment: .trailing)
+                        }
+                    }
+                    rowDivider
                     row("下载目录") {
                         dirPicker(current: s.customDownloadDir, defaultLabel: "默认（下载/剧立方）") { path in
                             s.customDownloadDir = path

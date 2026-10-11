@@ -1,54 +1,52 @@
 import SwiftUI
 import HongguoCore
 
-/// 发现页（客户端首页，对标 MoonTV 首页样式）：多分区 + 换行网格。
+/// 发现页（客户端首页，对标 MoonTV 首页样式）：Hero 轮播 + 多分区换行网格。
 ///
-/// 布局（对齐参考站首页，不含其左侧导航）：
-///  - 顶部 Hero 轮播（热门电影 Top5 大背景图 + 标题/评分，自动轮播）；
-///  - 下方多个分区（热门电影 / 热门剧集 / 热门综艺 / 热门短剧 / 热门动漫），
-///    每区一张「换行网格」（不左右滑动，放不下直接换行）；
-///  - 每区默认展示 18 条，点「展开全部」追加到 54 条；
-///  - 豆瓣卡片点击 → 弹「搜索详情」浮层（搜索中 → TVBox 聚合结果 → 可切源播放）。
+/// 样式与视频源页统一：轮播用 HeroCarousel、卡片用 PosterCard（封面 3:4 + 标题 + 集数/年份）。
 ///
-/// 数据源：豆瓣 recent_hot（网关 /api/douban/hot），图片经 image-proxy 防盗链；
-/// 短剧区用首个可用 TVBox 源的最新短剧（真实可播）。
+/// 分区（真实有数据的才展示）：
+///  - 热门电影 / 热门剧集 / 热门综艺：豆瓣 recent_hot（网关 /api/douban/hot）；
+///  - 热门动漫：哔哩哔哩番剧榜（网关 /api/bilibili/bangumi）。
+///  - 短剧区：豆瓣/B站均无真实短剧榜，已移除。
+///
+/// 缓存：各分区 cache-then-network（先秒显缓存 → 后台静默刷新 → 回写），
+/// TTL 取设置中心 cacheMaxAgeMinutes（默认 6 小时），不再每次打开转圈。
+///
+/// 豆瓣卡片点击 → 弹详情浮层（详情秒开，源后台异步流式补）。
 public struct RankView: View {
     let onSelect: (Drama) -> Void
 
     public init(onSelect: @escaping (Drama) -> Void) { self.onSelect = onSelect }
 
-    /// 点击搜索详情浮层的请求（用标题去 TVBox 聚合搜索）。
     @State private var searchRequest: SearchRequest?
-    /// Hero 轮播当前下标。
-    @State private var heroIndex = 0
 
-    // 各分区数据
     @State private var movies: [CatalogService.DoubanHotItem] = []
     @State private var tvs: [CatalogService.DoubanHotItem] = []
     @State private var varieties: [CatalogService.DoubanHotItem] = []
     @State private var animes: [CatalogService.DoubanHotItem] = []
-    @State private var duanjus: [Drama] = []
     @State private var loaded = false
 
-    // 每区「展开全部」
     @State private var expandMovies = false
     @State private var expandTVs = false
     @State private var expandVarieties = false
     @State private var expandAnimes = false
-    @State private var heroTimer: Timer?
 
-    private let sectionLimit = 18      // 每区默认条数（多展示一些）
-    private let sectionLimitFull = 54  // 展开后条数
-    private let columns = [GridItem(.adaptive(minimum: 128, maximum: 150), spacing: Spacing.md)]
+    private let sectionLimit = 18
+    private let sectionLimitFull = 54
+    private let columns = [GridItem(.adaptive(minimum: 130, maximum: 160), spacing: Spacing.md)]
 
     public var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: Spacing.xl) {
-                if !movies.isEmpty { heroSection }
+                if !heroItems.isEmpty {
+                    HeroCarousel(items: heroItems, onSelect: heroSelect)
+                        .padding(.horizontal, Spacing.lg)
+                        .padding(.top, Spacing.md)
+                }
                 doubanSection("热门电影", items: movies, expanded: $expandMovies, kind: .movie)
                 doubanSection("热门剧集", items: tvs, expanded: $expandTVs, kind: .tv)
                 doubanSection("热门综艺", items: varieties, expanded: $expandVarieties, kind: .variety)
-                duanjuSection
                 doubanSection("热门动漫", items: animes, expanded: $expandAnimes, kind: .anime)
             }
             .padding(.bottom, Spacing.xl)
@@ -63,75 +61,18 @@ public struct RankView: View {
         }
     }
 
-    // MARK: - Hero 轮播（热门电影 Top5，自动轮播）
-    private var heroSection: some View {
-        let items = Array(movies.prefix(5))
-        return TabView(selection: $heroIndex) {
-            ForEach(Array(items.enumerated()), id: \.element.id) { idx, item in
-                ZStack(alignment: .bottomLeading) {
-                    // 大背景海报
-                    if let url = proxied(item.poster) {
-                        CoverImage(url, title: item.title)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .clipped()
-                    } else {
-                        Brand.placeholder
-                    }
-                    // 渐变 + 文案
-                    LinearGradient(colors: [.clear, .black.opacity(0.75)],
-                                   startPoint: .center, endPoint: .bottom)
-                    VStack(alignment: .leading, spacing: 6) {
-                        Spacer()
-                        Text(item.title)
-                            .font(.system(size: 26, weight: .bold))
-                            .foregroundStyle(.white)
-                            .lineLimit(1)
-                        HStack(spacing: 10) {
-                            if !item.rate.isEmpty {
-                                Label(item.rate, systemImage: "star.fill")
-                                    .foregroundStyle(.yellow)
-                            }
-                            if !item.year.isEmpty { Text(item.year) }
-                        }
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.9))
-                        Button {
-                            openDouban(item)
-                        } label: {
-                            Label("搜索播放", systemImage: "play.fill")
-                                .font(.system(size: 13, weight: .semibold))
-                                .padding(.horizontal, 16).padding(.vertical, 7)
-                                .background(Capsule().fill(.white))
-                                .foregroundStyle(.black)
-                        }
-                        .buttonStyle(.plain)
-                        .padding(.top, 4)
-                    }
-                    .padding(Spacing.xl)
-                }
-                .contentShape(Rectangle())
-                .onTapGesture { openDouban(item) }
-                .tag(idx)
-            }
-        }
-        .tabViewStyle(.automatic)
-        .frame(height: 340)
-        .clipShape(RoundedRectangle(cornerRadius: Radius.lg, style: .continuous))
-        .padding(.horizontal, Spacing.lg)
-        .padding(.top, Spacing.md)
-        .onAppear { startHeroTimer(count: items.count) }
+    // MARK: - Hero 轮播（取热门电影 Top6，复用视频源页 HeroCarousel）
+    private var heroItems: [Drama] {
+        Array(movies.prefix(6)).map { $0.toDrama() }
     }
-
-    private func startHeroTimer(count: Int) {
-        guard count > 1, heroTimer == nil else { return }
-        heroTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { _ in
-            Task { @MainActor in
-                withAnimation { heroIndex = (heroIndex + 1) % count }
-            }
+    private func heroSelect(_ drama: Drama) {
+        // Hero 卡片点击也走「详情秒开」浮层（豆瓣 id 已编进 Drama.id）
+        if let item = movies.first(where: { "douban|movie|\($0.id)" == drama.id }) {
+            openDouban(item, kind: .movie)
         }
     }
 
-    // MARK: - 豆瓣分区（换行网格，不横滑）
+    // MARK: - 分区（换行网格，不横滑）
     private enum DoubanKind { case movie, tv, variety, anime }
 
     private func doubanSection(_ title: String,
@@ -159,61 +100,13 @@ public struct RankView: View {
                     .frame(maxWidth: .infinity, minHeight: 120)
             } else {
                 let shown = expanded.wrappedValue ? items : Array(items.prefix(sectionLimit))
-                LazyVGrid(columns: columns, spacing: Spacing.lg) {
+                LazyVGrid(columns: columns, spacing: Spacing.md) {
                     ForEach(shown) { item in
-                        doubanCard(item)
-                    }
-                }
-                .padding(.horizontal, Spacing.lg)
-            }
-        }
-    }
-
-    private func doubanCard(_ item: CatalogService.DoubanHotItem) -> some View {
-        VStack(alignment: .leading, spacing: Spacing.sm) {
-            Color.clear
-                .aspectRatio(3.0 / 4.0, contentMode: .fit)
-                .overlay { CoverImage(proxied(item.poster), title: item.title) }
-                .clipShape(RoundedRectangle(cornerRadius: Radius.sm, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(Brand.separator.opacity(0.6), lineWidth: 0.5))
-                .overlay(alignment: .bottomTrailing) {
-                    if !item.rate.isEmpty {
-                        Text(item.rate)
-                            .font(.system(size: 11, weight: .bold)).foregroundStyle(.white)
-                            .padding(.horizontal, 6).padding(.vertical, 2)
-                            .background(.black.opacity(0.6)).clipShape(Capsule()).padding(6)
-                    }
-                }
-            Text(item.title)
-                .font(.system(size: 14, weight: .semibold)).lineLimit(1)
-                .foregroundStyle(Brand.label).help(item.title)
-            Text(item.year.isEmpty ? " " : item.year)
-                .font(.system(size: 12)).foregroundStyle(Brand.secondaryLabel)
-        }
-        .contentShape(Rectangle())
-        .onTapGesture { openDouban(item) }
-        .help("\(item.title)（点击搜索可播放源）")
-    }
-
-    // MARK: - 短剧分区（真实可播 Drama）
-    private var duanjuSection: some View {
-        VStack(alignment: .leading, spacing: Spacing.md) {
-            HStack {
-                Text("热门短剧").font(.system(size: 20, weight: .bold)).foregroundStyle(Brand.label)
-                Spacer()
-            }
-            .padding(.horizontal, Spacing.lg)
-
-            if duanjus.isEmpty {
-                Text(loaded ? "暂无数据" : "加载中…")
-                    .font(Typography.caption).foregroundStyle(Brand.secondaryLabel)
-                    .frame(maxWidth: .infinity, minHeight: 120)
-            } else {
-                LazyVGrid(columns: columns, spacing: Spacing.lg) {
-                    ForEach(duanjus) { d in
-                        PosterCard(d)
+                        // 复用视频源页 PosterCard 样式：封面 3:4 + 标题 + 副信息
+                        PosterCard(item.toDrama())
+                            .overlay(alignment: .bottomTrailing) { rateBadge(item.rate) }
                             .contentShape(Rectangle())
-                            .onTapGesture { onSelect(d) }   // 短剧直接可播，走详情
+                            .onTapGesture { openDouban(item, kind: kind) }
                     }
                 }
                 .padding(.horizontal, Spacing.lg)
@@ -221,17 +114,66 @@ public struct RankView: View {
         }
     }
 
-    // MARK: - 数据加载
+    private func rateBadge(_ rate: String) -> some View {
+        Group {
+            if !rate.isEmpty {
+                Text(rate)
+                    .font(.system(size: 11, weight: .bold)).foregroundStyle(.white)
+                    .padding(.horizontal, 6).padding(.vertical, 2)
+                    .background(.black.opacity(0.6)).clipShape(Capsule())
+                    .padding(6)
+            }
+        }
+    }
+
+    // MARK: - 数据加载（cache-then-network：先秒显缓存，后台静默刷新）
     private func loadAll() async {
-        let svc = CatalogService.shared
-        async let m = (try? svc.doubanHot(kind: "movie", category: "热门", type: "全部", limit: sectionLimitFull, start: 0)) ?? []
-        async let t = (try? svc.doubanHot(kind: "tv", category: "tv", type: "tv", limit: sectionLimitFull, start: 0)) ?? []
-        async let v = (try? svc.doubanHot(kind: "tv", category: "show", type: "show", limit: sectionLimitFull, start: 0)) ?? []
-        async let a = (try? svc.doubanHot(kind: "tv", category: "tv", type: "动画", limit: sectionLimitFull, start: 0)) ?? []
-        async let d = SourceManager.shared.duanjuRecommends(limit: sectionLimit)
-        let (mm, tt, vv, aa, dd) = await (m, t, v, a, d)
-        movies = dedup(mm); tvs = dedup(tt); varieties = dedup(vv); animes = dedup(aa); duanjus = dd
+        // 1) 先读缓存秒显（不转圈）
+        let ttl = AppSettings.shared.cacheMaxAgeSeconds
+        async let cm = readCache("rank.movie", ttl: ttl)
+        async let ct = readCache("rank.tv", ttl: ttl)
+        async let cv = readCache("rank.variety", ttl: ttl)
+        async let ca = readCache("rank.anime", ttl: ttl)
+        let (cmv, ctv, cvv, cav) = await (cm, ct, cv, ca)
+        if let v = cmv { movies = v }
+        if let v = ctv { tvs = v }
+        if let v = cvv { varieties = v }
+        if let v = cav { animes = v }
+        loaded = true   // 有缓存即认为已展示，无缓存分区下面网络补
+
+        // 2) 后台静默刷新（网络），回写缓存
+        async let m = fetchMovie()
+        async let t = fetchTV()
+        async let v = fetchVariety()
+        async let a = fetchAnime()
+        let (mm, tt, vv, aa) = await (m, t, v, a)
+        if !mm.isEmpty { movies = dedup(mm); await writeCache(mm, "rank.movie") }
+        if !tt.isEmpty { tvs = dedup(tt); await writeCache(tt, "rank.tv") }
+        if !vv.isEmpty { varieties = dedup(vv); await writeCache(vv, "rank.variety") }
+        if !aa.isEmpty { animes = dedup(aa); await writeCache(aa, "rank.anime") }
         loaded = true
+    }
+
+    private func fetchMovie() async -> [CatalogService.DoubanHotItem] {
+        (try? await CatalogService.shared.doubanHot(kind: "movie", category: "热门", type: "全部", limit: sectionLimitFull, start: 0)) ?? []
+    }
+    private func fetchTV() async -> [CatalogService.DoubanHotItem] {
+        (try? await CatalogService.shared.doubanHot(kind: "tv", category: "tv", type: "tv", limit: sectionLimitFull, start: 0)) ?? []
+    }
+    private func fetchVariety() async -> [CatalogService.DoubanHotItem] {
+        (try? await CatalogService.shared.doubanHot(kind: "tv", category: "show", type: "show", limit: sectionLimitFull, start: 0)) ?? []
+    }
+    private func fetchAnime() async -> [CatalogService.DoubanHotItem] {
+        (try? await CatalogService.shared.bilibiliBangumi(limit: sectionLimitFull)) ?? []
+    }
+
+    private func readCache(_ key: String, ttl: TimeInterval) async -> [CatalogService.DoubanHotItem]? {
+        // 读缓存：新鲜或过期都先返回用于秒显（过期由后台网络刷新覆盖）
+        let (value, _) = await DiskCache.shared.readFresh([CatalogService.DoubanHotItem].self, key: key, maxAge: ttl)
+        return value
+    }
+    private func writeCache(_ items: [CatalogService.DoubanHotItem], _ key: String) async {
+        await DiskCache.shared.write(items, key: key)
     }
 
     private func dedup(_ list: [CatalogService.DoubanHotItem]) -> [CatalogService.DoubanHotItem] {
@@ -239,23 +181,48 @@ public struct RankView: View {
         return list.filter { seen.insert($0.id).inserted }
     }
 
-    private func proxied(_ poster: String) -> URL? {
-        guard !poster.isEmpty else { return nil }
-        let enc = poster.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? poster
-        return URL(string: "\(AppConfig.gatewayBaseURL)/api/image-proxy?url=\(enc)")
-    }
-
-    /// 豆瓣卡片点击：弹「搜索详情」浮层，用标题去 TVBox 聚合搜索可播放源。
-    private func openDouban(_ item: CatalogService.DoubanHotItem) {
-        searchRequest = SearchRequest(title: item.title, year: item.year, poster: item.poster, rate: item.rate)
+    /// 豆瓣卡片点击：弹详情浮层（详情秒开 + 源后台异步流式补 + 简介异步）。
+    private func openDouban(_ item: CatalogService.DoubanHotItem, kind: DoubanKind) {
+        let kindStr: String
+        switch kind {
+        case .movie: kindStr = "movie"
+        case .tv, .variety: kindStr = "tv"
+        case .anime: kindStr = "anime"   // B站番剧，无豆瓣简介
+        }
+        searchRequest = SearchRequest(
+            doubanId: item.id, kind: kindStr,
+            title: item.title, year: item.year, poster: item.poster, rate: item.rate
+        )
     }
 }
 
 // MARK: - 搜索详情请求模型
 struct SearchRequest: Identifiable {
     let id = UUID()
+    let doubanId: String   // 豆瓣条目 id（拉简介用）；anime 时为 B站 season_id
+    let kind: String       // movie / tv / anime
     let title: String
     let year: String
     let poster: String
     let rate: String
+}
+
+// MARK: - DoubanHotItem → Drama（复用 PosterCard/HeroCarousel）
+extension CatalogService.DoubanHotItem {
+    /// 包成 Drama 以复用 PosterCard/HeroCarousel。id 带 douban|<kind>|<id> 前缀（Hero 点击回查用）。
+    func toDrama(kind: String = "movie") -> Drama {
+        Drama(
+            id: "douban|\(kind)|\(id)",
+            title: title,
+            coverURL: proxiedPoster,
+            episodeCount: nil,
+            updateStatus: year.isEmpty ? nil : year
+        )
+    }
+    /// 封面经网关 image-proxy 防盗链。
+    var proxiedPoster: String? {
+        guard !poster.isEmpty else { return nil }
+        let enc = poster.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? poster
+        return "\(AppConfig.gatewayBaseURL)/api/image-proxy?url=\(enc)"
+    }
 }
