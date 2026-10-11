@@ -32,12 +32,16 @@ public struct CatalogView: View {
     @StateObject private var service = CatalogService.shared
     @State private var selection: SidebarItem = .rank
     @State private var query = ""
-    @State private var searchResults: [Drama]?
-    @State private var isSearching = false
-    @State private var searchError: String?
+    /// 搜索模式标记（空串=未搜索）。结果在 SearchResultsView 内流式自管理。
+    @State private var searchActive: String?
+    /// 点搜索结果正在拉详情准备播放（直拨加载态）
+    @State private var openingMatch: SourceMatch?
+    @State private var openError: String?
 
     @State private var selected: Drama?
     @State private var pendingPlay: PlayerPayload?
+    /// 历史页兜底详情请求（带加载失败回调）
+    @State private var detailRequest: DetailRequest?
 
     public init() {}
 
@@ -54,16 +58,21 @@ public struct CatalogView: View {
             .navigationSplitViewColumnWidth(min: 200, ideal: 220)
         } detail: {
             Group {
-                if searchResults != nil || isSearching {
-                    searchContent
+                if let kw = searchActive {
+                    searchContent(keyword: kw)
                 } else {
                     sectionContent
                 }
             }
             .frame(minWidth: 640, minHeight: 480)
             .searchable(text: $query, prompt: "搜索短剧、剧名")
-            .onSubmit(of: .search) { Task { await runSearch() } }
-            .onChange(of: query) { _, new in if new.isEmpty { searchResults = nil } }
+            .onSubmit(of: .search) {
+                let q = query.trimmingCharacters(in: .whitespaces)
+                searchActive = q.isEmpty ? nil : q
+            }
+            .onChange(of: query) { _, new in
+                if new.trimmingCharacters(in: .whitespaces).isEmpty { searchActive = nil }
+            }
             .navigationTitle(showTitle)
         }
         .task {
@@ -82,9 +91,13 @@ public struct CatalogView: View {
         .onReceive(NotificationCenter.default.publisher(for: .hongguoOpenDrama)) { note in
             if let d = note.object as? Drama { selected = d }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .hongguoOpenDramaSheet)) { note in
+            if let req = note.object as? DetailRequest { detailRequest = req }
+        }
         .onReceive(NotificationCenter.default.publisher(for: .hongguoPlayDetail)) { note in
             if let payload = note.object as? PlayerPayload {
                 selected = nil
+                detailRequest = nil
                 pendingPlay = payload
             }
         }
@@ -94,6 +107,19 @@ public struct CatalogView: View {
                 // 之前直接 show() 会打断 sheet 收起，sheet 残留并拦截全局鼠标事件。
                 pendingPlay = PlayerPayload(id: detail.drama.id, detail: detail, index: idx)
                 selected = nil
+            }
+        }
+        // 历史页兜底详情：加载失败时回调历史行弹提示，并自动关掉详情页
+        .sheet(item: Binding(
+            get: { detailRequest.map { IdentifiedDetailRequest(req: $0) } },
+            set: { detailRequest = $0?.req }
+        )) { wrapped in
+            DetailView(drama: wrapped.req.drama, onLoadFailed: { err in
+                wrapped.req.onLoadFailed(err)
+                detailRequest = nil
+            }) { detail, idx in
+                pendingPlay = PlayerPayload(id: detail.drama.id, detail: detail, index: idx)
+                detailRequest = nil
             }
         }
         .onChange(of: pendingPlay) { _, payload in
@@ -110,7 +136,7 @@ public struct CatalogView: View {
     }
 
     private var showTitle: String {
-        if searchResults != nil || isSearching { return "搜索" }
+        if searchActive != nil { return "搜索" }
         return selection.title
     }
 
@@ -135,48 +161,44 @@ public struct CatalogView: View {
     }
 
     @ViewBuilder
-    private var searchContent: some View {
-        if isSearching {
-            LoadingView("搜索中…")
-        } else if let error = searchError {
-            ErrorView(error, retry: { Task { await runSearch() } })
-        } else if let results = searchResults, results.isEmpty {
-            EmptyState("未找到相关内容", systemImage: "magnifyingglass", description: "换个关键词试试")
-        } else if let results = searchResults {
-            PosterGrid(results, onSelect: openDetail)
-                .task(id: results) {
-                    // 红果源搜索页是 DOM 卡片解析，源数据无集数，后台懒回填；
-                    // tvbox 卡片 id 带前缀，跳过（maccms 自带集数）。
-                    let hongguoOnly = results.filter { !$0.id.hasPrefix("tvbox|") }
-                    await CountBackfiller.shared.backfill(hongguoOnly) { id, count in
-                        guard var list = searchResults,
-                              let i = list.firstIndex(where: { $0.id == id }) else { return }
-                        list[i] = list[i].withEpisodeCount(count)
-                        searchResults = list
-                    }
-                }
+    private func searchContent(keyword: String) -> some View {
+        if let err = openError {
+            // 点结果拉详情失败：停留可重试/返回
+            VStack(spacing: Spacing.md) {
+                ErrorView(err, retry: {
+                    if let m = openingMatch { Task { await openMatch(m) } }
+                })
+                Button("返回搜索结果") { openError = nil; openingMatch = nil }
+                    .buttonStyle(.bordered).controlSize(.small)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if let m = openingMatch {
+            LoadingView("正在打开「\(m.siteName)」准备播放…")
+        } else {
+            SearchResultsView(keyword: keyword) { match in
+                Task { await openMatch(match) }
+            }
         }
     }
 
     private func openDetail(_ drama: Drama) { selected = drama }
 
-    private func runSearch() async {
-        let q = query.trimmingCharacters(in: .whitespaces)
-        guard !q.isEmpty else { searchResults = nil; return }
-        isSearching = true; searchError = nil
+    /// 点搜索结果 → 拉该源详情后**直接播放**（复用点源即播链路）。
+    private func openMatch(_ m: SourceMatch) async {
+        openingMatch = m; openError = nil
         do {
-            let sm = SourceManager.shared
-            // 红果内容源已整体清除：搜索统一走 TVBox 聚合（全部启用站点），不再碰红果。
-            if sm.currentSource == "hongguo" || sm.currentSource.isEmpty {
-                searchResults = await sm.aggregateSearch(query: q)
-            } else {
-                // 单一 TVBox 源
-                searchResults = try await sm.tvboxSearch(siteKey: sm.currentSource, query: q)
+            let parts = m.drama.id.split(separator: "|").map(String.init)
+            guard parts.count == 3 else { throw HongguoParseError.fieldMissing("tvbox id") }
+            let det = try await SourceManager.shared.tvboxDetail(siteKey: parts[1], vodId: parts[2])
+            guard !det.episodes.isEmpty else {
+                openError = "「\(m.siteName)」该剧暂无分集资源，可换其他结果"
+                return
             }
+            openingMatch = nil
+            pendingPlay = PlayerPayload(id: det.drama.id, detail: det, index: 0)
         } catch {
-            searchError = "搜索失败：\(error.localizedDescription)"
+            openError = "加载失败：\(error.localizedDescription)，可换其他结果"
         }
-        isSearching = false
     }
 }
 
@@ -189,6 +211,12 @@ struct PlayerPayload: Identifiable, Equatable {
     static func == (lhs: PlayerPayload, rhs: PlayerPayload) -> Bool {
         lhs.id == rhs.id && lhs.index == rhs.index
     }
+}
+
+/// DetailRequest 的 Identifiable 包装（sheet(item:) 需要）。
+struct IdentifiedDetailRequest: Identifiable {
+    let req: DetailRequest
+    var id: String { req.drama.id }
 }
 
 extension Notification.Name {

@@ -8,6 +8,8 @@ import HongguoCore
 public struct DetailView: View {
     let drama: Drama
     let onPlay: (DramaDetail, Int) -> Void
+    /// 详情彻底加载失败（无缓存可用）时回调上层（历史页用来弹错误提示）。可选，默认无操作。
+    var onLoadFailed: ((String) -> Void)?
 
     @Environment(\.dismiss) private var dismiss
     @State private var detail: DramaDetail?
@@ -17,8 +19,9 @@ public struct DetailView: View {
     @State private var related: [Drama] = []
     @State private var playedEpisodeIds: Set<String> = []
 
-    public init(drama: Drama, onPlay: @escaping (DramaDetail, Int) -> Void) {
+    public init(drama: Drama, onLoadFailed: ((String) -> Void)? = nil, onPlay: @escaping (DramaDetail, Int) -> Void) {
         self.drama = drama
+        self.onLoadFailed = onLoadFailed
         self.onPlay = onPlay
     }
 
@@ -254,6 +257,7 @@ public struct DetailView: View {
             // 已有缓存展示时不打断用户，仅无缓存才报错
             if detail == nil {
                 loadError = "详情加载失败：\(error.localizedDescription)"
+                onLoadFailed?(error.localizedDescription)
             }
         }
         isLoading = false

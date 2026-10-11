@@ -265,6 +265,10 @@ struct HistoryListView: View {
 /// 单条历史行：封面 + 标题 + 集数 + 进度 + 续播。
 struct HistoryRow: View {
     let item: HistoryItem
+    /// 正在拉详情/播放（防连点 + 行内反馈）
+    @State private var isOpening = false
+    /// 打开失败提示（代替「一点反应没有」）
+    @State private var openError: String?
 
     var body: some View {
         Button { resume() } label: {
@@ -298,26 +302,96 @@ struct HistoryRow: View {
                         .font(.caption2).foregroundStyle(Brand.secondaryLabel)
                 }
                 Spacer()
-                Image(systemName: "play.circle.fill")
-                    .font(.system(size: 28))
-                    .foregroundStyle(Brand.pink)
+                if isOpening {
+                    ProgressView().controlSize(.regular)
+                } else {
+                    Image(systemName: "play.circle.fill")
+                        .font(.system(size: 28))
+                        .foregroundStyle(Brand.pink)
+                }
             }
             .padding(.vertical, Spacing.xs)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-    }
-
-    private func resume() {
-        Task {
-            guard let detail = try? await CatalogService.shared.detail(id: item.dramaId) else { return }
-            let idx = detail.episodes.firstIndex(where: { $0.id == item.episodeId }) ?? 0
-            NotificationCenter.default.post(name: .hongguoPlayDetail, object: PlayerPayload(id: detail.drama.id, detail: detail, index: idx))
+        .disabled(isOpening)
+        .alert("无法打开", isPresented: Binding(
+            get: { openError != nil },
+            set: { if !$0 { openError = nil } }
+        )) {
+            Button("知道了", role: .cancel) { openError = nil }
+        } message: {
+            Text(openError ?? "")
         }
     }
+
+    /// 点击历史：能续播的直接拉详情进播放器（定位到历史那一集）；
+    /// 拉不到详情则退回打开详情页（可换源/看简介）；详情页也加载失败才弹提示。
+    /// 绝不「一点反应没有」。
+    private func resume() {
+        if isOpening { return }
+        isOpening = true
+        Task {
+            defer { isOpening = false }
+            do {
+                let detail = try await loadDetail()
+                guard !detail.episodes.isEmpty else {
+                    openDetailFallback(reason: "该剧暂无分集资源")
+                    return
+                }
+                let idx = detail.episodes.firstIndex(where: { $0.id == item.episodeId }) ?? 0
+                NotificationCenter.default.post(
+                    name: .hongguoPlayDetail,
+                    object: PlayerPayload(id: detail.drama.id, detail: detail, index: idx)
+                )
+            } catch {
+                openDetailFallback(reason: error.localizedDescription)
+            }
+        }
+    }
+
+    /// 按 id 前缀分流拉详情（tvbox / nas / 旧红果 id）。
+    private func loadDetail() async throws -> DramaDetail {
+        let id = item.dramaId
+        if id.hasPrefix("tvbox|") {
+            let parts = id.split(separator: "|").map(String.init)
+            guard parts.count == 3 else { throw HongguoParseError.fieldMissing("tvbox id") }
+            return try await SourceManager.shared.tvboxDetail(siteKey: parts[1], vodId: parts[2])
+        } else if id.hasPrefix("nas|") {
+            let parts = id.split(separator: "|", maxSplits: 3).map(String.init)
+            guard parts.count == 4 else { throw HongguoParseError.fieldMissing("nas id") }
+            if parts[2] == "dir" {
+                return try await NASManager.shared.detail(id: parts[1], dirPath: parts[3])
+            }
+            let url = try await NASManager.shared.playURLString(id: parts[1], path: parts[3])
+            return DramaDetail(
+                drama: Drama(id: id, title: item.title, coverURL: item.coverURL),
+                episodes: [Episode(id: "1", index: 1, title: item.title, playURL: url)]
+            )
+        }
+        return try await CatalogService.shared.detail(id: id)
+    }
+
+    /// 续播失败 → 打开详情页兜底（可换源/看简介）；详情也加载失败 → 弹错误提示。
+    private func openDetailFallback(reason: String) {
+        let drama = Drama(id: item.dramaId, title: item.title, coverURL: item.coverURL)
+        NotificationCenter.default.post(
+            name: .hongguoOpenDramaSheet,
+            object: DetailRequest(drama: drama, onLoadFailed: { err in
+                openError = "「\(item.title)」暂时无法打开：\(err)。源站可能已失效，可在视频源做连通性测试或换源搜索。"
+            })
+        )
+    }
+}
+
+/// 详情请求（带失败回调），经 .hongguoOpenDramaSheet 通知 CatalogView 弹详情页。
+struct DetailRequest {
+    let drama: Drama
+    let onLoadFailed: (String) -> Void
 }
 
 extension Notification.Name {
     static let hongguoLibraryChanged = Notification.Name("hongguoLibraryChanged")
     static let hongguoPlayDetail = Notification.Name("hongguoPlayDetail")
+    static let hongguoOpenDramaSheet = Notification.Name("hongguoOpenDramaSheet")
 }
