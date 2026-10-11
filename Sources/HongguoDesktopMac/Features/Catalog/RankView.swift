@@ -101,8 +101,9 @@ public struct RankView: View {
                 LazyVGrid(columns: columns, spacing: Spacing.md) {
                     ForEach(shown) { item in
                         // 复用视频源页 PosterCard 样式：封面 3:4 + 标题 + 副信息
+                        // 评分角标钉在封面右上角（避免与标题行错行）
                         PosterCard(item.toDrama())
-                            .overlay(alignment: .bottomTrailing) { rateBadge(item.rate) }
+                            .overlay(alignment: .topTrailing) { rateBadge(item.rate) }
                             .contentShape(Rectangle())
                             .onTapGesture { openDouban(item, kind: kind) }
                     }

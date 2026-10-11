@@ -54,6 +54,14 @@ struct TVBoxBrowseView: View {
         .popover(isPresented: $showSourcePicker, arrowEdge: .top) {
             sourcePicker
         }
+        .toolbar {
+            // 源切换按钮放右上角 toolbar（同电视直播位置）
+            ToolbarItem(placement: .automatic) {
+                if sm.hasSubscription, sm.currentSource != "hongguo" {
+                    sourceSwitchButton
+                }
+            }
+        }
     }
 
     // MARK: 源切换按钮（只留一个 ⟳ 按钮，附当前源名，点击弹全源列表）
@@ -76,7 +84,7 @@ struct TVBoxBrowseView: View {
         .help("当前源：\(sm.currentSourceName)，点击切换")
     }
 
-    /// 全源切换弹层（含延迟与状态）。
+    /// 全源切换弹层（含延迟）。失败源（已禁用/已测失败）直接过滤不展示。
     private var sourcePicker: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text("选择视频源")
@@ -86,30 +94,22 @@ struct TVBoxBrowseView: View {
             Divider()
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
-                    ForEach(sm.sortedSites) { s in
-                        // 已禁用 或 已测失败 的源都视为不可用：不可勾选、置灰
-                        let failed = sm.isFailed(s.key)
-                        let off = sm.disabled.contains(s.key) || failed
+                    // 只展示可用源：过滤已禁用 + 已测失败
+                    let available = sm.sortedSites.filter { !sm.disabled.contains($0.key) && !sm.isFailed($0.key) }
+                    ForEach(available) { s in
                         Button {
-                            if !off {
-                                sm.currentSource = s.key
-                                showSourcePicker = false
-                            }
+                            sm.currentSource = s.key
+                            showSourcePicker = false
                         } label: {
                             HStack(spacing: Spacing.sm) {
                                 Image(systemName: sm.currentSource == s.key ? "checkmark.circle.fill" : "circle")
                                     .foregroundStyle(sm.currentSource == s.key ? Brand.accent : Brand.secondaryLabel)
                                 Text(s.name).font(Typography.body).lineLimit(1)
                                 Spacer()
-                                if let r = sm.testResults[s.key] {
-                                    Text(r.ok ? "\(r.latencyMs)ms" : "失败")
+                                if let r = sm.testResults[s.key], r.ok {
+                                    Text("\(r.latencyMs)ms")
                                         .font(.system(size: 11, design: .monospaced))
-                                        .foregroundStyle(r.ok ? .green : .red)
-                                }
-                                if off {
-                                    Text("已禁用")
-                                        .font(.system(size: 11))
-                                        .foregroundStyle(Brand.secondaryLabel)
+                                        .foregroundStyle(.green)
                                 }
                             }
                             .padding(.horizontal, Spacing.md)
@@ -117,8 +117,6 @@ struct TVBoxBrowseView: View {
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
-                        .disabled(off)
-                        .opacity(off ? 0.45 : 1)
                     }
                 }
             }
@@ -126,24 +124,20 @@ struct TVBoxBrowseView: View {
         .frame(width: 320, height: 420)
     }
 
-    // MARK: 频道分类条（maccms class）+ 右侧源切换按钮（标记1位置）
+    // MARK: 频道分类条（maccms class）。源切换按钮已挪到右上角 toolbar（同电视直播）。
     @ViewBuilder
     private var categoryBar: some View {
         let cats = sm.categories[sm.currentSource] ?? []
-        HStack(spacing: Spacing.sm) {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: Spacing.sm) {
-                    catChip(id: nil, name: "最新")
-                    ForEach(cats) { c in
-                        catChip(id: c.typeId, name: c.name)
-                    }
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: Spacing.sm) {
+                catChip(id: nil, name: "最新")
+                ForEach(cats) { c in
+                    catChip(id: c.typeId, name: c.name)
                 }
             }
-            // 源切换按钮固定在频道行右侧（不被横向滚动挤走）
-            sourceSwitchButton
+            .padding(.horizontal, Spacing.lg)
+            .padding(.vertical, Spacing.xs)
         }
-        .padding(.horizontal, Spacing.lg)
-        .padding(.vertical, Spacing.xs)
     }
 
     /// 当前选中频道名（空数据提示用）。
@@ -221,6 +215,12 @@ struct TVBoxBrowseView: View {
                     ForEach(items) { d in
                         PosterCard(d)
                             .onTapGesture { onSelect(d) }
+                            .onAppear {
+                                // 滚动加载：滚到倒数第 8 个时自动加载下一页
+                                if d.id == items.dropLast(8).last?.id, hasMore, !isLoading {
+                                    Task { await load(reset: false) }
+                                }
+                            }
                     }
                 }
             }
@@ -232,11 +232,7 @@ struct TVBoxBrowseView: View {
                     Text("加载中…").font(Typography.caption).foregroundStyle(Brand.secondaryLabel)
                 }
                 .frame(maxWidth: .infinity).padding(Spacing.md)
-            } else if hasMore {
-                Button("加载更多") { Task { await load(reset: false) } }
-                    .buttonStyle(.bordered)
-                    .padding(.bottom, Spacing.lg)
-            } else {
+            } else if !hasMore {
                 Text("已经到底啦 · 共 \(items.count) 部")
                     .font(Typography.caption)
                     .foregroundStyle(Brand.secondaryLabel)
@@ -246,14 +242,18 @@ struct TVBoxBrowseView: View {
     }
 
     // MARK: 加载
-    /// 默认源：当前源不可用（未导入/被禁用/还是 hongguo）时，切到最快可用源。
+    /// 默认源：当前源不可用（未导入/被禁用/已测失败/还是 hongguo）时，切到最快可用源。
+    /// v2.1.1 修：isFailed 也要触发切换——此前只查 disabled，导致首次访问落在「已测失败但未禁用」的源上。
     private func ensureDefaultSource() {
         guard sm.hasSubscription else { return }
-        if sm.currentSource == "hongguo" || sm.disabled.contains(sm.currentSource)
-            || !sm.sites.contains(where: { $0.key == sm.currentSource }) {
-            if let fast = sm.fastestEnabledSite {
-                sm.currentSource = fast.key
-            }
+        let cur = sm.currentSource
+        let invalid = cur == "hongguo"
+            || sm.disabled.contains(cur)
+            || sm.isFailed(cur)
+            || !sm.sites.contains(where: { $0.key == cur })
+        if invalid, let fast = sm.fastestEnabledSite {
+            AppLog.log(.app, "当前源 \(cur) 不可用（禁用/失败/失效），切到最快可用源 \(fast.key)")
+            sm.currentSource = fast.key
         }
     }
 

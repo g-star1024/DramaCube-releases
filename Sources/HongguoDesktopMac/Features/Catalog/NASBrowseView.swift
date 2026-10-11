@@ -73,6 +73,14 @@ struct NASBrowseView: View {
             }
         }
         .popover(isPresented: $showLibPicker, arrowEdge: .top) { libPicker }
+        .toolbar {
+            // 库切换按钮放右上角 toolbar（同电视直播位置）
+            ToolbarItem(placement: .automatic) {
+                if currentLibId != nil {
+                    libSwitchButton
+                }
+            }
+        }
     }
 
     @State private var showLibPicker = false
@@ -177,7 +185,7 @@ struct NASBrowseView: View {
             .disabled(isRefreshing || isLoading)
             .help("重新扫描（跳过缓存）")
             Spacer()
-            libSwitchButton
+            // 库切换按钮已挪到右上角 toolbar（同电视直播位置）
         }
         .padding(.horizontal, Spacing.lg)
         .padding(.vertical, Spacing.xs)
@@ -211,16 +219,10 @@ struct NASBrowseView: View {
                     ForEach(items) { d in
                         NASCard(d)
                             .onTapGesture { onSelect(d) }
-                            .onAppear {
-                                // 懒加载：滚到倒数第 6 个时加载下一批封面/卡片
-                                if d.id == items.dropLast(6).last?.id, visibleCount < allItems.count {
-                                    visibleCount = min(visibleCount + pageSize, allItems.count)
-                                }
-                            }
                     }
                 }
                 .padding(Spacing.lg)
-                // 底部加载更多提示
+                // 底部加载更多哨兵：进入视口即触发下一批（修：卡片 onAppear 在 LazyVGrid 大屏下不可靠）
                 if visibleCount < allItems.count {
                     HStack(spacing: Spacing.sm) {
                         ProgressView().controlSize(.small)
@@ -230,6 +232,10 @@ struct NASBrowseView: View {
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.bottom, Spacing.lg)
+                    .onAppear {
+                        // 哨兵入视口 → 加载下一批
+                        visibleCount = min(visibleCount + pageSize, allItems.count)
+                    }
                 } else if allItems.count > pageSize {
                     Text("共 \(allItems.count) 个视频")
                         .font(Typography.caption)

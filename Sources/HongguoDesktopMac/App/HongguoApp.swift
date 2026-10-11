@@ -7,13 +7,20 @@ import HongguoCore
 /// 在 Xcode 新建的 macOS App Target 中用一个单行 @main 入口引用 `HongguoApp().body` 即可。
 public struct HongguoApp: App {
     public init() {}
+    @ObservedObject private var settings = AppSettings.shared
 
     public var body: some Scene {
         WindowGroup {
             CatalogView()
                 .frame(minWidth: 1024, minHeight: 640)
-                .preferredColorScheme(AppSettings.shared.preferredColorScheme)
-                .environment(\.uiFontScale, AppSettings.shared.uiFontScale)
+                .preferredColorScheme(settings.preferredColorScheme)
+                .environment(\.uiFontScale, settings.uiFontScale)
+                // 全局 UI 缩放：容器级 scaleEffect，整站字体/图标/封面随滑杆放大缩小即时生效
+                .scaleEffect(settings.uiFontScale, anchor: .topLeading)
+                .frame(
+                    minWidth: 1024 * settings.uiFontScale,
+                    minHeight: 640 * settings.uiFontScale
+                )
                 .modelContainer(PersistenceController.shared.container)
                 .task {
                     AppLog.log(.app, "App 启动，版本 \(AppConfig.appVersion)，macOS \(ProcessInfo.processInfo.operatingSystemVersionString)")

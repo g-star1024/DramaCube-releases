@@ -56,7 +56,7 @@ public struct SettingsView: View {
                         .controlSize(.small)
                     }
                     rowDivider
-                    row("全局字体大小") {
+                    row("全局界面缩放") {
                         Slider(value: $s.uiFontScale, in: 0.85...1.3, step: 0.05)
                             .frame(width: 160)
                         Text("\(Int(s.uiFontScale * 100))%")
