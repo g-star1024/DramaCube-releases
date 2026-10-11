@@ -290,8 +290,10 @@ public final class SourceManager: ObservableObject {
 
     public func setEnabled(_ key: String, _ on: Bool) {
         if on { disabled.remove(key) } else { disabled.insert(key) }
-        // 关掉的源如果正在用，切回红果
-        if !on && currentSource == key { currentSource = "hongguo" }
+        // 关掉的源如果正在用，切到最快可用源（红果内容源已清除，不再回退红果）
+        if !on && currentSource == key, let fast = fastestEnabledSite {
+            currentSource = fast.key
+        }
     }
 
     /// 测试全部站点（限流由网关侧控制）。

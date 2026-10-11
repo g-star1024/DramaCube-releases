@@ -1,6 +1,5 @@
 import Foundation
 import HongguoCore
-import HongguoGatewayCore
 
 /// 前端网关访问层。所有请求打本机 127.0.0.1:8787，不直接触外网。
 ///
@@ -100,29 +99,5 @@ public final class CatalogService: ObservableObject {
             throw HongguoParseError.fieldMissing("url")
         }
         return try await decode(url)
-    }
-
-    // MARK: - 媒体中枢（聚合层，走本类已验证可用的网络通道）
-
-    /// 服务器连接状态视图对象。
-    public struct MediaServerVO: Codable, Sendable, Identifiable {
-        public let id, kind, name: String
-        public let online: Bool, latencyMs: Int
-        public let canTranscode, canSearch: Bool
-    }
-
-    /// 服务器列表+连接状态：/api/servers
-    public func mediaServers() async throws -> [MediaServerVO] {
-        guard let url = URL(string: "\(base)/api/servers") else { throw HongguoParseError.fieldMissing("url") }
-        return try await decode(url)
-    }
-
-    /// 聚合首页（继续观看+最新入库）：/api/aggregate/home
-    public struct AggregateHomeVO: Codable, Sendable {
-        public let continueWatching, recentlyAdded: [MediaItem]
-    }
-    public func aggregateHome(limit: Int = 24) async throws -> AggregateHomeVO {
-        guard let url = URL(string: "\(base)/api/aggregate/home?limit=\(limit)") else { throw HongguoParseError.fieldMissing("url") }
-        return try await decode(url, retries: 4)
     }
 }

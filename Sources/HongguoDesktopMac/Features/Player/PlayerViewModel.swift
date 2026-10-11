@@ -362,6 +362,74 @@ public final class PlayerViewModel: ObservableObject, ActivePlayer {
         )
     }
 
+    // MARK: - 手动切换视频源（播放中换源续播）
+
+    /// 候选源列表（跨 TVBox 源搜同名剧，用于「切换源」面板展示）。
+    @Published public var sourceCandidates: [SourceMatch] = []
+    @Published public var isSearchingSources = false
+    @Published public var showSourceSwitcher = false
+
+    /// 打开切源面板：跨 TVBox 源搜同名剧（红果内容源已清除，只在 TVBox 里找）。
+    public func openSourceSwitcher() async {
+        showSourceSwitcher = true
+        isSearchingSources = true
+        sourceCandidates = []
+        defer { isSearchingSources = false }
+        let keyword = title
+        let sites = SourceManager.shared.enabledSites
+        await withTaskGroup(of: [SourceMatch].self) { group in
+            var pending = sites.makeIterator()
+            for _ in 0..<5 {
+                if let s = pending.next() {
+                    group.addTask {
+                        let list = (try? await SourceManager.shared.tvboxSearch(siteKey: s.key, query: keyword)) ?? []
+                        return list.map { SourceMatch(drama: $0, siteKey: s.key, siteName: s.name) }
+                    }
+                }
+            }
+            while let chunk = await group.next() {
+                sourceCandidates.append(contentsOf: chunk)
+                if let s = pending.next() {
+                    group.addTask {
+                        let list = (try? await SourceManager.shared.tvboxSearch(siteKey: s.key, query: keyword)) ?? []
+                        return list.map { SourceMatch(drama: $0, siteKey: s.key, siteName: s.name) }
+                    }
+                }
+            }
+        }
+        // 标题精确优先、集数多优先
+        let q = title
+        sourceCandidates.sort { a, b in
+            let ea = a.drama.title == q, eb = b.drama.title == q
+            if ea != eb { return ea }
+            return (a.drama.episodeCount ?? 0) > (b.drama.episodeCount ?? 0)
+        }
+    }
+
+    /// 切到指定源：加载该源详情，从当前集续播。
+    public func switchToSource(_ match: SourceMatch) async {
+        let targetEp = currentIndex
+        showSourceSwitcher = false
+        isBuffering = true; error = nil
+        do {
+            let parts = match.drama.id.split(separator: "|").map(String.init)
+            guard parts.count == 3 else { throw HongguoParseError.fieldMissing("tvbox id") }
+            let newDetail = try await SourceManager.shared.tvboxDetail(siteKey: parts[1], vodId: parts[2])
+            guard !newDetail.episodes.isEmpty else {
+                self.error = "「\(match.siteName)」该剧暂无分集资源"
+                self.isBuffering = false
+                return
+            }
+            detail = newDetail
+            let idx = min(targetEp, newDetail.episodes.count - 1)
+            AppLog.log(.player, "手动切源 → \(match.siteName)《\(newDetail.drama.title)》续播第\(idx + 1)集")
+            loadEpisode(idx, autoplay: true)
+        } catch {
+            self.error = "切源失败：\(error.localizedDescription)"
+            self.isBuffering = false
+        }
+    }
+
     // MARK: - 查找其他季
 
     public func findOtherSeasons() async {

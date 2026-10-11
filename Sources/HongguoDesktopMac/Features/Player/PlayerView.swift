@@ -105,6 +105,57 @@ public struct PlayerView: View {
         }
         .task { refreshPlayed() }
         .sheet(isPresented: $vm.showOtherSeasons) { otherSeasonsSheet }
+        .sheet(isPresented: $vm.showSourceSwitcher) { sourceSwitcherSheet }
+    }
+
+    // MARK: 切换视频源面板
+    private var sourceSwitcherSheet: some View {
+        VStack(alignment: .leading, spacing: Spacing.md) {
+            HStack {
+                Text("切换视频源").font(Typography.title)
+                Spacer()
+                Button("关闭") { vm.showSourceSwitcher = false }
+            }
+            Text("正在播放第 \(vm.currentIndex + 1) 集，选择其他源将从该集续播")
+                .font(Typography.caption).foregroundStyle(Brand.secondaryLabel)
+            if vm.isSearchingSources {
+                HStack(spacing: Spacing.sm) {
+                    ProgressView().controlSize(.small)
+                    Text("正在跨源搜索「\(vm.title)」…").font(Typography.caption)
+                }
+                .frame(maxWidth: .infinity, minHeight: 120)
+            } else if vm.sourceCandidates.isEmpty {
+                Text("其他视频源未收录该剧").font(Typography.caption).foregroundStyle(Brand.secondaryLabel)
+                    .frame(maxWidth: .infinity, minHeight: 120)
+            } else {
+                List(vm.sourceCandidates) { m in
+                    Button { Task { await vm.switchToSource(m) } } label: {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(m.drama.title).font(.system(size: 14, weight: .medium)).lineLimit(1)
+                                HStack(spacing: 8) {
+                                    Text(m.siteName)
+                                        .font(.system(size: 11, weight: .semibold))
+                                        .padding(.horizontal, 6).padding(.vertical, 2)
+                                        .background(Capsule().fill(Brand.accent.opacity(0.12)))
+                                        .foregroundStyle(Brand.accent)
+                                    if let cnt = m.drama.episodeCount {
+                                        Text("\(cnt) 集").font(.system(size: 11)).foregroundStyle(Brand.secondaryLabel)
+                                    }
+                                }
+                            }
+                            Spacer()
+                            Image(systemName: "play.circle").foregroundStyle(Brand.accent)
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+                .listStyle(.plain)
+            }
+        }
+        .padding(Spacing.lg)
+        .frame(minWidth: 460, minHeight: 360)
     }
 
     /// 播放失败覆盖层：重试 / 换下一集 / 关闭，避免只能干瞪眼。
@@ -217,6 +268,11 @@ public struct PlayerView: View {
                 Task { await vm.findOtherSeasons() }
             } label: { Image(systemName: "square.stack.2.1") }
             .help("查找其他季 / 相似剧")
+
+            Button {
+                Task { await vm.openSourceSwitcher() }
+            } label: { Image(systemName: "arrow.triangle.2.circlepath.circle") }
+            .help("切换视频源（换源续播当前集）")
 
             Menu {
                 ForEach(ExternalPlayerOpener.installedApps) { app in
