@@ -10,6 +10,13 @@ public struct SettingsView: View {
 
     @State private var healthState: HealthState = .idle
     @State private var cacheCleared = false
+    @State private var backupState: BackupState = .idle
+    @State private var backupMessage: String?
+    @State private var backupIsError = false
+
+    private enum BackupState: Equatable {
+        case idle, exporting, importing
+    }
 
     public init() {}
 
@@ -530,6 +537,42 @@ public struct SettingsView: View {
                             .controlSize(.small)
                     }
                 }
+                sectionCard("数据备份") {
+                    row("本地数据") {
+                        Text("设置 / 收藏 / 历史进度 / 视频源 / 直播源 / 资源库")
+                            .font(.system(size: 11))
+                            .foregroundStyle(Brand.secondaryLabel)
+                    }
+                    rowDivider
+                    row("导出备份") {
+                        Button(backupState == .exporting ? "导出中…" : "导出到文件…") {
+                            Task { await exportBackup() }
+                        }
+                        .disabled(backupState == .exporting)
+                        .controlSize(.small)
+                    }
+                    rowDivider
+                    row("导入恢复") {
+                        Button(backupState == .importing ? "导入中…" : "从文件导入…") {
+                            Task { await importBackup() }
+                        }
+                        .disabled(backupState == .importing)
+                        .controlSize(.small)
+                    }
+                    if let msg = backupMessage {
+                        HStack(alignment: .top, spacing: 6) {
+                            Image(systemName: backupIsError ? "xmark.octagon.fill" : "checkmark.circle.fill")
+                                .font(.system(size: 11))
+                                .foregroundStyle(backupIsError ? .red : .green)
+                            Text(msg)
+                                .font(.system(size: 11))
+                                .foregroundStyle(Brand.secondaryLabel)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .padding(.horizontal, Spacing.md)
+                        .padding(.vertical, Spacing.sm)
+                    }
+                }
             }
             .padding(Spacing.xl)
         }
@@ -601,6 +644,40 @@ public struct SettingsView: View {
     }
 
     // MARK: - 健康检查
+
+    // MARK: - 数据备份
+
+    private func exportBackup() async {
+        backupState = .exporting
+        backupMessage = nil
+        do {
+            let url = try await BackupService.shared.exportToFile()
+            backupMessage = "已导出：\(url.lastPathComponent)"
+            backupIsError = false
+        } catch BackupService.BackupError.cancelled {
+            backupMessage = nil
+        } catch {
+            backupMessage = "导出失败：\(error.localizedDescription)"
+            backupIsError = true
+        }
+        backupState = .idle
+    }
+
+    private func importBackup() async {
+        backupState = .importing
+        backupMessage = nil
+        do {
+            let url = try await BackupService.shared.importFromFile()
+            backupMessage = "已从 \(url.lastPathComponent) 恢复，重启应用后完全生效"
+            backupIsError = false
+        } catch BackupService.BackupError.cancelled {
+            backupMessage = nil
+        } catch {
+            backupMessage = "导入失败：\(error.localizedDescription)"
+            backupIsError = true
+        }
+        backupState = .idle
+    }
 
     private func checkHealth() {
         healthState = .checking
