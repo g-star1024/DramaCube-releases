@@ -10,6 +10,13 @@ import HongguoDesktopMac
 @main
 struct Main {
     static func main() {
+        // 无头自测：HongguoMacApp --mpv-probe <url>
+        // 直接用链进 app 的 libmpv 无头拉流读元数据，验证 mpv 内核真实可用（不走 GUI）。
+        let args = CommandLine.arguments
+        if args.count >= 3, args[1] == "--mpv-probe" {
+            MpvProbe.run(url: args[2])
+            return
+        }
         HongguoApp.main()
     }
 }

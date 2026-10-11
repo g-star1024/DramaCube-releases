@@ -246,6 +246,13 @@ final class PlayerWindowManager {
 
     func show(detail: DramaDetail, startIndex: Int) {
         close()
+        // 播放内核分流（M2 接线）：mpv → 独立 MpvWindowManager；avplayer → 本窗口 PlayerView。
+        if AppSettings.shared.playbackEngine == "mpv" {
+            MpvWindowManager.shared.show(detail: detail, startIndex: startIndex)
+            return
+        }
+        // avplayer 链路：关掉可能残留的 mpv 窗口（跨内核切换互斥）
+        MpvWindowManager.shared.close()
         AppLog.log(.player, "播放窗口创建《\(detail.drama.title)》")
         let root = PlayerView(detail: detail, startIndex: startIndex) { [weak self] in
             self?.close()

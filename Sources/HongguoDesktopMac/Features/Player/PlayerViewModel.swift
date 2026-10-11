@@ -31,6 +31,33 @@ public protocol ActivePlayer: AnyObject {
     func playPrevious()
 }
 
+/// 解析一集的最终播放 URL（网关代理 / 直链），PlayerViewModel(AVPlayer) 与 mpv 链路共用。
+/// 分流规则与 AVPlayer 链路一致：
+///  - m3u8 → 网关 /api/live/stream 代理（采集站锁大陆 IP，强制直连 + 重写分片）；
+///  - file:// → 本机直读；
+///  - nas| → WebDAV http(s) 原样直连；
+///  - 其他 http(s) 直链 → 网关 /api/play 剥离 Referer + Range 透传；
+///  - 无预置直链 → 网关 /api/stream/<sid>/<vid> 即时解析。
+func resolvePlayURL(dramaId: String, episode: Episode, forMpv: Bool = false) -> URL? {
+    if let url = episode.playURL, !url.isEmpty {
+        if url.lowercased().contains(".m3u8") {
+            // mpv/FFmpeg 直连源站 m3u8：FFmpeg http 协议默认不走系统代理（实测直连 PROBE_OK，
+            // duration/分辨率/编码全读出），防盗链由 MpvEngine 注入浏览器 UA。
+            // 不能走网关代理：FFmpeg 对重写后的代理 URL（无论 query 还是 path 形式）都会把
+            // #EXT-X-STREAM-INF 子列表误判为相对路径拼出 404（实测 PROBE_FAIL）。AVPlayer 无此问题。
+            if forMpv { return URL(string: url) }
+            return hongguoGatewayM3U8URL(url)
+        } else if url.hasPrefix("file://") {
+            return URL(fileURLWithPath: String(url.dropFirst("file://".count)))
+        } else if dramaId.hasPrefix("nas|") {
+            return URL(string: url)
+        } else {
+            return hongguoGatewayMediaURL(url)
+        }
+    }
+    return URL(string: "\(AppConfig.gatewayBaseURL)/api/stream/\(dramaId)/\(episode.id)")
+}
+
 /// 播放器状态机 + 业务逻辑。
 ///
 /// 负责：AVPlayer 管理、倍速 / 连播 / 断点续播（按秒持久化）、选集、查找其他季、

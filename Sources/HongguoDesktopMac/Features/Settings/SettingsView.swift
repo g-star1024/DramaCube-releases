@@ -78,10 +78,10 @@ public struct SettingsView: View {
                 }
                 sectionCard("弹幕") {
                     HStack(alignment: .top, spacing: 6) {
-                        Image(systemName: "exclamationmark.triangle")
+                        Image(systemName: "info.circle")
                             .font(.system(size: 11))
-                            .foregroundStyle(.orange)
-                        Text("在线弹幕服务（弹弹play）接口已失效（403），当前版本弹幕为后台预留接口、默认关闭。待接入可用弹幕源后开放。")
+                            .foregroundStyle(Brand.secondaryLabel)
+                        Text("弹幕仅在 mpv 内核下生效（播放设置中切换）。在线弹幕（弹弹play）接口当前 403 失效，本地同名 xml/ass 弹幕文件可用。")
                             .font(.system(size: 11))
                             .foregroundStyle(Brand.secondaryLabel)
                             .fixedSize(horizontal: false, vertical: true)
@@ -90,18 +90,15 @@ public struct SettingsView: View {
                     .padding(.vertical, Spacing.sm)
                     row("开启弹幕") {
                         Toggle("", isOn: $s.danmakuEnabled).labelsHidden().toggleStyle(.switch).controlSize(.small)
-                            .disabled(true)
                     }
                     rowDivider
                     row("在线弹幕（弹弹play）") {
                         Toggle("", isOn: $s.danmakuOnline).labelsHidden().toggleStyle(.switch).controlSize(.small)
-                            .disabled(true)
                     }
                     rowDivider
                     row("弹幕字号") {
                         Slider(value: $s.danmakuFontScale, in: 0.6...2.0, step: 0.1)
                             .frame(width: 140)
-                            .disabled(true)
                         Text("\(s.danmakuFontScale, specifier: "%.1f")x")
                             .font(.system(size: 12, design: .monospaced))
                             .foregroundStyle(Brand.secondaryLabel)
@@ -111,7 +108,6 @@ public struct SettingsView: View {
                     row("弹幕不透明度") {
                         Slider(value: $s.danmakuOpacity, in: 0.2...1.0, step: 0.05)
                             .frame(width: 140)
-                            .disabled(true)
                         Text("\(Int(s.danmakuOpacity * 100))%")
                             .font(.system(size: 12, design: .monospaced))
                             .foregroundStyle(Brand.secondaryLabel)
@@ -293,6 +289,27 @@ public struct SettingsView: View {
         ScrollView {
             VStack(spacing: Spacing.lg) {
                 sectionCard("播放偏好") {
+                    row("播放内核") {
+                        Picker("", selection: $s.playbackEngine) {
+                            Text("AVPlayer（稳定）").tag("avplayer")
+                            Text("mpv（实验）").tag("mpv")
+                        }
+                        .labelsHidden()
+                        .frame(width: 170)
+                        .controlSize(.small)
+                    }
+                    HStack(alignment: .top, spacing: 6) {
+                        Image(systemName: "info.circle")
+                            .font(.system(size: 11))
+                            .foregroundStyle(Brand.secondaryLabel)
+                        Text("mpv 内核支持更多格式 / ASS 特效字幕 / 多音轨 / 硬解 / HDR，看 NAS 高清与外挂字幕更佳；为实验功能，如遇异常切回 AVPlayer。切换后下一次播放生效。")
+                            .font(.system(size: 11))
+                            .foregroundStyle(Brand.secondaryLabel)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(.horizontal, Spacing.md)
+                    .padding(.vertical, Spacing.sm)
+                    rowDivider
                     row("默认倍速") {
                         Picker("", selection: $s.defaultPlaybackRate) {
                             ForEach([0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0], id: \.self) { r in
