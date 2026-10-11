@@ -14,7 +14,6 @@ import HongguoCore
 /// 视频源页详情仍走 tvboxDetail 秒开，互不影响。
 public struct SearchDetailSheet: View {
     let request: SearchRequest
-    let onPlay: (Drama) -> Void
     let onClose: () -> Void
 
     @State private var intro: String = ""          // 剧情简介（异步补）
@@ -23,15 +22,13 @@ public struct SearchDetailSheet: View {
     @State private var isSearchingSources = true
     @State private var sourcesDone = false
     @State private var selected: SourceMatch?
-    @State private var detail: DramaDetail?
     @State private var isLoadingDetail = false
     @State private var detailError: String?
     @State private var searchTask: Task<Void, Never>?
 
     init(request: SearchRequest,
-         onPlay: @escaping (Drama) -> Void,
          onClose: @escaping () -> Void) {
-        self.request = request; self.onPlay = onPlay; self.onClose = onClose
+        self.request = request; self.onClose = onClose
     }
 
     public var body: some View {
@@ -139,16 +136,25 @@ public struct SearchDetailSheet: View {
         }
     }
 
-    // MARK: 源区：搜索中提示 + 流式源列表 + 选中源选集
+    // MARK: 源区：搜索中提示 + 流式源列表（点源即播）
     @ViewBuilder
     private var sourceSection: some View {
-        if let sel = selected, let detail {
-            selectedSourceView(sel, detail: detail)
-        } else if isLoadingDetail {
-            LoadingView("加载剧集…").frame(maxWidth: .infinity, minHeight: 200)
+        if isLoadingDetail {
+            // 点源后正在拉详情（即将直接播放）
+            VStack(spacing: Spacing.sm) {
+                ProgressView().controlSize(.regular)
+                Text("正在打开「\(selected?.siteName ?? "")」准备播放…")
+                    .font(Typography.caption).foregroundStyle(Brand.secondaryLabel)
+            }
+            .frame(maxWidth: .infinity, minHeight: 200)
         } else if let err = detailError {
-            ErrorView(err, retry: { if let s = selected { Task { await openDetail(s) } } })
-                .frame(maxWidth: .infinity, minHeight: 200)
+            // 仅失败才停留本页，可换源重试
+            VStack(spacing: Spacing.md) {
+                ErrorView(err, retry: { if let s = selected { Task { await openDetail(s) } } })
+                Button("返回源列表") { detailError = nil; selected = nil }
+                    .buttonStyle(.bordered).controlSize(.small)
+            }
+            .frame(maxWidth: .infinity, minHeight: 200)
         } else {
             sourceListView
         }
@@ -207,38 +213,6 @@ public struct SearchDetailSheet: View {
                         .background(RoundedRectangle(cornerRadius: 8).fill(Brand.chipFill))
                     }
                     .buttonStyle(.plain)
-                }
-            }
-        }
-    }
-
-    /// 选中某源后的选集视图（可换源）。
-    private func selectedSourceView(_ sel: SourceMatch, detail: DramaDetail) -> some View {
-        VStack(alignment: .leading, spacing: Spacing.sm) {
-            HStack(spacing: Spacing.sm) {
-                Text("当前源：").font(Typography.caption).foregroundStyle(Brand.secondaryLabel)
-                Text(sel.siteName).font(.system(size: 13, weight: .semibold)).foregroundStyle(Brand.accent)
-                Button { selected = nil; self.detail = nil } label: {
-                    Label("换源", systemImage: "arrow.triangle.2.circlepath").font(.system(size: 12, weight: .medium))
-                }
-                .buttonStyle(.bordered).controlSize(.small)
-                Spacer()
-                Text("\(detail.episodes.count) 集").font(.system(size: 11)).foregroundStyle(Brand.secondaryLabel)
-            }
-            if detail.episodes.isEmpty {
-                Text("暂无分集信息").font(Typography.caption).foregroundStyle(Brand.secondaryLabel)
-            } else {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 52, maximum: 68), spacing: 8)], spacing: 8) {
-                    ForEach(Array(detail.episodes.enumerated()), id: \.element.id) { idx, ep in
-                        Button { onPlay(detail.drama) } label: {
-                            Text(ep.title.isEmpty ? "\(idx + 1)" : ep.title)
-                                .font(.system(size: 12, weight: .medium)).lineLimit(1)
-                                .frame(maxWidth: .infinity).padding(.vertical, 8)
-                                .background(RoundedRectangle(cornerRadius: 6).fill(Brand.chipFill))
-                                .foregroundStyle(Brand.label)
-                        }
-                        .buttonStyle(.plain)
-                    }
                 }
             }
         }
@@ -315,18 +289,34 @@ public struct SearchDetailSheet: View {
         }
     }
 
-    /// 选中某源 → 加载该剧详情（选集）。
-    private func openDetail(_ m: SourceMatch) async {
-        selected = m; detail = nil; detailError = nil
+    /// 选中某源 / 立即播放 → 加载该源详情后**直接播放**（发播放通知开播放器，
+    /// 不再跳源详情页二次确认）。加载失败才停在本页显示错误。
+    private func openDetail(_ m: SourceMatch, episodeIndex: Int = 0) async {
+        // 已在加载同一源则不重复触发
+        if isLoadingDetail, selected?.id == m.id { return }
+        selected = m; detailError = nil
         isLoadingDetail = true
         do {
             let parts = m.drama.id.split(separator: "|").map(String.init)
             guard parts.count == 3 else { throw HongguoParseError.fieldMissing("tvbox id") }
-            detail = try await SourceManager.shared.tvboxDetail(siteKey: parts[1], vodId: parts[2])
+            let det = try await SourceManager.shared.tvboxDetail(siteKey: parts[1], vodId: parts[2])
+            guard !det.episodes.isEmpty else {
+                detailError = "「\(m.siteName)」该剧暂无分集资源，可换其他源"
+                isLoadingDetail = false
+                return
+            }
+            // 直接播放：关本浮层 + 发播放通知（CatalogView 收到后开播放器，跳过详情页）
+            let idx = min(max(episodeIndex, 0), det.episodes.count - 1)
+            isLoadingDetail = false
+            onClose()
+            NotificationCenter.default.post(
+                name: .hongguoPlayDetail,
+                object: PlayerPayload(id: det.drama.id, detail: det, index: idx)
+            )
         } catch {
-            detailError = "详情加载失败：\(error.localizedDescription)"
+            detailError = "加载失败：\(error.localizedDescription)，可换其他源"
+            isLoadingDetail = false
         }
-        isLoadingDetail = false
     }
 }
 

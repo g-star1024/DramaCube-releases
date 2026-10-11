@@ -54,10 +54,8 @@ public struct RankView: View {
         .background(Brand.background)
         .task { await loadAll() }
         .sheet(item: $searchRequest) { req in
-            SearchDetailSheet(request: req, onPlay: { drama in
-                searchRequest = nil
-                onSelect(drama)
-            }, onClose: { searchRequest = nil })
+            // 详情浮层自管播放（点源即播，发播放通知开播放器，不再回调详情页）
+            SearchDetailSheet(request: req, onClose: { searchRequest = nil })
         }
     }
 
