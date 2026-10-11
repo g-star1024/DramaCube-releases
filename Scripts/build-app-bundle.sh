@@ -104,7 +104,7 @@ cd - > /dev/null
 echo "==> [5/6] DMG 镜像"
 rm -f "$DMG_PATH"
 hdiutil create -volname "$APP_NAME $VERSION" \
-    -srcfolder "$APP_PATH" -ov -format UDZO "$DMG_PATH" > /dev/null
+    -srcfolder "$APP_PATH" -ov -format UDZO -size 300m "$DMG_PATH" > /dev/null
 
 # 公证（提供凭证时执行）
 if [ -n "${APPLE_ID:-}" ] && [ -n "${APPLE_PASSWORD:-}" ] && [ -n "${APPLE_TEAM_ID:-}" ]; then

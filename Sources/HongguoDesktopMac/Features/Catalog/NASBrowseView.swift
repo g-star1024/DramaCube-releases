@@ -1,6 +1,14 @@
 import SwiftUI
 import HongguoCore
 
+/// ScrollView 内容底部 y 坐标（scroll 坐标系）PreferenceKey，macOS 14 兼容滚动加载用。
+private struct ScrollBottomPreferenceKey: PreferenceKey {
+    static let defaultValue: CGFloat = .infinity
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
 /// NAS 资源库浏览页：库切换 + 路径导航 + 视频列表。
 ///
 /// 直出当前路径下全部视频文件（递归），点击卡片直接播放（不再聚合目录成剧、不进详情选集）。
@@ -226,9 +234,6 @@ struct NASBrowseView: View {
                     }
                 }
                 .padding(Spacing.lg)
-                // 底部加载更多哨兵：进入视口即触发下一批。
-                // 用 Task 异步改 visibleCount（onAppear 同步改 @State 会被 SwiftUI 更新周期吞掉/延迟，
-                // 表现为「只转圈不加载」），isExpanding 防抖防连续触发。
                 if visibleCount < allItems.count {
                     HStack(spacing: Spacing.sm) {
                         ProgressView().controlSize(.small)
@@ -238,11 +243,6 @@ struct NASBrowseView: View {
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.bottom, Spacing.lg)
-                    // 关键：visibleCount 变化强制哨兵重建，使 onAppear 能重复触发——
-                    // 否则大屏下首屏卡片不足以把哨兵顶出视口，哨兵常驻视口不再触发，
-                    // 表现为「偶尔只加载一次就不动了」。重建后若仍在视口则连续加载直到填满。
-                    .id("sentinel-\(visibleCount)")
-                    .onAppear { loadMore() }
                 } else if allItems.count > pageSize {
                     Text("共 \(allItems.count) 个视频")
                         .font(Typography.caption)
@@ -250,21 +250,37 @@ struct NASBrowseView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.bottom, Spacing.lg)
                 }
+                // macOS 14 兼容：GeometryReader 监听内容底部在 scroll 坐标系中的 y 坐标，
+                // 距视口底部不足阈值时触发加载。坐标监听持续生效（滚动/内容变化都会触发），
+                // 不存在「哨兵常驻视口 onAppear 只触发一次」的问题。
+                GeometryReader { geo in
+                    Color.clear.preference(
+                        key: ScrollBottomPreferenceKey.self,
+                        value: geo.frame(in: .named("scroll")).maxY
+                    )
+                }
+                .frame(height: 0)
+            }
+            .coordinateSpace(name: "scroll")
+            .onPreferenceChange(ScrollBottomPreferenceKey.self) { bottomY in
+                // bottomY 是内容底部在 scroll 坐标系中的 y 坐标。
+                // 视口高度通过另一个 GeometryReader 在 ScrollView 外部拿不到，
+                // 用阈值法：内容底部 y < 阈值（约一个半视口高度）时视为接近底部。
+                // 阈值 1200 是经验值（视口高约 800，留 400 提前量）。
+                if bottomY < 1200 {
+                    // 坐标监听在内容高度变化时会再次触发 preference，
+                    // 用 Task 异步改 State 不存在哨兵 onAppear「只触发一次」的坑
+                    Task { @MainActor in loadMore() }
+                }
             }
         }
     }
 
     /// 加载下一批可见卡片（懒渲染，数据已在 allItems，只是控制渲染数量）。
-    @State private var isExpanding = false
+    /// 由滚动几何监听触发；action 本身在渲染周期外执行，可直接改 @State。
     private func loadMore() {
-        guard !isExpanding, visibleCount < allItems.count else { return }
-        isExpanding = true
-        Task { @MainActor in
-            // 让出当前更新周期，避免 onAppear 内同步改 State 被吞
-            try? await Task.sleep(nanoseconds: 30_000_000)
-            visibleCount = min(visibleCount + pageSize, allItems.count)
-            isExpanding = false
-        }
+        guard visibleCount < allItems.count else { return }
+        visibleCount = min(visibleCount + pageSize, allItems.count)
     }
 
     private func navigateUp() {

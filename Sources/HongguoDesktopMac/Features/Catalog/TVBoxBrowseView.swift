@@ -1,6 +1,14 @@
 import SwiftUI
 import HongguoCore
 
+/// ScrollView 内容底部 y 坐标（scroll 坐标系）PreferenceKey，macOS 14 兼容滚动加载用。
+private struct ScrollBottomPreferenceKey: PreferenceKey {
+    static let defaultValue: CGFloat = .infinity
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
 /// TVBox 视频源浏览页：源 chips + 源切换弹层 + 轮播大图 + 频道分类 + 分页网格。
 ///
 /// 默认展示延迟最低的可用源（无测速结果时为订阅第一个启用源）；
@@ -225,16 +233,6 @@ struct TVBoxBrowseView: View {
                             .onTapGesture { onSelect(d) }
                     }
                 }
-
-                // 滚动加载哨兵：滚到底部这个空视图进视口即触发下一页。
-                // 加 .id(items.count) 强制重建——否则大屏下首屏卡片不足以把哨兵顶出视口，
-                // 哨兵常驻视口 onAppear 只触发一次，表现为「只加载一页就不动了」。
-                if hasMore && !isLoading {
-                    Color.clear
-                        .frame(height: 1)
-                        .id("sentinel-\(items.count)")
-                        .onAppear { Task { await load(reset: false) } }
-                }
             }
             .padding(Spacing.lg)
 
@@ -249,6 +247,28 @@ struct TVBoxBrowseView: View {
                     .font(Typography.caption)
                     .foregroundStyle(Brand.secondaryLabel)
                     .frame(maxWidth: .infinity).padding(.bottom, Spacing.lg)
+            }
+            // macOS 14 兼容滚动加载：GeometryReader 监听底部在 scroll 坐标系中的 y 坐标，
+            // 距视口底部不足阈值时触发加载。坐标监听持续生效，
+            // 不存在「哨兵常驻视口 onAppear 只触发一次」的问题。
+            GeometryReader { geo in
+                Color.clear.preference(
+                    key: ScrollBottomPreferenceKey.self,
+                    value: geo.frame(in: .named("scroll")).maxY
+                )
+            }
+            .frame(height: 0)
+        }
+        .coordinateSpace(name: "scroll")
+        .onPreferenceChange(ScrollBottomPreferenceKey.self) { bottomY in
+            // bottomY 是内容底部在 scroll 坐标系中的 y 坐标。
+            // 阈值 1200 是经验值（视口高约 800，留 400 提前量）。
+            if bottomY < 1200 {
+                Task { @MainActor in
+                    if hasMore, !isLoading {
+                        await load(reset: false)
+                    }
+                }
             }
         }
     }
