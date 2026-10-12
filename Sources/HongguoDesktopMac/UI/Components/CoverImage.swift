@@ -152,11 +152,26 @@ public struct CoverImage: View {
         let image: NSImage?
     }
 
-    /// 后台执行：URLCache 查询 → 过闸门下载 → ImageIO 下采样解码。
+    /// 封面专用 session：跟随系统网络（含系统代理分流），不强制直连。
+    ///
+    /// 实测根因（v2.3.2）：视频源图床（采集站 CDN，如 p.bfvp26.com）强制直连时
+    /// DNS 轮询到慢边缘节点首包 6.9s、方差极大，叠加此前 10s 超时 → 首页几十张
+    /// 封面并发时部分卡片超时回占位（「视频源封面不出、发现页豆瓣正常」）；
+    /// 而豆瓣/发现页走系统代理稳定 1.5s。封面是图片不是视频流，不涉 CDN 区域
+    /// 403 限制，走系统网络（与 Flutter cached_network_image 默认行为一致）更稳。
+    nonisolated private static let session: URLSession = {
+        let cfg = URLSessionConfiguration.default
+        // 封面并发 12 时同步放宽每主机连接上限（默认 6 会级联排队）。
+        cfg.httpMaximumConnectionsPerHost = 16
+        cfg.timeoutIntervalForRequest = 20
+        cfg.timeoutIntervalForResource = 30
+        return URLSession(configuration: cfg)
+    }()
+
+    /// 后台执行：URLCache 查询 → 过闸门下载（失败重试一次）→ ImageIO 下采样解码。
     nonisolated private static func fetchAndDecode(_ url: URL) async -> DecodedImage {
-        var req = URLRequest(url: url, cachePolicy: .returnCacheDataElseLoad, timeoutInterval: 10)
+        var req = URLRequest(url: url, cachePolicy: .returnCacheDataElseLoad, timeoutInterval: 20)
         // 浏览器特征头：采集站图床对无头请求限速/403（实测同源 CDN 无头 7.3s vs Safari 头 0.8s）。
-        // URLCache 以 URL 为键，带头请求不影响缓存命中。
         for (k, v) in headers(for: url) { req.setValue(v, forHTTPHeaderField: k) }
         // 1) 命中磁盘/内存缓存直接出图（不占并发名额）
         if let cached = URLCache.shared.cachedResponse(for: req),
@@ -167,16 +182,22 @@ public struct CoverImage: View {
         if Task.isCancelled { return DecodedImage(image: nil) }
         await CoverGate.shared.acquire()
         defer { Task { await CoverGate.shared.release() } }
-        do {
-            // 强制直连：封面图（豆瓣/采集站）国内可直连，系统代理境外出口拉图 25s 超时（封面转圈+全站卡慢根因）。
-            let (data, resp) = try await DirectURLSession.shared.data(for: req)
-            if let http = resp as? HTTPURLResponse, http.statusCode == 200 {
-                URLCache.shared.storeCachedResponse(CachedURLResponse(response: http, data: data), for: req)
+        // 失败重试一次（边缘节点偶发慢/丢包，重试常换到更快节点）。
+        for attempt in 0...1 {
+            do {
+                let (data, resp) = try await session.data(for: req)
+                if let http = resp as? HTTPURLResponse, http.statusCode == 200 {
+                    URLCache.shared.storeCachedResponse(CachedURLResponse(response: http, data: data), for: req)
+                }
+                if let img = decodeDownsampled(data) {
+                    return DecodedImage(image: img)
+                }
+            } catch {
+                // 末次失败才放弃；非末次继续重试
+                if attempt == 1 { return DecodedImage(image: nil) }
             }
-            return DecodedImage(image: decodeDownsampled(data))
-        } catch {
-            return DecodedImage(image: nil)
         }
+        return DecodedImage(image: nil)
     }
 
     /// 浏览器特征请求头：Safari UA + 按 host 推断的 Referer。

@@ -33,9 +33,22 @@ echo "==> [1/6] Swift Release 构建 (arch: ${ARCH})"
 # 用 xcrun 确保走 Xcode 完整工具链（裸 /usr/bin/swift 在仅有 CLT 的环境找不到标准库）
 SWIFT="${SWIFT:-xcrun swift}"
 if [ "$ARCH" = "universal" ]; then
-    # 仅在 Apple Silicon 上可行（Intel 机无法出 arm64 切片）
-    $SWIFT build --disable-sandbox -c release --product "$EXEC_NAME" --arch arm64 --arch x86_64
-    BIN_DIR=".build/apple/Products/Release"
+    # 仅在 Apple Silicon 上可行（Intel 机无法出 arm64 切片）。
+    # 注意：不能一次 `swift build --arch arm64 --arch x86_64`——SwiftPM 多 --arch
+    # destination 下评估依赖包 swiftLanguageVersions 有已知 bug（报 "Some of the
+    # Swift language versions ... (given: [5])"）。改为分架构各编一次再 lipo 合成。
+    echo "    分架构构建：arm64 + x86_64 → lipo 合成 universal"
+    $SWIFT build --disable-sandbox -c release --product "$EXEC_NAME" --arch arm64 --destination "arm64-apple-macosx"
+    ARM_BIN="$(find .build -path "*arm64-apple-macosx*/release/$EXEC_NAME" -type f | head -1)"
+    [ -x "$ARM_BIN" ] || ARM_BIN=".build/arm64-apple-macosx/release/$EXEC_NAME"
+    $SWIFT build --disable-sandbox -c release --product "$EXEC_NAME" --arch x86_64 --destination "x86_64-apple-macosx"
+    X86_BIN="$(find .build -path "*x86_64-apple-macosx*/release/$EXEC_NAME" -type f | head -1)"
+    [ -x "$X86_BIN" ] || X86_BIN=".build/x86_64-apple-macosx/release/$EXEC_NAME"
+    [ -x "$ARM_BIN" ] || { echo "arm64 二进制未找到: $ARM_BIN"; exit 1; }
+    [ -x "$X86_BIN" ] || { echo "x86_64 二进制未找到: $X86_BIN"; exit 1; }
+    BIN_DIR=".build/dist/universal-bin"
+    mkdir -p "$BIN_DIR"
+    lipo -create "$ARM_BIN" "$X86_BIN" -output "$BIN_DIR/$EXEC_NAME"
 else
     $SWIFT build --disable-sandbox -c release --product "$EXEC_NAME" --arch "$ARCH"
     BIN_DIR=".build/release"

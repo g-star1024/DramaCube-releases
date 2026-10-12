@@ -86,14 +86,30 @@ def save(img, size, path, opaque=False):
     return path
 
 
+def save_mac(img, size, path, scale=0.80):
+    """macOS 标准图标：内容缩至画布的 80% 居中，四周留透明安全边。
+
+    Apple HIG：macOS 应用图标可视内容应约占画布 80%（824/1024），
+    不能像 iOS 那样满幅出血——满幅会在 Dock 里显得比别的 App 大一圈。
+    """
+    canvas = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    inner = max(1, int(round(size * scale)))
+    content = img.resize((inner, inner), Image.LANCZOS)
+    off = (size - inner) // 2
+    canvas.alpha_composite(content, (off, off))
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    canvas.save(path)
+    return path
+
+
 def main():
     m = load_master()
     made = []
 
-    # ---- macOS appiconset（文件名即 Contents.json 引用的） ----
+    # ---- macOS appiconset（80% 内容占比 + 透明安全边，符合 Apple 图标标准） ----
     mac = f"{APP}/macos/Runner/Assets.xcassets/AppIcon.appiconset"
     for size in [16, 32, 64, 128, 256, 512, 1024]:
-        made.append(save(m, size, f"{mac}/app_icon_{size}.png"))
+        made.append(save_mac(m, size, f"{mac}/app_icon_{size}.png"))
 
     # ---- Android mipmap（不透明底，避免启动黑角） ----
     for dpi, size in [("mdpi", 48), ("hdpi", 72), ("xhdpi", 96),

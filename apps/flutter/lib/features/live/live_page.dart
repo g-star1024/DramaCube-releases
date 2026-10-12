@@ -133,11 +133,17 @@ class _LivePageState extends ConsumerState<LivePage> {
 
   /// 右上角直播源切换弹层（延迟排序 + 失效标记 + 一键测试）。
   void _showSourceSheet() {
-    showModalBottomSheet(
+    showDialog(
       context: context,
-      isScrollControlled: true,
-      builder: (_) => _LiveSourceSheet(
-        onSelected: () => setState(() => _currentChannel = null),
+      builder: (_) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 480, maxHeight: 560),
+          child: _LiveSourceSheet(
+            onSelected: () => setState(() => _currentChannel = null),
+          ),
+        ),
       ),
     );
   }

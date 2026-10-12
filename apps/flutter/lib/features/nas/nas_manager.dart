@@ -19,7 +19,9 @@ final nasManagerProvider = StateNotifierProvider<NASManager, NASState>((ref) {
 class NASEntry {
   final String name;
   final bool isDir;
-  const NASEntry({required this.name, required this.isDir});
+  /// 目录专用：是否含可播放视频（浅层探测）。false 的空目录在 UI 过滤掉（对齐 Swift 只出有视频的内容）。
+  final bool hasVideo;
+  const NASEntry({required this.name, required this.isDir, this.hasVideo = true});
 }
 
 /// 资源库连通性探测结果。
@@ -239,12 +241,51 @@ class NASManager extends StateNotifier<NASState> {
     return null;
   }
 
-  /// 列出某路径下的直接子条目（不递归）。
+  /// 列出某路径下的直接子条目（不递归），并探测各子目录是否含视频（空目录标记 hasVideo=false）。
   Future<List<NASEntry>> listEntries(NASLibrary lib, String path) async {
-    if (lib.type == 'mount') {
-      return _mountList(lib, path);
+    final raw = lib.type == 'mount' ? await _mountList(lib, path) : await _webdavList(lib, path);
+    // 并发浅探测每个子目录是否含视频（限 6 并发，超时静默按有视频处理，避免误删）。
+    final dirs = raw.where((e) => e.isDir).toList();
+    if (dirs.isEmpty) return raw;
+    final probed = await _probeDirs(lib, path, dirs);
+    return [
+      for (final e in raw) e.isDir ? probed[e.name] ?? e : e,
+    ];
+  }
+
+  /// 并发探测子目录含视频与否（限流 6）。失败/超时按 hasVideo=true 兜底（宁可显示不误过滤）。
+  Future<Map<String, NASEntry>> _probeDirs(NASLibrary lib, String path, List<NASEntry> dirs) async {
+    final out = <String, NASEntry>{};
+    final queue = List<NASEntry>.of(dirs);
+    final workers = List.generate(6, (_) async {
+      while (queue.isNotEmpty) {
+        final d = queue.removeAt(0);
+        final sub = path.isEmpty ? d.name : '$path/${d.name}';
+        var has = true;
+        try {
+          has = await _dirHasVideo(lib, sub).timeout(const Duration(seconds: 8), onTimeout: () => true);
+        } catch (_) {
+          has = true;
+        }
+        out[d.name] = NASEntry(name: d.name, isDir: true, hasVideo: has);
+      }
+    });
+    await Future.wait(workers);
+    return out;
+  }
+
+  /// 浅层判断目录是否含视频：直接子级有视频文件即 true；否则看一层子目录（限 20 个探测，防深递归打满）。
+  Future<bool> _dirHasVideo(NASLibrary lib, String path) async {
+    final entries = lib.type == 'mount' ? await _mountList(lib, path) : await _webdavList(lib, path);
+    if (entries.any((e) => !e.isDir && isVideo(e.name))) return true;
+    // 没有直接视频 → 看一层子目录（任一含视频即算有）
+    final subdirs = entries.where((e) => e.isDir).take(20);
+    for (final s in subdirs) {
+      final sub = path.isEmpty ? s.name : '$path/${s.name}';
+      final subEntries = lib.type == 'mount' ? await _mountList(lib, sub) : await _webdavList(lib, sub);
+      if (subEntries.any((e) => !e.isDir && isVideo(e.name))) return true;
     }
-    return _webdavList(lib, path);
+    return false;
   }
 
   /// 构造文件播放 URL（webdav 直链 / mount file://）。

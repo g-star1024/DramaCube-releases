@@ -8,6 +8,7 @@ import 'package:window_manager/window_manager.dart';
 
 import 'app/app.dart';
 import 'core/gateway/gateway_server.dart';
+import 'core/platform/player_remote.dart';
 import 'core/platform/tv_mode.dart';
 
 Future<void> main() async {
@@ -15,6 +16,9 @@ Future<void> main() async {
 
   // media_kit 初始化（libmpv 播放器内核）
   MediaKit.ensureInitialized();
+
+  // macOS 菜单栏遥控桥（Native→Dart 播放控制）
+  PlayerRemoteBridge.init();
 
   // TV 模式检测（Android TV = leanback 特性）
   if (Platform.isAndroid) {

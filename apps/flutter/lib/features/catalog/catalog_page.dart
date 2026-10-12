@@ -27,6 +27,9 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
   bool _hasMore = true;
   String _searchQuery = '';
   String _loadedSource = '';
+  /// 频道分类（对齐 Swift TVBoxBrowseView）：最新 + 各 type_id 分类。
+  List<Map<String, String>> _categories = [];
+  String? _selectedTypeId; // null = 最新
 
   @override
   void initState() {
@@ -36,7 +39,31 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
       // 默认展示延迟最低的源（用户手动切换后按设置展示）。
       ref.read(sourceManagerProvider.notifier).autoSelectFastest();
       _load(reset: true);
+      _loadCategories();
     });
+  }
+
+  /// 拉当前源的频道分类（type_id → type_name）。源切换后随源重拉。
+  Future<void> _loadCategories() async {
+    final siteKey = ref.read(sourceManagerProvider).currentSource;
+    if (siteKey.isEmpty) return;
+    final cats = await ref.read(catalogRepositoryProvider).categories(siteKey: siteKey);
+    if (!mounted) return;
+    setState(() => _categories = cats);
+  }
+
+  /// 选中频道：切换 typeId 并重置加载。
+  void _selectCategory(String? typeId) {
+    if (_selectedTypeId == typeId) return;
+    setState(() {
+      _selectedTypeId = typeId;
+      // 选中具体频道时清空搜索（频道与搜索互斥，对齐 Swift）。
+      if (typeId != null) {
+        _searchQuery = '';
+        _searchCtrl.clear();
+      }
+    });
+    _load(reset: true);
   }
 
   @override
@@ -84,7 +111,7 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
     final repo = ref.read(catalogRepositoryProvider);
     final fresh = _searchQuery.isNotEmpty
         ? await repo.search(siteKey: siteKey, query: _searchQuery)
-        : await repo.list(siteKey: siteKey, page: _page);
+        : await repo.list(siteKey: siteKey, page: _page, typeId: _selectedTypeId);
     setState(() {
       if (reset) {
         _items = fresh;
@@ -99,12 +126,43 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
     });
   }
 
+  /// 频道分类 chip（选中态高亮）。
+  Widget _catChip(String? typeId, String name) {
+    final selected = _selectedTypeId == typeId;
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: FilterChip(
+        label: Text(name, style: const TextStyle(fontSize: 13)),
+        selected: selected,
+        showCheckmark: false,
+        onSelected: (_) => _selectCategory(typeId),
+        backgroundColor: cs.surfaceContainerHighest,
+        selectedColor: cs.primaryContainer,
+        labelStyle: TextStyle(
+          color: selected ? cs.onPrimaryContainer : cs.onSurfaceVariant,
+          fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        side: BorderSide.none,
+        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        visualDensity: VisualDensity.compact,
+      ),
+    );
+  }
+
   /// 右上角源切换弹层（延迟排序 + 失效标记 + 一键测速）。
   void _showSourceSheet() {
-    showModalBottomSheet<void>(
+    showDialog<void>(
       context: context,
-      isScrollControlled: true,
-      builder: (_) => const _SourceSwitchSheet(),
+      builder: (_) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 480, maxHeight: 560),
+          child: const _SourceSwitchSheet(),
+        ),
+      ),
     );
   }
 
@@ -130,7 +188,9 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         ref.read(sourceManagerProvider.notifier).autoSelectFastest();
+        _selectedTypeId = null; // 切源重置频道
         _load(reset: true);
+        _loadCategories();
       });
     }
     // 大屏不满屏时滚动监听不触发 → 每帧布局后评估补页（_maybeLoadMore 内有防抖守卫）。
@@ -178,6 +238,20 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
       ),
       body: Column(
         children: [
+          // 频道分类栏（对齐 Swift TVBoxBrowseView：最新 + 各 type_id 分类 chips）
+          if (_categories.isNotEmpty)
+            SizedBox(
+              height: 44,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                children: [
+                  _catChip(null, '最新'),
+                  for (final c in _categories)
+                    _catChip(c['type_id'], c['type_name'] ?? ''),
+                ],
+              ),
+            ),
           // 网格列表
           Expanded(
             child: _items.isEmpty && _isLoading

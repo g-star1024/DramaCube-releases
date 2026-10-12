@@ -16,6 +16,7 @@ import '../../app/motion.dart';
 import '../../app/settings_provider.dart';
 import '../../core/db/database.dart';
 import '../../core/models/models.dart';
+import '../../core/platform/player_remote.dart';
 import '../../core/widgets/glass_panel.dart';
 import '../catalog/catalog_repository.dart';
 import '../discover/discover_engine.dart';
@@ -144,6 +145,17 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     _loadEpisode(_currentIndex);
     _progressTimer = Timer.periodic(const Duration(seconds: 5), (_) => _saveProgress());
 
+    // macOS 菜单栏遥控（对齐 Swift MenuBarController：播放暂停/上下集）。
+    PlayerRemoteBridge.attach(
+      togglePlay: () => _player.playOrPause(),
+      next: () {
+        if (_currentIndex < _detail.episodes.length - 1) _loadEpisode(_currentIndex + 1);
+      },
+      prev: () {
+        if (_currentIndex > 0) _loadEpisode(_currentIndex - 1);
+      },
+    );
+
     // 初始倍速 = 全局默认倍速
     final settings = ref.read(settingsProvider);
     if (settings.defaultRate != 1.0) {
@@ -161,6 +173,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     _osdHideTimer?.cancel();
     _ambienceTimer?.cancel();
     _seekFeedbackTimer?.cancel();
+    PlayerRemoteBridge.detach();
     _saveProgress();
     _player.dispose();
     _prebuffer?.dispose();
@@ -370,24 +383,30 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     if (_sourceGroups.isEmpty && _otherSeasons.isEmpty && !_sourceSearching) {
       _searchSources();
     }
-    await showModalBottomSheet<void>(
+    await showDialog<void>(
       context: context,
-      isScrollControlled: true,
-      builder: (ctx) => _SourceSheet(
-        groups: _sourceGroups,
-        otherSeasons: _otherSeasons,
-        searching: _sourceSearching,
-        query: _sourceQuery,
-        currentId: _detail.drama.id,
-        onSelect: (d) {
-          Navigator.pop(ctx);
-          _switchSource(d, episodeIndex: _currentIndex, resumeAt: _position);
-        },
-        onSeasonSelect: (d) {
-          Navigator.pop(ctx);
-          _switchSource(d, episodeIndex: 0, resumeAt: null);
-        },
-        onRetry: _searchSources,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 560, maxHeight: 560),
+          child: _SourceSheet(
+            groups: _sourceGroups,
+            otherSeasons: _otherSeasons,
+            searching: _sourceSearching,
+            query: _sourceQuery,
+            currentId: _detail.drama.id,
+            onSelect: (d) {
+              Navigator.pop(ctx);
+              _switchSource(d, episodeIndex: _currentIndex, resumeAt: _position);
+            },
+            onSeasonSelect: (d) {
+              Navigator.pop(ctx);
+              _switchSource(d, episodeIndex: 0, resumeAt: null);
+            },
+            onRetry: _searchSources,
+          ),
+        ),
       ),
     );
   }
@@ -1011,20 +1030,26 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     );
   }
 
-  // MARK: - 选集面板（底部抽屉）
+  // MARK: - 选集面板（居中对话框）
 
   Future<void> _openEpisodesSheet() async {
-    await showModalBottomSheet<void>(
+    await showDialog<void>(
       context: context,
-      isScrollControlled: true,
-      builder: (ctx) => _EpisodesSheet(
-        detail: _detail,
-        currentIndex: _currentIndex,
-        watchedIds: _watchedIds,
-        onPlay: (i) {
-          Navigator.pop(ctx);
-          _loadEpisode(i);
-        },
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 560, maxHeight: 560),
+          child: _EpisodesSheet(
+            detail: _detail,
+            currentIndex: _currentIndex,
+            watchedIds: _watchedIds,
+            onPlay: (i) {
+              Navigator.pop(ctx);
+              _loadEpisode(i);
+            },
+          ),
+        ),
       ),
     );
   }
@@ -1287,22 +1312,18 @@ class _SourceSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final accent = Brand.accent(Theme.of(context).brightness);
-    return DraggableScrollableSheet(
-      expand: false,
-      initialChildSize: 0.55,
-      maxChildSize: 0.9,
-      builder: (ctx, scrollCtrl) => Container(
-        decoration: BoxDecoration(
-          color: Brand.background(Theme.of(ctx).brightness),
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(Radii.lg)),
-        ),
-        child: ListView(
-          controller: scrollCtrl,
-          padding: const EdgeInsets.all(Spacing.lg),
-          children: [
+    return Container(
+      decoration: BoxDecoration(
+        color: Brand.background(Theme.of(context).brightness),
+        borderRadius: BorderRadius.circular(Radii.lg),
+      ),
+      child: ListView(
+        shrinkWrap: true,
+        padding: const EdgeInsets.all(Spacing.lg),
+        children: [
             Row(
               children: [
-                Text('换源播放', style: Theme.of(ctx).textTheme.titleMedium),
+                Text('换源播放', style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(width: Spacing.sm),
                 if (searching)
                   const SizedBox(
@@ -1317,7 +1338,7 @@ class _SourceSheet extends StatelessWidget {
             ),
             Text('「$query」在各源的可播版本，切换后保留当前进度',
                 style: TextStyle(
-                    fontSize: 12, color: Theme.of(ctx).colorScheme.onSurfaceVariant)),
+                    fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant)),
             const SizedBox(height: Spacing.lg),
             for (final g in groups) ...[
               Padding(
@@ -1367,12 +1388,11 @@ class _SourceSheet extends StatelessWidget {
                 child: Center(
                   child: Text('未在其他源找到该剧',
                       style: TextStyle(
-                          fontSize: 13, color: Theme.of(ctx).colorScheme.onSurfaceVariant)),
+                          fontSize: 13, color: Theme.of(context).colorScheme.onSurfaceVariant)),
                 ),
               ),
           ],
         ),
-      ),
     );
   }
 }

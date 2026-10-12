@@ -186,7 +186,8 @@ class _NASPageState extends ConsumerState<NASPage> {
       return const Center(child: Text('空目录', style: TextStyle(color: Colors.grey)));
     }
     // 目录在前（紧凑列表），视频在后（图文卡片网格，对齐 Swift NASBrowseView）。
-    final dirs = _entries.where((e) => e.isDir).toList();
+    // 过滤空文件夹：不含任何视频的目录不显示（对齐 Swift 只呈现有视频的内容）。
+    final dirs = _entries.where((e) => e.isDir && e.hasVideo).toList();
     final videos = _entries.where((e) => !e.isDir && NASManager.isVideo(e.name)).toList();
     final visible = videos.take(_visibleCount).toList();
     final lib = _currentLib!;
@@ -288,10 +289,16 @@ class _NASPageState extends ConsumerState<NASPage> {
 
   /// 右上角资源库切换弹层（连通性徽标 + 一键测试）。
   void _showLibrarySheet() {
-    showModalBottomSheet(
+    showDialog(
       context: context,
-      isScrollControlled: true,
-      builder: (_) => const _LibrarySwitchSheet(),
+      builder: (_) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 480, maxHeight: 520),
+          child: const _LibrarySwitchSheet(),
+        ),
+      ),
     );
   }
 }

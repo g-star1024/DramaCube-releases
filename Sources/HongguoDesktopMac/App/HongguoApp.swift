@@ -6,7 +6,17 @@ import HongguoCore
 /// 应用根。注意：作为 SPM 库不携带 @main；
 /// 在 Xcode 新建的 macOS App Target 中用一个单行 @main 入口引用 `HongguoApp().body` 即可。
 public struct HongguoApp: App {
-    public init() {}
+    public init() {
+        // 封面等大容量 URLCache（内存 64MB + 磁盘 512MB，重启后封面仍秒出图）。
+        // 默认共享缓存内存容量小、磁盘虽 50MB 但被「带 Referer 的请求键」翻倍占用，
+        // 视频源几十张 webp 封面很快顶爆 → 重启后又要重下。显式放大对齐 Flutter
+        // cached_network_image 的持久磁盘缓存行为。
+        URLCache.shared = URLCache(
+            memoryCapacity: 64 * 1024 * 1024,
+            diskCapacity: 512 * 1024 * 1024,
+            directory: nil
+        )
+    }
     @ObservedObject private var settings = AppSettings.shared
 
     public var body: some Scene {

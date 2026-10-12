@@ -1,18 +1,20 @@
-# 线上打包：GitHub Actions macOS(Apple Silicon) runner
+# 线上打包 + 发布：GitHub Actions macOS(Apple Silicon) runner
 #
 # 手动触发（workflow_dispatch）：
-#   gh workflow run build-release.yml -f arch=arm64 -f version=1.0.0
+#   gh workflow run build-release.yml -f arch=universal -f version=2.3.2
 # 或在 Actions 页面点 Run workflow。
 #
-# 说明：
-# - macos-14 runner 为 arm64 机器，arch=arm64 为原生构建（推荐）；
-# - arch=universal（--arch arm64 --arch x86_64 交叉构建）在 Swift 6.0.x SwiftPM
-#   存在已知 bug：多 --arch destination 下评估依赖包 swiftLanguageVersions 报
-#   "Some of the Swift language versions ... (given: [5])" 而失败，故默认不用；
-#   universal 待 SwiftPM 修复后恢复。
-# - 构建纯 x86_64 请在 Intel 本机跑 Scripts/build-app-bundle.sh。
-# - 产物以 artifact 名 dist-<arch> 上传，30 天有效；
-#   发布到公开仓 g-star1024/hongguo-mac 由本地脚本或维护者手动完成。
+# 架构说明：
+# - macos-14 runner 为 Apple Silicon，arm64 原生 + x86_64 交叉都可行；
+# - arch=universal：Scripts/build-app-bundle.sh 分架构各编一次再 lipo 合成
+#   （绕开 SwiftPM 单命令多 --arch destination 的已知 bug），产出双架构合一的
+#   dmg/zip，Apple Silicon 与 Intel Mac 都能跑。发布默认用 universal。
+# - arch=arm64 / x86_64：仅出单架构。
+#
+# 发布：
+# - 传 publish=true（默认）时，构建完成后直接把 dmg/zip/latest.json 上传到
+#   公开仓 g-star1024/hongguo-mac 的 v<version> Release（不存在则创建）。
+# - 产物同时以 artifact 名 dist-<arch> 上传，30 天有效（调试用）。
 
 name: build-release
 
@@ -20,18 +22,23 @@ on:
   workflow_dispatch:
     inputs:
       arch:
-        description: "构建架构 (arm64 原生推荐；universal 受 SwiftPM bug 限制暂不可用)"
+        description: "构建架构 (universal 双架构合一，推荐；或 arm64 / x86_64 单架构)"
         required: false
-        default: "arm64"
+        default: "universal"
       version:
-        description: "版本号"
+        description: "版本号（如 2.3.2，发布 tag 为 v<version>）"
+        required: true
+      publish:
+        description: "发布到 hongguo-mac Release (true/false)"
         required: false
-        default: "1.0.0"
+        default: "true"
 
 jobs:
   build:
     runs-on: macos-14
-    timeout-minutes: 40
+    timeout-minutes: 60
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -64,3 +71,25 @@ jobs:
             .build/dist/latest.json
           retention-days: 30
           if-no-files-found: error
+
+      - name: Publish to hongguo-mac Release
+        if: github.event.inputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.HONGGUO_MAC_PAT }}
+          VERSION: ${{ github.event.inputs.version }}
+          ARCH: ${{ github.event.inputs.arch }}
+        run: |
+          set -euo pipefail
+          REPO="g-star1024/hongguo-mac"
+          TAG="v${VERSION}"
+          DMG=".build/dist/dramacube-macOS-${ARCH}-${VERSION}.dmg"
+          ZIP=".build/dist/dramacube-macOS-${ARCH}-${VERSION}.zip"
+          LATEST=".build/dist/latest.json"
+          # 创建 Release（已存在则跳过创建直接上传资产）
+          if ! gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
+            gh release create "$TAG" --repo "$REPO" \
+              --title "剧立方 DramaCube ${TAG}" \
+              --notes "macOS ${ARCH} 构建（GitHub Actions）。详见提交说明。"
+          fi
+          gh release upload "$TAG" "$DMG" "$ZIP" "$LATEST" --repo "$REPO" --clobber
+          echo "已发布： https://github.com/${REPO}/releases/tag/${TAG}"

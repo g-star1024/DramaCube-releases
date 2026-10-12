@@ -9,12 +9,12 @@
 
 | 目录 | 客户端 | 状态 |
 |------|--------|------|
-| [`apps/flutter`](apps/flutter) | **剧立方 DramaCube Flutter 全平台版**（v2.7.1） | 主推，活跃开发 |
+| [`apps/flutter`](apps/flutter) | **剧立方 DramaCube Flutter 全平台版**（v2.7.2） | 主推，活跃开发 |
 | `Sources/` + `HongguoDesktopMac/` | 红果短剧 macOS 原生版（Swift 6 + SwiftUI + Hummingbird 网关） | 稳定维护 |
 
 发布策略：源码在本私有仓，安装包在公开仓 [`g-star1024/DramaCube-releases`](https://github.com/g-star1024/DramaCube-releases) 分发。
 
-## 二、平台矩阵（Flutter 版 v2.7.1）
+## 二、平台矩阵（Flutter 版 v2.7.2）
 
 | 平台 | 产物 | 风格 |
 |------|------|------|
@@ -107,6 +107,7 @@ apps/flutter/lib/
 
 | 版本 | 内容 |
 |------|------|
+| **v2.7.2** | 八项修复：**播放链路对齐 Swift**（m3u8 线路优先 + URL 内含 `$` 签名参数还原，修复「Failed to recognize file format」）；搜索/详情「立即观看」到达即自动选源可点；**视频源频道分类栏**（ac=list class + 翻页归并降级）；**全部弹窗居中**（播放器/资源库/直播/目录/设置共 8 处）；**NAS 过滤空文件夹**（并发浅探测 + 失败兜底）；**macOS 菜单栏对齐 Swift 版**（播放暂停/上下集遥控 + 关闭最小化到菜单栏 + 隐藏 Dock 图标）；**Mac 图标符合 HIG**（内容占画布 80%）；Swift 原生版缩略图修复（封面走系统网络 + 20s 超时 + 重试 + 缓存扩容）+ **universal 双架构 CI**（分编 + lipo 合成，一键发布 hongguo-mac） |
 | **v2.7.1** | hotfix：修复视频源空键毒丸（`testAll`/禁用当前源后持久化空 `currentSource` → 全站无可播放内容，全路径自愈）；修复大屏目录页只加载首页+底部无限转圈（内容不满屏时滚动监听不触发 → 自动续页）；修复搜索结果滚动到底重复追加；**全新品牌图标**（极简播放键，全平台替换）；宽屏导航栏头部加 App 图标；**macOS 菜单栏常驻小图标**（模板渲染自适应深色菜单栏，点开 打开/显隐/退出） |
 | **v2.7.0** | 源连通性体系（自动测速/失效禁用/延迟排序/默认最快源）+ 三页右上角源切换（视频源/直播/资源库）+ 5 套配色主题一键切换 + 搜索结果点击即播 |
 | **v2.6.0** | UI 三端升级：令牌 v3、Cinema Hero、毛玻璃 OSD、快捷键、暂停氛围模式、TV 独立版（焦点引擎 + Cinema Dark）、继续观看 |

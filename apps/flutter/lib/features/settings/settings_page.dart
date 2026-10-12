@@ -526,46 +526,51 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
   void _showPaletteSheet() {
     final currentId = ref.read(settingsProvider).paletteId;
-    showModalBottomSheet<void>(
+    showDialog<void>(
       context: context,
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(Spacing.lg),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('配色主题', style: Theme.of(ctx).textTheme.titleMedium),
-              const SizedBox(height: Spacing.md),
-              for (final p in AppPalettes.all)
-                ListTile(
-                  leading: Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: p.gradient,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 460, maxHeight: 560),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(Spacing.lg),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('配色主题', style: Theme.of(ctx).textTheme.titleMedium),
+                const SizedBox(height: Spacing.md),
+                for (final p in AppPalettes.all)
+                  ListTile(
+                    leading: Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: p.gradient,
+                      ),
                     ),
+                    title: Text(p.name),
+                    subtitle: Text(switch (p.id) {
+                      'hongguo' => '默认 · 暖阳奶油 + 粉金渐变（S1-S3 v2.5 基线）',
+                      'rose' => '玫瑰金 · 暖调深红 + 金',
+                      'blue' => '科技蓝 · 冷峻明快',
+                      'forest' => '森林绿 · 自然清新',
+                      'purple' => '暗夜紫 · 梦幻深邃',
+                      _ => '',
+                    }),
+                    trailing: currentId == p.id
+                        ? Icon(Icons.check, color: Theme.of(ctx).colorScheme.primary)
+                        : null,
+                    onTap: () {
+                      ref.read(settingsProvider.notifier).setPalette(p.id);
+                      Navigator.pop(ctx);
+                    },
                   ),
-                  title: Text(p.name),
-                  subtitle: Text(switch (p.id) {
-                    'hongguo' => '默认 · 暖阳奶油 + 粉金渐变（S1-S3 v2.5 基线）',
-                    'rose' => '玫瑰金 · 暖调深红 + 金',
-                    'blue' => '科技蓝 · 冷峻明快',
-                    'forest' => '森林绿 · 自然清新',
-                    'purple' => '暗夜紫 · 梦幻深邃',
-                    _ => '',
-                  }),
-                  trailing: currentId == p.id
-                      ? Icon(Icons.check, color: Theme.of(ctx).colorScheme.primary)
-                      : null,
-                  onTap: () {
-                    ref.read(settingsProvider.notifier).setPalette(p.id);
-                    Navigator.pop(ctx);
-                  },
-                ),
-              const SizedBox(height: Spacing.sm),
-            ],
+                const SizedBox(height: Spacing.sm),
+              ],
+            ),
           ),
         ),
       ),
@@ -581,82 +586,89 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     required T current,
     required ValueChanged<T> onSelect,
   }) async {
-    final picked = await showModalBottomSheet<T>(
+    final picked = await showDialog<T>(
       context: context,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(Spacing.lg),
-              child: Text(title, style: Theme.of(ctx).textTheme.titleMedium),
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420, maxHeight: 520),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(Spacing.lg),
+                  child: Text(title, style: Theme.of(ctx).textTheme.titleMedium),
+                ),
+                for (final option in options)
+                  ListTile(
+                    title: Text(label(option)),
+                    trailing: option == current
+                        ? Icon(Icons.check, color: Theme.of(ctx).colorScheme.primary)
+                        : null,
+                    onTap: () => Navigator.pop(ctx, option),
+                  ),
+                const SizedBox(height: Spacing.sm),
+              ],
             ),
-            for (final option in options)
-              ListTile(
-                title: Text(label(option)),
-                trailing: option == current
-                    ? Icon(Icons.check, color: Theme.of(ctx).colorScheme.primary)
-                    : null,
-                onTap: () => Navigator.pop(ctx, option),
-              ),
-            const SizedBox(height: Spacing.sm),
-          ],
+          ),
         ),
       ),
     );
     if (picked != null) onSelect(picked);
   }
 
-  // MARK: 订阅导入底部弹层（含站点管理摘要）
+  // MARK: 订阅导入居中弹层（含站点管理摘要）
 
   void _showSubscriptionSheet() {
-    showModalBottomSheet<void>(
+    showDialog<void>(
       context: context,
-      isScrollControlled: true,
-      builder: (ctx) => DraggableScrollableSheet(
-        expand: false,
-        initialChildSize: 0.5,
-        maxChildSize: 0.9,
-        builder: (ctx, scrollCtrl) => Container(
-          decoration: BoxDecoration(
-            color: Brand.background(Theme.of(ctx).brightness),
-            borderRadius:
-                const BorderRadius.vertical(top: Radius.circular(Radii.lg)),
-          ),
-          child: ListView(
-            controller: scrollCtrl,
-            padding: const EdgeInsets.all(Spacing.lg),
-            children: [
-              Text('TVBox 订阅导入', style: Theme.of(ctx).textTheme.titleMedium),
-              const SizedBox(height: Spacing.lg),
-              TextField(
-                controller: _urlCtrl,
-                decoration: InputDecoration(
-                  labelText: '订阅地址',
-                  hintText: 'https://…/tvbox.json',
-                  suffixIcon: IconButton(
-                    icon: const Icon(Icons.content_paste, size: 20),
-                    tooltip: '粘贴',
-                    onPressed: _paste,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 480, maxHeight: 400),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Brand.background(Theme.of(ctx).brightness),
+              borderRadius: BorderRadius.circular(Radii.lg),
+            ),
+            child: ListView(
+              shrinkWrap: true,
+              padding: const EdgeInsets.all(Spacing.lg),
+              children: [
+                Text('TVBox 订阅导入', style: Theme.of(ctx).textTheme.titleMedium),
+                const SizedBox(height: Spacing.lg),
+                TextField(
+                  controller: _urlCtrl,
+                  decoration: InputDecoration(
+                    labelText: '订阅地址',
+                    hintText: 'https://…/tvbox.json',
+                    suffixIcon: IconButton(
+                      icon: const Icon(Icons.content_paste, size: 20),
+                      tooltip: '粘贴',
+                      onPressed: _paste,
+                    ),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(Radii.md)),
                   ),
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(Radii.md)),
+                  onSubmitted: (_) {
+                    Navigator.pop(ctx);
+                    _import();
+                  },
                 ),
-                onSubmitted: (_) {
-                  Navigator.pop(ctx);
-                  _import();
-                },
-              ),
-              const SizedBox(height: Spacing.md),
-              FilledButton.icon(
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  _import();
-                },
-                icon: const Icon(Icons.download),
-                label: const Text('导入订阅'),
-              ),
-            ],
+                const SizedBox(height: Spacing.md),
+                FilledButton.icon(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    _import();
+                  },
+                  icon: const Icon(Icons.download),
+                  label: const Text('导入订阅'),
+                ),
+              ],
+            ),
           ),
         ),
       ),

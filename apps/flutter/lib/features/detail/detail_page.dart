@@ -77,11 +77,31 @@ class _DetailPageState extends ConsumerState<DetailPage> {
           onSiteDone: (siteName, results) {
             if (!mounted) return;
             setState(() => _groups.add(_SiteGroup(siteName, results)));
+            // 豆瓣条目：首个可播结果一出来就自动选中加载，「立即观看」立即可用
+            // （修复：原必须手动点一次可播来源播放钮才可点）。
+            _autoSelectFirst();
           },
           onAllDone: () {
             if (mounted) setState(() { _searching = false; _allDone = true; });
           },
         );
+  }
+
+  /// 豆瓣条目专用：详情未加载且聚合已有结果时，自动选第一个可播结果。
+  bool _autoSelected = false;
+  void _autoSelectFirst() {
+    final parts = (_drama?.id ?? '').split('|');
+    if (parts.isEmpty || parts.first != 'douban') return; // 仅豆瓣条目
+    if (_autoSelected || _detail != null) return;
+    if (_groups.isEmpty || _groups.first.results.isEmpty) return;
+    _autoSelected = true;
+    final first = _groups.first.results.first;
+    setState(() {
+      _drama = first;
+      _detail = null;
+      _error = null;
+    });
+    _loadDetail();
   }
 
   Future<void> _loadDetail() async {
