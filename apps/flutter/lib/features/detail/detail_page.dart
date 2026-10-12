@@ -7,6 +7,7 @@ import '../../core/models/models.dart';
 import '../../core/widgets/cover_image.dart';
 import '../catalog/catalog_repository.dart';
 import '../discover/discover_engine.dart';
+import '../downloads/download_manager.dart';
 
 /// 剧集详情页 —— 封面/标题/豆瓣简介 + 跨源可播结果 + 选集胶囊网格。
 ///
@@ -111,6 +112,93 @@ class _DetailPageState extends ConsumerState<DetailPage> {
     });
   }
 
+  // MARK: 批量下载选集
+
+  Future<void> _showDownloadDialog() async {
+    final detail = _detail!;
+    final selected = <int>{0};
+    final enqueued = await showDialog<int>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialog) => AlertDialog(
+          title: Text('下载选集（${detail.episodes.length} 集）'),
+          content: SizedBox(
+            width: 360,
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    TextButton(
+                      onPressed: () => setDialog(() {
+                        selected.clear();
+                        selected.addAll(List.generate(detail.episodes.length, (i) => i));
+                      }),
+                      child: const Text('全选'),
+                    ),
+                    TextButton(
+                      onPressed: () => setDialog(() => selected.clear()),
+                      child: const Text('清空'),
+                    ),
+                  ],
+                ),
+                Expanded(
+                  child: GridView.builder(
+                    gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                      maxCrossAxisExtent: 100,
+                      mainAxisSpacing: Radii.sm,
+                      crossAxisSpacing: Radii.sm,
+                      childAspectRatio: 2.4,
+                    ),
+                    itemCount: detail.episodes.length,
+                    itemBuilder: (ctx, i) {
+                      final on = selected.contains(i);
+                      return FilterChip(
+                        label: Text(detail.episodes[i].title,
+                            maxLines: 1, overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 12)),
+                        selected: on,
+                        onSelected: (v) => setDialog(() {
+                          v ? selected.add(i) : selected.remove(i);
+                        }),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
+            FilledButton(
+              onPressed: selected.isEmpty
+                  ? null
+                  : () => Navigator.pop(ctx, selected.length),
+              child: Text('下载所选（${selected.length}）'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (enqueued == null || enqueued == 0) return;
+    final mgr = ref.read(downloadManagerProvider.notifier);
+    for (final i in selected) {
+      final ep = detail.episodes[i];
+      if (ep.playURL == null || ep.playURL!.isEmpty) continue;
+      await mgr.enqueue(
+        dramaId: detail.drama.id,
+        episodeId: ep.id,
+        title: detail.drama.title,
+        episodeTitle: ep.title,
+        url: ep.playURL!,
+        coverURL: detail.drama.coverURL,
+      );
+    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('已加入 $enqueued 个下载任务')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
@@ -121,7 +209,18 @@ class _DetailPageState extends ConsumerState<DetailPage> {
     final drama = _drama;
 
     return Scaffold(
-      appBar: AppBar(title: Text(drama?.title ?? '详情')),
+      appBar: AppBar(
+        title: Text(drama?.title ?? '详情'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.download_outlined),
+            tooltip: '下载选集',
+            onPressed: _detail == null || _detail!.episodes.isEmpty
+                ? null
+                : _showDownloadDialog,
+          ),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.all(Spacing.lg),
         children: [

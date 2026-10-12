@@ -10,6 +10,7 @@ import '../features/player/player_page.dart';
 import '../features/discover/discover_page.dart';
 import '../features/detail/detail_page.dart';
 import '../features/search/search_page.dart';
+import '../features/downloads/downloads_page.dart';
 import '../core/models/models.dart';
 
 /// 应用路由（宽屏侧栏 / 窄屏底部导航 + 播放器全屏页）。
@@ -38,6 +39,7 @@ final appRouter = GoRouter(
           },
         ),
         GoRoute(path: '/search', builder: (context, state) => const SearchPage()),
+        GoRoute(path: '/downloads', builder: (context, state) => const DownloadsPage()),
       ],
     ),
     // 播放器（全屏，无导航壳）

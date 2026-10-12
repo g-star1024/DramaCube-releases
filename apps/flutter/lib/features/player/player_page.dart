@@ -32,7 +32,15 @@ class PlayerPage extends ConsumerStatefulWidget {
 }
 
 class _PlayerPageState extends ConsumerState<PlayerPage> {
-  late final _player = Player();
+  late final _player = Player(
+    configuration: PlayerConfiguration(
+      bufferSize: switch (ref.read(settingsProvider).bufferStrategy) {
+        BufferStrategy.low => 8 * 1024 * 1024,
+        BufferStrategy.medium => 32 * 1024 * 1024,
+        BufferStrategy.high => 128 * 1024 * 1024,
+      },
+    ),
+  );
   late final _controller = VideoController(_player);
   late final _db = AppDatabase();
 
