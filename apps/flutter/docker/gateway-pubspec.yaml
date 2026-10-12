@@ -1,0 +1,12 @@
+name: dramacube_gateway
+description: 剧立方 DramaCube 本地网关（TVBox 解析 / m3u8 代理 / WebDAV / 直播源）
+publish_to: 'none'
+version: 2.3.0
+
+environment:
+  sdk: ^3.9.2
+
+dependencies:
+  shelf: ^1.4.2
+  shelf_router: ^1.1.4
+  dio: ^5.7.0

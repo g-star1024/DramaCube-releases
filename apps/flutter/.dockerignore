@@ -1,0 +1,29 @@
+# Flutter/Dart 构建产物（但 build/web 和 docker/ 需要 COPY 进镜像）
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+
+# Git
+.git/
+.gitignore
+
+# Docker 配置文件自身（避免递归，但 docker/ 目录下的配置文件需要）
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# 平台构建产物（只保留 Web）
+android/
+ios/
+windows/
+linux/
+macos/

@@ -28,9 +28,10 @@ import 'tvbox_engine.dart';
 class GatewayServer {
   HttpServer? _server;
   final int port;
+  final String host;
   final TVBoxEngine _tvbox = TVBoxEngine();
 
-  GatewayServer({this.port = 8787});
+  GatewayServer({this.port = 8787, this.host = '127.0.0.1'});
 
   bool get isRunning => _server != null;
 
@@ -57,11 +58,11 @@ class GatewayServer {
         .addMiddleware(_cors)
         .addHandler(router.call);
 
-    _server = await shelf_io.serve(handler, '127.0.0.1', port);
+    _server = await shelf_io.serve(handler, host, port);
     // 网关启动日志（release 模式可接 logger 包，当前保持简单）
     assert(() {
       // ignore: avoid_print
-      print('[gateway] listening on 127.0.0.1:$port');
+      print('[gateway] listening on $host:$port');
       return true;
     }());
   }

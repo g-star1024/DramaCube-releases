@@ -1,8 +1,11 @@
 # 剧立方 DramaCube — Flutter 全平台 Docker 部署
 #
 # 架构：
-#   阶段 1（builder）：Flutter SDK 构建 Web 产物
-#   阶段 2（runtime）：nginx 托管 Web 静态文件 + Dart 网关（API 代理）
+#   阶段 1（gateway-builder）：dart:stable 编译网关 AOT 可执行文件
+#   阶段 2（runtime）：nginx 托管本地构建的 Web 产物 + 网关可执行文件
+#
+# 前置：先在本地构建 Web 产物
+#   flutter build web --release
 #
 # 用法：
 #   docker build -t dramacube .
@@ -12,41 +15,43 @@
 #   docker compose up -d
 
 # ============================================================
-# 阶段 1：构建 Flutter Web
+# 阶段 1：编译网关 AOT 可执行文件
 # ============================================================
-FROM ghcr.io/cirruslabs/flutter:3.35.4 AS builder
+FROM dart:stable AS gateway-builder
 
 WORKDIR /app
 
-# 依赖缓存层
-COPY pubspec.yaml pubspec.lock ./
-RUN flutter pub get
+# 依赖缓存层（网关独立 pubspec，不含 Flutter 依赖）
+COPY docker/gateway-pubspec.yaml pubspec.yaml
+RUN dart pub get
 
-# 构建 Web（release）
-COPY . .
-RUN flutter build web --release --web-renderer canvaskit
+# 编译网关（只编译网关入口，不含 Flutter UI 依赖）
+COPY lib/core/gateway/ lib/core/gateway/
+COPY lib/core/models/ lib/core/models/
+RUN dart compile exe lib/core/gateway/main.dart -o /app/gateway-bin
 
 # ============================================================
-# 阶段 2：运行时（nginx + Dart 网关）
+# 阶段 2：运行时（nginx + 网关可执行文件）
 # ============================================================
-FROM nginx:alpine
+FROM debian:stable-slim
 
-# 安装 Dart 运行时（跑网关）
-RUN apk add --no-cache dart
+# 安装 nginx + ca-certificates（网关 HTTPS 请求需要）
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    nginx ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
 
-# Web 静态文件
-COPY --from=builder /app/build/web /usr/share/nginx/html
+# 本地构建的 Web 静态文件
+COPY build/web /usr/share/nginx/html
 
-# 网关源码（Dart 单文件，shelf 服务）
-COPY lib/core/gateway/ /app/gateway/
-COPY pubspec.yaml /app/
+# 网关可执行文件
+COPY --from=gateway-builder /app/gateway-bin /usr/local/bin/dramacube-gateway
 
-# nginx 配置：Web 静态 + /api 反代到 Dart 网关
-COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
+# nginx 配置：Web 静态 + /api 反代到网关
+COPY docker/nginx.conf /etc/nginx/sites-enabled/default
 
-# 启动脚本：先起 Dart 网关，再起 nginx
+# 启动脚本
 COPY docker/start.sh /start.sh
-RUN chmod +x /start.sh
+RUN chmod +x /start.sh /usr/local/bin/dramacube-gateway
 
 EXPOSE 80 8787
 
