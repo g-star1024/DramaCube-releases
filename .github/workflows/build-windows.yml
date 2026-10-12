@@ -1,0 +1,54 @@
+name: Build Windows (from private source)
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号（如 2.3.0）'
+        required: true
+        default: '2.3.0'
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout 私有源码仓库
+        uses: actions/checkout@v4
+        with:
+          repository: g-star1024/hongguo-desktop
+          token: ${{ secrets.HG_PAT }}
+          ref: main
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.35.4
+          channel: stable
+          cache: true
+
+      - name: 依赖
+        run: flutter pub get
+        working-directory: apps/flutter
+
+      - name: 分析
+        run: flutter analyze
+        working-directory: apps/flutter
+
+      - name: 构建
+        run: flutter build windows --release
+        working-directory: apps/flutter
+
+      - name: 打包（zip）
+        shell: pwsh
+        run: |
+          Compress-Archive -Path apps/flutter/build/windows/x64/runner/Release/* -DestinationPath dramacube-windows-v${{ inputs.version }}.zip
+          Get-Item dramacube-windows-v${{ inputs.version }}.zip | Select-Object Name, Length
+
+      - name: 上传到 Release v${{ inputs.version }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ inputs.version }}
+          files: dramacube-windows-v${{ inputs.version }}.zip
