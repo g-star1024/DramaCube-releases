@@ -1,0 +1,107 @@
+name: Build Linux + Android
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号（如 2.3.0）'
+        required: true
+        default: '2.3.0'
+
+permissions:
+  contents: write
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout 私有源码仓库
+        uses: actions/checkout@v4
+        with:
+          repository: g-star1024/hongguo-desktop
+          token: ${{ secrets.HG_PAT }}
+          ref: main
+
+      - name: Linux 构建依赖（GTK）
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libgtk-3-dev ninja-build clang cmake pkg-config liblzma-dev
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.35.4
+          channel: stable
+          cache: true
+
+      - name: 依赖
+        run: flutter pub get
+        working-directory: apps/flutter
+
+      - name: 分析
+        run: flutter analyze
+        working-directory: apps/flutter
+
+      - name: 构建
+        run: flutter build linux --release
+        working-directory: apps/flutter
+
+      - name: 打包（tar.gz）
+        run: |
+          cd apps/flutter/build/linux/x64/release
+          tar czf /tmp/dramacube-linux-v${{ inputs.version }}.tar.gz bundle/
+          ls -lh /tmp/dramacube-linux-v${{ inputs.version }}.tar.gz
+
+      - name: 上传到 Release v${{ inputs.version }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ inputs.version }}
+          files: /tmp/dramacube-linux-v${{ inputs.version }}.tar.gz
+
+  build-android:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout 私有源码仓库
+        uses: actions/checkout@v4
+        with:
+          repository: g-star1024/hongguo-desktop
+          token: ${{ secrets.HG_PAT }}
+          ref: main
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.35.4
+          channel: stable
+          cache: true
+
+      - name: 依赖
+        run: flutter pub get
+        working-directory: apps/flutter
+
+      - name: 分析
+        run: flutter analyze
+        working-directory: apps/flutter
+
+      - name: 构建 APK（通用：手机 + TV）
+        run: flutter build apk --release
+        working-directory: apps/flutter
+
+      - name: 打包
+        run: |
+          cp apps/flutter/build/app/outputs/flutter-apk/app-release.apk \
+             /tmp/dramacube-android-v${{ inputs.version }}.apk
+          ls -lh /tmp/dramacube-android-v${{ inputs.version }}.apk
+
+      - name: 上传到 Release v${{ inputs.version }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ inputs.version }}
+          files: /tmp/dramacube-android-v${{ inputs.version }}.apk
