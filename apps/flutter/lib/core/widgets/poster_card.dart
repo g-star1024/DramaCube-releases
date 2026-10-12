@@ -37,7 +37,7 @@ class PosterCard extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       onLongPress: onLongPress,
-      borderRadius: BorderRadius.circular(Radius.md),
+      borderRadius: BorderRadius.circular(Radii.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -47,14 +47,14 @@ class PosterCard extends StatelessWidget {
               children: [
                 Container(
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(Radius.md),
+                    borderRadius: BorderRadius.circular(Radii.md),
                     border: Border.all(
                       color: Brand.separator(brightness),
                       width: 0.5,
                     ),
                   ),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(Radius.md),
+                    borderRadius: BorderRadius.circular(Radii.md),
                     child: CoverImage(url: drama.coverURL, title: drama.title),
                   ),
                 ),
@@ -68,7 +68,7 @@ class PosterCard extends StatelessWidget {
                           horizontal: 5, vertical: 2),
                       decoration: BoxDecoration(
                         color: Colors.black54,
-                        borderRadius: BorderRadius.circular(Radius.sm),
+                        borderRadius: BorderRadius.circular(Radii.sm),
                       ),
                       child: Text(
                         rating!.toStringAsFixed(1),

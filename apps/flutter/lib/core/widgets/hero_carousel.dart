@@ -84,7 +84,7 @@ class _HeroCarouselState extends State<HeroCarousel> {
     return AspectRatio(
       aspectRatio: 21 / 9,
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(Radius.lg),
+        borderRadius: BorderRadius.circular(Radii.lg),
         child: Stack(
           fit: StackFit.expand,
           children: [

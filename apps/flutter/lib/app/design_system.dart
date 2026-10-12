@@ -67,7 +67,7 @@ abstract final class Spacing {
 }
 
 /// 圆角（对齐 macOS 版 Radius）。
-abstract final class Radius {
+abstract final class Radii {
   static const double sm = 6;
   static const double md = 10;
   static const double lg = 16;

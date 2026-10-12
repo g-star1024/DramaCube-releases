@@ -264,7 +264,7 @@ class _LibraryPageState extends ConsumerState<LibraryPage>
             children: [
               Expanded(
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(Radius.md),
+                  borderRadius: BorderRadius.circular(Radii.md),
                   child: CoverImage(url: f.coverURL, title: f.title),
                 ),
               ),
@@ -324,7 +324,7 @@ class _LibraryPageState extends ConsumerState<LibraryPage>
                       ),
                     ),
                   ClipRRect(
-                    borderRadius: BorderRadius.circular(Radius.sm),
+                    borderRadius: BorderRadius.circular(Radii.sm),
                     child: SizedBox(
                       width: 60,
                       height: 84,
@@ -394,12 +394,12 @@ class _SelectableCard extends StatelessWidget {
       onLongPress: editing ? null : () {
         if (!editing) onToggle();
       },
-      borderRadius: BorderRadius.circular(Radius.md),
+      borderRadius: BorderRadius.circular(Radii.md),
       child: Stack(
         children: [
           Container(
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(Radius.md),
+              borderRadius: BorderRadius.circular(Radii.md),
               border: selected ? Border.all(color: accent, width: 2) : null,
             ),
             padding: selected ? const EdgeInsets.all(2) : null,

@@ -73,7 +73,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
               isDense: true,
               prefixIcon: const Icon(Icons.search, size: 20),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(Radius.md),
+                borderRadius: BorderRadius.circular(Radii.md),
                 borderSide: BorderSide.none,
               ),
               filled: true,

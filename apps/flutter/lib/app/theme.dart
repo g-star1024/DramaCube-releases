@@ -34,7 +34,7 @@ class AppTheme {
         elevation: 0,
         color: secondary,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(Radius.md),
+          borderRadius: BorderRadius.circular(Radii.md),
         ),
       ),
       appBarTheme: AppBarTheme(
@@ -61,13 +61,13 @@ class AppTheme {
         selectedColor: accent.withValues(alpha: 0.18),
         side: BorderSide(color: Brand.separator(brightness)),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(Radius.sm),
+          borderRadius: BorderRadius.circular(Radii.sm),
         ),
       ),
       dialogTheme: DialogThemeData(
         backgroundColor: dark ? Brand.secondaryDark : Brand.chipFillLight,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(Radius.lg),
+          borderRadius: BorderRadius.circular(Radii.lg),
         ),
       ),
       sliderTheme: SliderThemeData(

@@ -130,7 +130,7 @@ class _DetailPageState extends ConsumerState<DetailPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               ClipRRect(
-                borderRadius: BorderRadius.circular(Radius.md),
+                borderRadius: BorderRadius.circular(Radii.md),
                 child: SizedBox(
                   width: 110,
                   height: 147,
@@ -245,7 +245,7 @@ class _EpisodesView extends StatelessWidget {
                   padding: EdgeInsets.zero,
                   side: BorderSide(color: Brand.separator(Theme.of(context).brightness)),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(Radius.sm),
+                    borderRadius: BorderRadius.circular(Radii.sm),
                   ),
                 ),
                 child: Text(
