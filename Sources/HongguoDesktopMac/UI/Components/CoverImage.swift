@@ -9,7 +9,10 @@ actor CoverGate {
     static let shared = CoverGate()
     private var running = 0
     private var waiters: [CheckedContinuation<Void, Never>] = []
-    private let limit = 5
+    /// 并发上限 12：v1.0.5 限 5 防卡死，但 TVBox 首页 12-40 张封面按 5 并发串行，
+    /// 每张 0.8-2.4s（CDN 边缘节点延迟方差实测）→ 全页封面要十几秒才出完；
+    /// Flutter 版无限制并行秒开。12 并发配合 DirectURLSession 每主机 16 连接上限。
+    private let limit = 12
 
     func acquire() async {
         if running < limit {
@@ -151,13 +154,17 @@ public struct CoverImage: View {
 
     /// 后台执行：URLCache 查询 → 过闸门下载 → ImageIO 下采样解码。
     nonisolated private static func fetchAndDecode(_ url: URL) async -> DecodedImage {
-        let req = URLRequest(url: url, cachePolicy: .returnCacheDataElseLoad, timeoutInterval: 10)
+        var req = URLRequest(url: url, cachePolicy: .returnCacheDataElseLoad, timeoutInterval: 10)
+        // 浏览器特征头：采集站图床对无头请求限速/403（实测同源 CDN 无头 7.3s vs Safari 头 0.8s）。
+        // URLCache 以 URL 为键，带头请求不影响缓存命中。
+        for (k, v) in headers(for: url) { req.setValue(v, forHTTPHeaderField: k) }
         // 1) 命中磁盘/内存缓存直接出图（不占并发名额）
         if let cached = URLCache.shared.cachedResponse(for: req),
            let img = decodeDownsampled(cached.data) {
             return DecodedImage(image: img)
         }
-        // 2) 过闸门再联网（最多 5 并发）
+        // 2) 过闸门再联网（最多 12 并发）；任务已取消则不占名额
+        if Task.isCancelled { return DecodedImage(image: nil) }
         await CoverGate.shared.acquire()
         defer { Task { await CoverGate.shared.release() } }
         do {
@@ -170,6 +177,18 @@ public struct CoverImage: View {
         } catch {
             return DecodedImage(image: nil)
         }
+    }
+
+    /// 浏览器特征请求头：Safari UA + 按 host 推断的 Referer。
+    /// 豆瓣图床校验 Referer 防盗链（对齐 Flutter 版 cover_image 的 m.douban.com Referer）；
+    /// 其余图床用图片 host 自 Referer，满足常规防盗链校验。
+    nonisolated private static func headers(for url: URL) -> [String: String] {
+        let host = url.host ?? ""
+        let referer = host.contains("douban") ? "https://m.douban.com/" : "https://\(host)/"
+        return [
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
+            "Referer": referer,
+        ]
     }
 
     /// ImageIO 下采样解码：按 640px 上限生成缩略位图，内存占用降一个数量级。

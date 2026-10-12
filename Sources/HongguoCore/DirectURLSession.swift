@@ -22,6 +22,10 @@ public enum DirectURLSession {
         ] as [String: Any]
         cfg.timeoutIntervalForRequest = 20
         cfg.timeoutIntervalForResource = 30
+        // 每主机默认 6 连接上限会级联限流：封面并发提到 12 后这里同步放到 16，
+        // 否则第 7 张起的封面仍压在 session 层排队（TVBox 首页封面出图慢的叠加根因）。
+        // 仅放宽许可、不强制多用，视频拉流仍按需单连接，不影响既有行为。
+        cfg.httpMaximumConnectionsPerHost = 16
         return URLSession(configuration: cfg)
     }()
 }
