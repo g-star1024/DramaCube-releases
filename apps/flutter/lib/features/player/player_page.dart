@@ -19,6 +19,7 @@ import '../../core/models/models.dart';
 import '../../core/widgets/glass_panel.dart';
 import '../catalog/catalog_repository.dart';
 import '../discover/discover_engine.dart';
+import '../tv/tv_player_osd.dart';
 
 /// 播放器页（media_kit libmpv 内核，U3 功能对齐 macOS 版 mpv）。
 ///
@@ -479,6 +480,65 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   @override
   Widget build(BuildContext context) {
     final ep = _detail.episodes[_currentIndex];
+    // 电视模式：TV 独立 OSD（焦点引擎 + 大按钮 + 长按 OK 2x）
+    if (ref.watch(settingsProvider.select((s) => s.tvMode))) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            Video(controller: _controller),
+            if (_playerError != null && !_switching)
+              _ErrorOverlay(
+                message: _playerError!,
+                episodeTitle: ep.title,
+                onRetry: () => _loadEpisode(_currentIndex),
+                onSwitchSource: _openSourceSheet,
+                onNextEpisode: _currentIndex < _detail.episodes.length - 1
+                    ? () => _loadEpisode(_currentIndex + 1)
+                    : null,
+              ),
+            if (_switching)
+              const ColoredBox(
+                color: Colors.black54,
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CircularProgressIndicator(color: Brand.pinkDark),
+                      SizedBox(height: Spacing.md),
+                      Text('正在切换源…', style: TextStyle(color: Colors.white)),
+                    ],
+                  ),
+                ),
+              )
+            else
+              TvPlayerOsd(
+                player: _player,
+                controller: _controller,
+                title: _detail.drama.title,
+                episodeTitle: ep.title,
+                currentEpisode: _currentIndex,
+                episodeCount: _detail.episodes.length,
+                onBack: () {
+                  if (context.canPop()) {
+                    context.pop();
+                  } else {
+                    context.go('/tv');
+                  }
+                },
+                onEpisodes: _openEpisodesSheet,
+                onPrev: _currentIndex > 0
+                    ? () => _loadEpisode(_currentIndex - 1)
+                    : null,
+                onNext: _currentIndex < _detail.episodes.length - 1
+                    ? () => _loadEpisode(_currentIndex + 1)
+                    : null,
+              ),
+          ],
+        ),
+      );
+    }
 
     Widget body = Stack(
       fit: StackFit.expand,
@@ -555,8 +615,8 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
       ],
     );
 
-    // 桌面：快捷键
-    if (_isDesktop) {
+    // 桌面：快捷键（电视模式走焦点引擎，不挂全局快捷键）
+    if (_isDesktop && !ref.read(settingsProvider).tvMode) {
       body = CallbackShortcuts(
         bindings: _shortcuts,
         child: Focus(autofocus: true, child: body),

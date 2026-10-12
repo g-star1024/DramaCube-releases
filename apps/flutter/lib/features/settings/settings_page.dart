@@ -336,6 +336,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           Card(
             child: Column(
               children: [
+                SwitchListTile(
+                  secondary: const Icon(Icons.tv_rounded),
+                  title: const Text('电视模式'),
+                  subtitle: const Text('影院深色 + 遥控焦点引擎（TV 独立版），重启后生效'),
+                  value: settings.tvMode,
+                  onChanged: (v) =>
+                      ref.read(settingsProvider.notifier).setTVMode(v),
+                ),
+                const Divider(height: 1, indent: 16, endIndent: 16),
                 ListTile(
                   leading: const Icon(Icons.file_download_outlined),
                   title: const Text('下载管理'),

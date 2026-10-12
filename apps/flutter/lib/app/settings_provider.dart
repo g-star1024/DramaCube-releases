@@ -17,6 +17,7 @@ class AppSettings {
   final int introSkipSeconds; // 跳片头秒数（0 = 关闭）
   final BufferStrategy bufferStrategy;
   final int cacheHours; // 内容缓存时长（小时）
+  final bool tvMode; // 电视模式（TV 独立版：Cinema Dark + 焦点引擎）
 
   const AppSettings({
     this.appearance = Appearance.system,
@@ -26,6 +27,7 @@ class AppSettings {
     this.introSkipSeconds = 0,
     this.bufferStrategy = BufferStrategy.medium,
     this.cacheHours = 6,
+    this.tvMode = false,
   });
 
   ThemeMode get themeMode => switch (appearance) {
@@ -42,6 +44,7 @@ class AppSettings {
     int? introSkipSeconds,
     BufferStrategy? bufferStrategy,
     int? cacheHours,
+    bool? tvMode,
   }) =>
       AppSettings(
         appearance: appearance ?? this.appearance,
@@ -51,6 +54,7 @@ class AppSettings {
         introSkipSeconds: introSkipSeconds ?? this.introSkipSeconds,
         bufferStrategy: bufferStrategy ?? this.bufferStrategy,
         cacheHours: cacheHours ?? this.cacheHours,
+        tvMode: tvMode ?? this.tvMode,
       );
 }
 
@@ -77,6 +81,7 @@ class SettingsNotifier extends Notifier<AppSettings> {
           BufferStrategy.values.asNameMap()[_prefs.getString('bufferStrategy')] ??
               BufferStrategy.medium,
       cacheHours: _prefs.getInt('cacheHours') ?? 6,
+      tvMode: _prefs.getBool('tvMode') ?? false,
     );
   }
 
@@ -126,6 +131,11 @@ class SettingsNotifier extends Notifier<AppSettings> {
   void setCacheHours(int v) {
     state = state.copyWith(cacheHours: v);
     _write('cacheHours', v);
+  }
+
+  void setTVMode(bool v) {
+    state = state.copyWith(tvMode: v);
+    _write('tvMode', v);
   }
 }
 

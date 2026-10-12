@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'settings_provider.dart';
 import 'theme.dart';
 import 'router.dart';
+import '../features/tv/tv_router.dart';
+import '../features/tv/tv_theme.dart';
 
 /// 剧立方 DramaCube 应用入口。
 class DramaCubeApp extends ConsumerWidget {
@@ -16,8 +18,9 @@ class DramaCubeApp extends ConsumerWidget {
       title: '剧立方 DramaCube',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
-      themeMode: settings.themeMode,
+      // TV 模式强制深色（Cinema Dark 影院主题）
+      darkTheme: settings.tvMode ? tvTheme : AppTheme.darkTheme,
+      themeMode: settings.tvMode ? ThemeMode.dark : settings.themeMode,
       // 界面缩放：全局文本缩放（不动布局 transform，避免 macOS 版失控 bug）
       builder: (context, child) => MediaQuery(
         data: MediaQuery.of(context).copyWith(
@@ -25,7 +28,7 @@ class DramaCubeApp extends ConsumerWidget {
         ),
         child: child ?? const SizedBox.shrink(),
       ),
-      routerConfig: appRouter,
+      routerConfig: settings.tvMode ? tvRouter : appRouter,
     );
   }
 }
