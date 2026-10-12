@@ -7,21 +7,37 @@ import '../features/nas/nas_page.dart';
 import '../features/library/library_page.dart';
 import '../features/settings/settings_page.dart';
 import '../features/player/player_page.dart';
+import '../features/discover/discover_page.dart';
+import '../features/detail/detail_page.dart';
+import '../features/search/search_page.dart';
 import '../core/models/models.dart';
 
 /// 应用路由（宽屏侧栏 / 窄屏底部导航 + 播放器全屏页）。
 final appRouter = GoRouter(
-  initialLocation: '/catalog',
+  initialLocation: '/discover',
   routes: [
-    // 导航壳（视频源/直播/资源库/收藏/设置）
+    // 导航壳（发现/视频源/直播/资源库/收藏/设置）
     ShellRoute(
       builder: (context, state, child) => HomeShell(child: child),
       routes: [
+        GoRoute(path: '/discover', builder: (context, state) => const DiscoverPage()),
         GoRoute(path: '/catalog', builder: (context, state) => const CatalogPage()),
         GoRoute(path: '/live', builder: (context, state) => const LivePage()),
         GoRoute(path: '/nas', builder: (context, state) => const NASPage()),
         GoRoute(path: '/library', builder: (context, state) => const LibraryPage()),
         GoRoute(path: '/settings', builder: (context, state) => const SettingsPage()),
+        GoRoute(
+          path: '/detail',
+          builder: (context, state) {
+            final extra = state.extra as Map<String, dynamic>?;
+            final drama = extra?['drama'] as Drama?;
+            if (drama == null) {
+              return const Scaffold(body: Center(child: Text('参数错误')));
+            }
+            return DetailPage(drama: drama);
+          },
+        ),
+        GoRoute(path: '/search', builder: (context, state) => const SearchPage()),
       ],
     ),
     // 播放器（全屏，无导航壳）
@@ -50,6 +66,7 @@ class _NavItem {
 }
 
 const _navItems = [
+  _NavItem('/discover', Icons.explore_outlined, Icons.explore, '发现'),
   _NavItem('/catalog', Icons.movie_outlined, Icons.movie, '视频源'),
   _NavItem('/live', Icons.tv_outlined, Icons.tv, '电视直播'),
   _NavItem('/nas', Icons.dns_outlined, Icons.dns, '资源库'),

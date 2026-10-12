@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/models/models.dart';
@@ -76,6 +77,38 @@ class CatalogRepository {
     } catch (_) {
       return [];
     }
+  }
+
+  /// 跨源聚合搜索 —— 并发检索全部启用源，每完成一个源回调一次（流式呈现）。
+  ///
+  /// 对齐 macOS 版聚合搜索（8s 短超时 + 单源失败不影响整体）。
+  void aggregateSearch({
+    required String query,
+    required void Function(String siteName, List<Drama> results) onSiteDone,
+    VoidCallback? onAllDone,
+  }) {
+    final sites = _ref.read(sourceManagerProvider).enabledSites;
+    if (sites.isEmpty) {
+      onAllDone?.call();
+      return;
+    }
+    var remaining = sites.length;
+    for (final site in sites) {
+      search(siteKey: site.key, query: query).then((results) {
+        if (results.isNotEmpty) onSiteDone(site.name, results);
+      }).catchError((_) {}).whenComplete(() {
+        remaining--;
+        if (remaining == 0) onAllDone?.call();
+      });
+    }
+  }
+
+  /// 站点显示名。
+  String siteName(String siteKey) {
+    for (final s in _ref.read(sourceManagerProvider).sites) {
+      if (s.key == siteKey) return s.name;
+    }
+    return siteKey;
   }
 
   Drama _dramaFromVod(String siteKey, Map<String, dynamic> vod) {

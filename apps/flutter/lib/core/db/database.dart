@@ -58,6 +58,10 @@ class AppDatabase extends _$AppDatabase {
   Future<void> removeFavorite(String dramaId) =>
       (delete(favorites)..where((t) => t.dramaId.equals(dramaId))).go();
 
+  /// 批量删除收藏（编辑模式多选）。
+  Future<void> removeFavorites(List<String> dramaIds) =>
+      (delete(favorites)..where((t) => t.dramaId.isIn(dramaIds))).go();
+
   // MARK: 历史 / 进度
 
   Future<List<History>> allHistories() =>
@@ -90,4 +94,12 @@ class AppDatabase extends _$AppDatabase {
       (select(histories)..where((t) => t.key.equals('$dramaId:$episodeId'))).getSingleOrNull();
 
   Future<void> clearHistory() => delete(histories).go();
+
+  /// 批量删除历史条目（编辑模式多选，按 key 删）。
+  Future<void> removeHistories(List<String> keys) =>
+      (delete(histories)..where((t) => t.key.isIn(keys))).go();
+
+  /// 按剧删历史（删除该剧全部集的进度）。
+  Future<void> removeHistoryByDrama(String dramaId) =>
+      (delete(histories)..where((t) => t.dramaId.equals(dramaId))).go();
 }

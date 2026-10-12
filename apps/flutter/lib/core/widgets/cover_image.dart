@@ -29,10 +29,20 @@ class CoverImage extends StatelessWidget {
       return _fallback(placeholderColor);
     }
 
+    // 豆瓣图防盗链：带 Referer 请求（对齐 macOS 版 image-proxy 方案）。
+    Map<String, String>? headers = httpHeaders;
+    if (headers == null && Uri.tryParse(url!)?.host.contains('doubanio') == true) {
+      headers = const {
+        'Referer': 'https://m.douban.com/',
+        'User-Agent':
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15',
+      };
+    }
+
     return CachedNetworkImage(
       imageUrl: url!,
       fit: fit,
-      httpHeaders: httpHeaders,
+      httpHeaders: headers,
       fadeInDuration: const Duration(milliseconds: 200),
       placeholder: (_, __) => _fallback(placeholderColor),
       errorWidget: (_, __, ___) => _fallback(placeholderColor),
