@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/db/database.dart';
 import '../../core/models/models.dart';
+import '../../core/platform/tv_mode.dart';
 import 'catalog_repository.dart';
 import 'source_manager.dart';
 
@@ -169,7 +170,7 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
                         controller: _scrollCtrl,
                         padding: const EdgeInsets.all(16),
                         gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-                          maxCrossAxisExtent: MediaQuery.of(context).size.width < 720 ? 120 : 160,
+                          maxCrossAxisExtent: TVMode.cardExtent(context),
                           childAspectRatio: 0.65,
                           crossAxisSpacing: 12,
                           mainAxisSpacing: 12,
@@ -231,7 +232,9 @@ class _DramaCardState extends State<_DramaCard> {
   @override
   Widget build(BuildContext context) {
     final drama = widget.drama;
-    return Card(
+    return TVFocusable(
+      onSelect: widget.onTap,
+      child: Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: widget.onTap,
@@ -298,6 +301,7 @@ class _DramaCardState extends State<_DramaCard> {
             ),
           ],
         ),
+      ),
       ),
     );
   }
