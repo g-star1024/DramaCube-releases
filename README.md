@@ -5,15 +5,15 @@
 - Windows / Linux / macOS（Intel + Apple Silicon）/ Android / Android TV / Docker
 - 源码在私有仓库 hongguo-desktop（不公开）
 
-## 下载（最新 v2.7.0）
+## 下载（最新 v2.7.1）
 
 | 平台 | 文件 | 说明 |
 |------|------|------|
-| Windows 10/11 | `dramacube-windows-v2.7.0.zip` | 解压后运行 `dramacube.exe` |
-| Linux x64 | `dramacube-linux-v2.7.0.tar.gz` | 解压后 `./dramacube` |
-| macOS Apple Silicon | `dramacube-macOS-arm64-v2.7.0.dmg` | M1/M2/M3/M4 |
-| macOS Intel | `dramacube-macOS-x64-v2.7.0.dmg` | x86_64 |
-| Android 8+ | `dramacube-android-v2.7.0.apk` | 手机 / 平板 / Android TV |
+| Windows 10/11 | `dramacube-windows-v2.7.1.zip` | 解压后运行 `dramacube.exe` |
+| Linux x64 | `dramacube-linux-v2.7.1.tar.gz` | 解压后 `./dramacube` |
+| macOS Apple Silicon | `dramacube-macOS-arm64-v2.7.1.dmg` | M1/M2/M3/M4 |
+| macOS Intel | `dramacube-macOS-x64-v2.7.1.dmg` | x86_64 |
+| Android 8+ | `dramacube-android-v2.7.1.apk` | 手机 / 平板 / Android TV |
 
 历史版本见 [Releases 列表](https://github.com/g-star1024/DramaCube-releases/releases)。
 
@@ -34,6 +34,8 @@
 - **下载管理**：mp4 流式 + m3u8 多线程分片 + 断点续传
 - **直播**：M3U/TXT 直播源（连通性探测 + 失效自动禁用）；**资源库**：WebDAV / 本地目录
 - **收藏 / 历史**：本地数据库，「继续观看」跨设备续播
+- **macOS 菜单栏常驻图标**（v2.7.1）：顶部状态栏小图标（自适应深色菜单栏），点开 打开主窗口 / 显示·隐藏窗口 / 退出
+- **全新品牌图标**（v2.7.1）：极简播放键，全平台替换；宽屏导航栏头部同步展示
 
 ## 三端风格
 
@@ -54,6 +56,7 @@
 
 ## 版本历史
 
+- **v2.7.1** — hotfix：修复视频源空键毒丸（测速/禁用当前源后持久化空 `currentSource` → 全站无可播放内容，全路径自愈）；修复大屏目录页只加载首页+无限转圈（内容不满屏不触发分页 → 自动续页）；修复搜索结果滚动重复追加；**全新品牌图标**（全平台）+ 宽屏导航头部图标 + **macOS 菜单栏常驻图标**
 - **v2.7.0** — 源连通性体系（自动测速 / 失效禁用 / 延迟排序 / 默认最快源）+ 三页右上角源切换 + 5 套配色主题一键切换 + 搜索结果点击即播
 - **v2.6.0** — UI 三端升级：Cinema Hero / 毛玻璃 OSD / 快捷键 / 暂停氛围模式 / TV 独立版 / 继续观看
 - **v2.4.1** — 修复 macOS 黑屏（网关端口冲突）
