@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   build-windows:
-    runs-on: windows-latest
+    runs-on: windows-2022
     steps:
       - name: Checkout 私有源码仓库
         uses: actions/checkout@v4
