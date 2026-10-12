@@ -46,17 +46,36 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
     super.dispose();
   }
 
-  void _onScroll() {
-    if (_scrollCtrl.position.pixels >= _scrollCtrl.position.maxScrollExtent - 400) {
-      _load(reset: false);
-    }
+  void _onScroll() => _maybeLoadMore();
+
+  /// 续页评估：接近底部，或内容不满一屏时自动加载下一页。
+  ///
+  /// 大屏缺陷根因：`cardExtent` 固定 160px，宽屏下 GridView 列数可达 8-10 列，
+  /// 首页 12 项仅两行填不满视口 → `maxScrollExtent ≈ 0` → 纯滚动监听永不触发
+  /// → 分页不加载、`_hasMore` 为真使底部转圈永远转（小屏 2 列超高可滚动故正常）。
+  /// 语义对齐 macOS 版 TVBoxBrowseView：ScrollBottomPreferenceKey 持续评估内容底部，
+  /// 距视口不足阈值即续页，同样不满屏场景不会卡。
+  void _maybeLoadMore() {
+    if (!mounted || _isLoading || !_hasMore || _items.isEmpty) return;
+    if (!_scrollCtrl.hasClients) return;
+    final pos = _scrollCtrl.position;
+    final nearBottom = pos.pixels >= pos.maxScrollExtent - 400;
+    // 内容高度不足一屏（含滚动余量）时也要续页，直到填满视口或无更多。
+    final underfilled = pos.maxScrollExtent <= 400;
+    if (nearBottom || underfilled) _load(reset: false);
   }
 
   Future<void> _load({required bool reset}) async {
     if (_isLoading) return;
     final sm = ref.read(sourceManagerProvider);
-    if (sm.currentSource.isEmpty) return;
-    _loadedSource = sm.currentSource;
+    if (sm.currentSource.isEmpty) {
+      // 尚未导入订阅 → 无可加载；已导入但当前源为空（旧版本空键 bug）→ 先自愈。
+      if (sm.sites.isEmpty) return;
+      ref.read(sourceManagerProvider.notifier).autoSelectFastest();
+    }
+    final siteKey = ref.read(sourceManagerProvider).currentSource;
+    if (siteKey.isEmpty) return;
+    _loadedSource = siteKey;
     setState(() => _isLoading = true);
     if (reset) {
       _page = 1;
@@ -64,8 +83,8 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
     }
     final repo = ref.read(catalogRepositoryProvider);
     final fresh = _searchQuery.isNotEmpty
-        ? await repo.search(siteKey: sm.currentSource, query: _searchQuery)
-        : await repo.list(siteKey: sm.currentSource, page: _page);
+        ? await repo.search(siteKey: siteKey, query: _searchQuery)
+        : await repo.list(siteKey: siteKey, page: _page);
     setState(() {
       if (reset) {
         _items = fresh;
@@ -73,7 +92,9 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
         _items.addAll(fresh);
       }
       _page++;
-      _hasMore = fresh.length >= 12;
+      // 搜索为单页结果（仓库固定 pg=1，无分页语义）：不置 hasMore，
+      // 否则滚动到底会把同一批搜索结果反复追加（重复卡片 + 无限增长）。
+      _hasMore = _searchQuery.isEmpty && fresh.length >= 12;
       _isLoading = false;
     });
   }
@@ -112,6 +133,8 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
         _load(reset: true);
       });
     }
+    // 大屏不满屏时滚动监听不触发 → 每帧布局后评估补页（_maybeLoadMore 内有防抖守卫）。
+    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeLoadMore());
     return Scaffold(
       appBar: AppBar(
         title: const Text('视频源'),

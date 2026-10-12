@@ -118,7 +118,17 @@ class SourceState {
 }
 
 class SourceManager extends StateNotifier<SourceState> {
-  SourceManager() : super(const SourceState()) {
+  /// [probeDio] 仅供测试注入（假适配器）；生产环境默认内部构造。
+  SourceManager({Dio? probeDio})
+      : _probeDio = probeDio ??
+            Dio(BaseOptions(
+              connectTimeout: const Duration(seconds: 6),
+              receiveTimeout: const Duration(seconds: 6),
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15',
+              },
+            )),
+        super(const SourceState()) {
     _load();
   }
 
@@ -138,13 +148,7 @@ class SourceManager extends StateNotifier<SourceState> {
   ));
 
   /// 探测专用 Dio（短超时，快速判定失效）。
-  final _probeDio = Dio(BaseOptions(
-    connectTimeout: const Duration(seconds: 6),
-    receiveTimeout: const Duration(seconds: 6),
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15',
-    },
-  ));
+  final Dio _probeDio;
 
   bool _autoProbed = false; // 本次启动是否已自动探测过
 
@@ -178,6 +182,13 @@ class SourceManager extends StateNotifier<SourceState> {
       health: health,
       pinned: prefs.getBool(_kPinned) ?? false,
     );
+    // 自愈：历史数据里的空/失效当前源（旧版本会持久化空键）恢复为可用源，
+    // 避免空 siteKey 让下游静默返回空 → 全站无可播放内容。
+    final healed = _resolveCurrentKey();
+    if (healed != state.currentSource) {
+      state = state.copyWith(currentSource: healed);
+      await _persist();
+    }
     // 首次启动（无历史探测数据）时后台自动测速，让默认源 = 延迟最低的源。
     if (!_autoProbed && sites.isNotEmpty && health.isEmpty) {
       _autoProbed = true;
@@ -246,12 +257,36 @@ class SourceManager extends StateNotifier<SourceState> {
   }
 
   /// 自动选择延迟最低的可用源（仅在用户未手动指定过时生效）。
+  ///
+  /// fastestSite 为空（探测全失败/未测）时回退第一个启用源，
+  /// 保证当前源永不为空（空键会让下游静默返回空）。
   void autoSelectFastest() {
     if (state.pinned) return;
-    final fastest = state.fastestSite;
-    if (fastest == null || state.currentSource == fastest.key) return;
-    state = state.copyWith(currentSource: fastest.key);
+    final target = state.fastestSite?.key ?? _firstEnabledKey();
+    if (target == null || state.currentSource == target) return;
+    state = state.copyWith(currentSource: target);
     _persist();
+  }
+
+  /// 解析一个可用的当前源键：当前仍有效 → 最快可用 → 第一个启用 → 第一个站点。
+  /// 仅当无任何站点时才返回 ''。
+  String _resolveCurrentKey() {
+    final s = state;
+    if (s.currentSource.isNotEmpty &&
+        s.sites.any((x) => x.key == s.currentSource) &&
+        !s.disabled.contains(s.currentSource)) {
+      return s.currentSource;
+    }
+    final fastest = s.fastestSite?.key;
+    if (fastest != null) return fastest;
+    final firstEnabled = _firstEnabledKey();
+    if (firstEnabled != null) return firstEnabled;
+    return s.sites.isNotEmpty ? s.sites.first.key : '';
+  }
+
+  String? _firstEnabledKey() {
+    final enabled = state.enabledSites;
+    return enabled.isNotEmpty ? enabled.first.key : null;
   }
 
   void toggleDisabled(String key) {
@@ -261,11 +296,9 @@ class SourceManager extends StateNotifier<SourceState> {
     } else {
       disabled.add(key);
     }
-    var current = state.currentSource;
-    if (disabled.contains(current)) {
-      current = state.fastestSite?.key ?? '';
-    }
-    state = state.copyWith(disabled: disabled, currentSource: current);
+    state = state.copyWith(disabled: disabled);
+    // 当前源被禁用/失效时切到可用源；有站点时绝不留空键。
+    state = state.copyWith(currentSource: _resolveCurrentKey());
     _persist();
   }
 
@@ -304,12 +337,12 @@ class SourceManager extends StateNotifier<SourceState> {
     }
     // 当前源：未手动指定过 → 跟随最快；手动指定过但已失效 → 也切最快。
     var current = state.currentSource;
-    if (!state.pinned) {
+    if (!state.pinned || disabled.contains(current)) {
       current = state.fastestSite?.key ?? current;
-    } else if (disabled.contains(current)) {
-      current = state.fastestSite?.key ?? '';
     }
     state = state.copyWith(disabled: disabled, currentSource: current, testingAll: false);
+    // 保底：有站点时 currentSource 不允许为空（空键会让下游静默返回空 → 全站无可播放内容）。
+    state = state.copyWith(currentSource: _resolveCurrentKey());
     await _persist();
   }
 }
