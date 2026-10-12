@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app/design_system.dart';
 import '../../core/db/database.dart';
 import '../../core/models/models.dart';
 import '../../core/platform/tv_mode.dart';
+import '../../core/widgets/health_badge.dart';
 import 'catalog_repository.dart';
 import 'source_manager.dart';
 
@@ -24,12 +26,17 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
   bool _isLoading = false;
   bool _hasMore = true;
   String _searchQuery = '';
+  String _loadedSource = '';
 
   @override
   void initState() {
     super.initState();
     _scrollCtrl.addListener(_onScroll);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _load(reset: true));
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // 默认展示延迟最低的源（用户手动切换后按设置展示）。
+      ref.read(sourceManagerProvider.notifier).autoSelectFastest();
+      _load(reset: true);
+    });
   }
 
   @override
@@ -49,6 +56,7 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
     if (_isLoading) return;
     final sm = ref.read(sourceManagerProvider);
     if (sm.currentSource.isEmpty) return;
+    _loadedSource = sm.currentSource;
     setState(() => _isLoading = true);
     if (reset) {
       _page = 1;
@@ -70,9 +78,13 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
     });
   }
 
-  void _onSourceChanged(String key) {
-    ref.read(sourceManagerProvider.notifier).setCurrentSource(key);
-    _load(reset: true);
+  /// 右上角源切换弹层（延迟排序 + 失效标记 + 一键测速）。
+  void _showSourceSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => const _SourceSwitchSheet(),
+    );
   }
 
   void _onSearch(String query) {
@@ -92,9 +104,24 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
   @override
   Widget build(BuildContext context) {
     final sm = ref.watch(sourceManagerProvider);
+    // 源异步加载 / 自动切换后按新源重新拉取。
+    if (sm.currentSource.isNotEmpty && sm.currentSource != _loadedSource) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ref.read(sourceManagerProvider.notifier).autoSelectFastest();
+        _load(reset: true);
+      });
+    }
     return Scaffold(
       appBar: AppBar(
         title: const Text('视频源'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.swap_horiz),
+            tooltip: '切换源',
+            onPressed: _showSourceSheet,
+          ),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(56),
           child: Padding(
@@ -128,26 +155,6 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
       ),
       body: Column(
         children: [
-          // 源切换 chips
-          if (sm.enabledSites.isNotEmpty)
-            SizedBox(
-              height: 48,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                children: [
-                  for (final site in sm.enabledSites)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: ChoiceChip(
-                        label: Text(site.name),
-                        selected: sm.currentSource == site.key,
-                        onSelected: (_) => _onSourceChanged(site.key),
-                      ),
-                    ),
-                ],
-              ),
-            ),
           // 网格列表
           Expanded(
             child: _items.isEmpty && _isLoading
@@ -186,6 +193,95 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
                       ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// 源切换弹层：按延迟排序 + 失效标记 + 一键测试连通性。
+class _SourceSwitchSheet extends ConsumerWidget {
+  const _SourceSwitchSheet();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final sm = ref.watch(sourceManagerProvider);
+    final sorted = sm.sortedEnabledSites;
+    return SafeArea(
+      child: Container(
+        constraints: const BoxConstraints(maxHeight: 560),
+        padding: const EdgeInsets.all(Spacing.lg),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text('切换视频源', style: Theme.of(context).textTheme.titleMedium),
+                ),
+                TextButton.icon(
+                  onPressed: sm.testingAll
+                      ? null
+                      : () => ref.read(sourceManagerProvider.notifier).testAll(),
+                  icon: sm.testingAll
+                      ? const SizedBox(
+                          width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.speed, size: 18),
+                  label: Text(sm.testingAll ? '测试中…' : '一键测试'),
+                ),
+              ],
+            ),
+            const SizedBox(height: Spacing.sm),
+            if (sorted.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: Spacing.xl),
+                child: Center(
+                  child: Text('暂无可用源，请先在设置中心导入订阅',
+                      style: TextStyle(color: Colors.grey)),
+                ),
+              )
+            else
+              Flexible(
+                child: ListView(
+                  shrinkWrap: true,
+                  children: [
+                    for (final site in sorted)
+                      ListTile(
+                        leading: Icon(
+                          sm.currentSource == site.key
+                              ? Icons.radio_button_checked
+                              : Icons.radio_button_off,
+                          color: sm.currentSource == site.key
+                              ? Theme.of(context).colorScheme.primary
+                              : Colors.grey,
+                        ),
+                        title: Text(site.name),
+                        subtitle: Text(
+                          site.api,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 11),
+                        ),
+                        trailing: HealthBadge(
+                          tested: sm.health[site.key] != null,
+                          ok: sm.health[site.key]?.ok ?? false,
+                          latencyMs: sm.health[site.key]?.latencyMs,
+                        ),
+                        onTap: () {
+                          ref.read(sourceManagerProvider.notifier).setCurrentSource(site.key);
+                          Navigator.pop(context);
+                        },
+                      ),
+                  ],
+                ),
+              ),
+            const SizedBox(height: Spacing.sm),
+            Text(
+              '默认展示延迟最低的源；手动切换后按你的设置展示。失效源可在设置中心重新启用。',
+              style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+            ),
+          ],
+        ),
       ),
     );
   }

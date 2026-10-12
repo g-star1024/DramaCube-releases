@@ -22,16 +22,57 @@ class NASEntry {
   const NASEntry({required this.name, required this.isDir});
 }
 
+/// 资源库连通性探测结果。
+class LibHealth {
+  final int? latencyMs;
+  final bool ok;
+  final DateTime checkedAt;
+
+  const LibHealth({required this.ok, this.latencyMs, required this.checkedAt});
+
+  Map<String, dynamic> toJson() => {
+        'ok': ok,
+        'ms': latencyMs,
+        'at': checkedAt.millisecondsSinceEpoch,
+      };
+
+  static LibHealth? fromJson(Map<String, dynamic> j) {
+    final at = j['at'];
+    if (at is! int) return null;
+    return LibHealth(
+      ok: j['ok'] == true,
+      latencyMs: j['ms'] is int ? j['ms'] as int : null,
+      checkedAt: DateTime.fromMillisecondsSinceEpoch(at),
+    );
+  }
+}
+
 class NASState {
   final List<NASLibrary> libraries;
+  final String currentLibraryId;
+  final Map<String, LibHealth> health;
   final bool isLoading;
   final String? error;
 
-  const NASState({this.libraries = const [], this.isLoading = false, this.error});
+  const NASState({
+    this.libraries = const [],
+    this.currentLibraryId = '',
+    this.health = const {},
+    this.isLoading = false,
+    this.error,
+  });
 
-  NASState copyWith({List<NASLibrary>? libraries, bool? isLoading, String? error}) =>
+  NASState copyWith({
+    List<NASLibrary>? libraries,
+    String? currentLibraryId,
+    Map<String, LibHealth>? health,
+    bool? isLoading,
+    String? error,
+  }) =>
       NASState(
         libraries: libraries ?? this.libraries,
+        currentLibraryId: currentLibraryId ?? this.currentLibraryId,
+        health: health ?? this.health,
         isLoading: isLoading ?? this.isLoading,
         error: error ?? this.error,
       );
@@ -45,6 +86,8 @@ class NASManager extends StateNotifier<NASState> {
   }
 
   static const _kLibraries = 'nas.libraries';
+  static const _kCurrent = 'nas.current';
+  static const _kHealth = 'nas.health';
   static const videoExts = {'mp4', 'mkv', 'mov', 'm4v', 'avi', 'wmv', 'flv', 'ts', 'm3u8'};
 
   final _dio = Dio(BaseOptions(
@@ -62,12 +105,71 @@ class NASManager extends StateNotifier<NASState> {
         libs = list.map((e) => NASLibrary.fromJson(e as Map<String, dynamic>)).toList();
       } catch (_) {}
     }
-    state = state.copyWith(libraries: libs);
+    Map<String, LibHealth> health = {};
+    final healthJson = prefs.getString(_kHealth);
+    if (healthJson != null) {
+      try {
+        final map = jsonDecode(healthJson) as Map<String, dynamic>;
+        map.forEach((k, v) {
+          if (v is Map<String, dynamic>) {
+            final h = LibHealth.fromJson(v);
+            if (h != null) health[k] = h;
+          }
+        });
+      } catch (_) {}
+    }
+    state = state.copyWith(
+      libraries: libs,
+      currentLibraryId: prefs.getString(_kCurrent) ?? '',
+      health: health,
+    );
   }
 
   Future<void> _persist() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_kLibraries, jsonEncode(state.libraries.map((l) => l.toJson()).toList()));
+    await prefs.setString(_kCurrent, state.currentLibraryId);
+    await prefs.setString(
+      _kHealth,
+      jsonEncode(state.health.map((k, v) => MapEntry(k, v.toJson()))),
+    );
+  }
+
+  /// 切换当前资源库。
+  Future<void> setCurrentLibrary(String id) async {
+    if (state.currentLibraryId == id) return;
+    state = state.copyWith(currentLibraryId: id);
+    await _persist();
+  }
+
+  /// 资源库连通性探测（webdav PROPFIND 根目录 / mount 目录存在性，计时）。
+  Future<LibHealth> probeLibrary(NASLibrary lib) async {
+    final sw = Stopwatch()..start();
+    try {
+      if (lib.type == 'mount') {
+        final dir = Directory(lib.baseURL);
+        if (!await dir.exists()) throw StateError('目录不存在');
+      } else {
+        await _webdavList(lib, '');
+      }
+      sw.stop();
+      return LibHealth(ok: true, latencyMs: sw.elapsedMilliseconds, checkedAt: DateTime.now());
+    } catch (_) {
+      sw.stop();
+      return LibHealth(ok: false, latencyMs: null, checkedAt: DateTime.now());
+    }
+  }
+
+  /// 一键测试全部资源库连通性（仅标记，不自动禁用）。
+  Future<void> testAllLibraries() async {
+    if (state.libraries.isEmpty) return;
+    final results = <String, LibHealth>{};
+    await Future.wait(state.libraries.map((l) async {
+      results[l.id] = await probeLibrary(l);
+    }));
+    if (!mounted) return;
+    state = state.copyWith(health: results);
+    await _persist();
   }
 
   Future<void> addLibrary({
@@ -91,7 +193,10 @@ class NASManager extends StateNotifier<NASState> {
   }
 
   Future<void> removeLibrary(String id) async {
-    state = state.copyWith(libraries: state.libraries.where((l) => l.id != id).toList());
+    state = state.copyWith(
+      libraries: state.libraries.where((l) => l.id != id).toList(),
+      currentLibraryId: state.currentLibraryId == id ? '' : state.currentLibraryId,
+    );
     await _persist();
   }
 
@@ -102,7 +207,7 @@ class NASManager extends StateNotifier<NASState> {
             ? NASLibrary(id: l.id, name: l.name, type: l.type, baseURL: l.baseURL,
                 username: l.username, password: l.password, enabled: enabled)
             : l,
-    ]);
+    ], currentLibraryId: !enabled && state.currentLibraryId == id ? '' : state.currentLibraryId);
     await _persist();
   }
 

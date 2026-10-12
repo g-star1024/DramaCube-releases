@@ -4,6 +4,7 @@ import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 
 import '../../core/models/models.dart';
+import '../../core/widgets/health_badge.dart';
 import 'live_manager.dart';
 
 /// 电视直播页：左侧分组频道列表 + 右侧播放器（对齐 macOS 版 LiveView）。
@@ -26,14 +27,19 @@ class _LivePageState extends ConsumerState<LivePage> {
         title: const Text('电视直播'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            tooltip: '直播源管理',
-            onPressed: () => _showSourceManager(context),
+            icon: const Icon(Icons.swap_horiz),
+            tooltip: '切换直播源',
+            onPressed: _showSourceSheet,
           ),
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: '刷新频道',
             onPressed: () => ref.read(liveManagerProvider.notifier).refresh(),
+          ),
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: '直播源管理',
+            onPressed: () => _showSourceManager(context),
           ),
         ],
       ),
@@ -123,6 +129,119 @@ class _LivePageState extends ConsumerState<LivePage> {
       context: context,
       isScrollControlled: true,
       builder: (_) => const _SourceManagerSheet(),
+    );
+  }
+
+  /// 右上角直播源切换弹层（延迟排序 + 失效标记 + 一键测试）。
+  void _showSourceSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => _LiveSourceSheet(
+        onSelected: () => setState(() => _currentChannel = null),
+      ),
+    );
+  }
+}
+
+/// 直播源切换弹层。
+class _LiveSourceSheet extends ConsumerStatefulWidget {
+  final VoidCallback onSelected;
+  const _LiveSourceSheet({required this.onSelected});
+
+  @override
+  ConsumerState<_LiveSourceSheet> createState() => _LiveSourceSheetState();
+}
+
+class _LiveSourceSheetState extends ConsumerState<_LiveSourceSheet> {
+  @override
+  Widget build(BuildContext context) {
+    final live = ref.watch(liveManagerProvider);
+    final sorted = live.sortedEnabledSources;
+    return SafeArea(
+      child: Container(
+        constraints: const BoxConstraints(maxHeight: 520),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text('切换直播源', style: Theme.of(context).textTheme.titleMedium),
+                ),
+                TextButton.icon(
+                  onPressed: () => ref.read(liveManagerProvider.notifier).testAllSources(),
+                  icon: const Icon(Icons.speed, size: 18),
+                  label: const Text('一键测试'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            if (sorted.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 32),
+                child: Center(child: Text('暂无可用直播源', style: TextStyle(color: Colors.grey))),
+              )
+            else
+              Flexible(
+                child: ListView(
+                  shrinkWrap: true,
+                  children: [
+                    ListTile(
+                      leading: Icon(
+                        live.currentSourceId.isEmpty
+                            ? Icons.radio_button_checked
+                            : Icons.radio_button_off,
+                        color: live.currentSourceId.isEmpty
+                            ? Theme.of(context).colorScheme.primary
+                            : Colors.grey,
+                      ),
+                      title: const Text('全部源'),
+                      subtitle: Text('合并 ${live.channels.length} 个频道',
+                          style: const TextStyle(fontSize: 11)),
+                      onTap: () {
+                        ref.read(liveManagerProvider.notifier).setCurrentSource('');
+                        widget.onSelected();
+                        Navigator.pop(context);
+                      },
+                    ),
+                    for (final source in sorted)
+                      ListTile(
+                        leading: Icon(
+                          live.currentSourceId == source.id
+                              ? Icons.radio_button_checked
+                              : Icons.radio_button_off,
+                          color: live.currentSourceId == source.id
+                              ? Theme.of(context).colorScheme.primary
+                              : Colors.grey,
+                        ),
+                        title: Text(source.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+                        subtitle: Text(source.url, maxLines: 1, overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 11)),
+                        trailing: HealthBadge(
+                          tested: live.health[source.id] != null,
+                          ok: live.health[source.id]?.ok ?? false,
+                          latencyMs: live.health[source.id]?.latencyMs,
+                        ),
+                        onTap: () {
+                          ref.read(liveManagerProvider.notifier).setCurrentSource(source.id);
+                          widget.onSelected();
+                          Navigator.pop(context);
+                        },
+                      ),
+                  ],
+                ),
+              ),
+            const SizedBox(height: 8),
+            Text(
+              '一键测试会拉取各源订阅地址计时，失效源自动禁用；直播内容按所选源展示。',
+              style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

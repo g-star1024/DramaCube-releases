@@ -4,6 +4,7 @@ import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 
 import '../../core/models/models.dart';
+import '../../core/widgets/health_badge.dart';
 import 'nas_manager.dart';
 
 /// NAS 资源库页：库选择 + 目录导航 + 视频播放（对齐 macOS 版 NASBrowseView）。
@@ -88,6 +89,11 @@ class _NASPageState extends ConsumerState<NASPage> {
             ? IconButton(icon: const Icon(Icons.arrow_back), onPressed: _goUp)
             : null,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.swap_horiz),
+            tooltip: '切换资源库',
+            onPressed: _showLibrarySheet,
+          ),
           IconButton(
             icon: const Icon(Icons.settings_outlined),
             tooltip: '资源库管理',
@@ -203,6 +209,110 @@ class _NASPageState extends ConsumerState<NASPage> {
       context: context,
       isScrollControlled: true,
       builder: (_) => const _LibraryManagerSheet(),
+    );
+  }
+
+  /// 右上角资源库切换弹层（连通性徽标 + 一键测试）。
+  void _showLibrarySheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => const _LibrarySwitchSheet(),
+    );
+  }
+}
+
+/// 资源库切换弹层。
+class _LibrarySwitchSheet extends ConsumerWidget {
+  const _LibrarySwitchSheet();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final nas = ref.watch(nasManagerProvider);
+    final libs = nas.enabledLibraries;
+    return SafeArea(
+      child: Container(
+        constraints: const BoxConstraints(maxHeight: 480),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text('切换资源库', style: Theme.of(context).textTheme.titleMedium),
+                ),
+                TextButton.icon(
+                  onPressed: () => ref.read(nasManagerProvider.notifier).testAllLibraries(),
+                  icon: const Icon(Icons.speed, size: 18),
+                  label: const Text('一键测试'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            if (libs.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 32),
+                child: Center(child: Text('暂无可用资源库', style: TextStyle(color: Colors.grey))),
+              )
+            else
+              Flexible(
+                child: ListView(
+                  shrinkWrap: true,
+                  children: [
+                    for (final lib in libs)
+                      ListTile(
+                        leading: Icon(
+                          nas.currentLibraryId == lib.id
+                              ? Icons.radio_button_checked
+                              : Icons.radio_button_off,
+                          color: nas.currentLibraryId == lib.id
+                              ? Theme.of(context).colorScheme.primary
+                              : Colors.grey,
+                        ),
+                        title: Text(lib.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+                        subtitle: Text(
+                          lib.baseURL,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 11),
+                        ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              lib.type == 'webdav' ? Icons.cloud_outlined : Icons.folder_outlined,
+                              size: 16,
+                              color: Colors.grey,
+                            ),
+                            const SizedBox(width: 8),
+                            HealthBadge(
+                              tested: nas.health[lib.id] != null,
+                              ok: nas.health[lib.id]?.ok ?? false,
+                              latencyMs: nas.health[lib.id]?.latencyMs,
+                            ),
+                          ],
+                        ),
+                        onTap: () async {
+                          await ref.read(nasManagerProvider.notifier).setCurrentLibrary(lib.id);
+                          if (!context.mounted) return;
+                          Navigator.pop(context);
+                          final page = context.findAncestorStateOfType<_NASPageState>();
+                          page?._browse(lib, '');
+                        },
+                      ),
+                  ],
+                ),
+              ),
+            const SizedBox(height: 8),
+            Text(
+              '一键测试会对 WebDAV 发 PROPFIND / 对本机目录查存在性并计时，仅标记不影响启用状态。',
+              style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
