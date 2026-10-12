@@ -5,15 +5,15 @@
 - Windows / Linux / macOS（Intel + Apple Silicon）/ Android / Android TV / Docker
 - 源码在私有仓库 hongguo-desktop（不公开）
 
-## 下载（最新 v2.7.1）
+## 下载（最新 v2.7.2）
 
 | 平台 | 文件 | 说明 |
 |------|------|------|
-| Windows 10/11 | `dramacube-windows-v2.7.1.zip` | 解压后运行 `dramacube.exe` |
-| Linux x64 | `dramacube-linux-v2.7.1.tar.gz` | 解压后 `./dramacube` |
-| macOS Apple Silicon | `dramacube-macOS-arm64-v2.7.1.dmg` | M1/M2/M3/M4 |
-| macOS Intel | `dramacube-macOS-x64-v2.7.1.dmg` | x86_64 |
-| Android 8+ | `dramacube-android-v2.7.1.apk` | 手机 / 平板 / Android TV |
+| Windows 10/11 | `dramacube-windows-v2.7.2.zip` | 解压后运行 `dramacube.exe` |
+| Linux x64 | `dramacube-linux-v2.7.2.tar.gz` | 解压后 `./dramacube` |
+| macOS Apple Silicon | `dramacube-macOS-arm64-v2.7.2.dmg` | M1/M2/M3/M4 |
+| macOS Intel | `dramacube-macOS-x64-v2.7.2.dmg` | x86_64 |
+| Android 8+ | `dramacube-android-v2.7.2.apk` | 手机 / 平板 / Android TV |
 
 历史版本见 [Releases 列表](https://github.com/g-star1024/DramaCube-releases/releases)。
 
@@ -56,6 +56,7 @@
 
 ## 版本历史
 
+- **v2.7.2** — 八项修复：播放链路对齐 Swift 版（m3u8 线路优先 + `$` 签名参数还原，修复「Failed to recognize file format」）；搜索/详情「立即观看」自动选源立即可点；视频源频道分类栏；全部弹窗居中（8 处）；NAS 过滤空文件夹；macOS 菜单栏对齐 Swift 版（播放暂停/上下集遥控 + 关闭最小化到菜单栏 + 隐藏 Dock 图标）；Mac 图标符合 Apple HIG（内容占画布 80%）；Swift 原生版缩略图修复
 - **v2.7.1** — hotfix：修复视频源空键毒丸（测速/禁用当前源后持久化空 `currentSource` → 全站无可播放内容，全路径自愈）；修复大屏目录页只加载首页+无限转圈（内容不满屏不触发分页 → 自动续页）；修复搜索结果滚动重复追加；**全新品牌图标**（全平台）+ 宽屏导航头部图标 + **macOS 菜单栏常驻图标**
 - **v2.7.0** — 源连通性体系（自动测速 / 失效禁用 / 延迟排序 / 默认最快源）+ 三页右上角源切换 + 5 套配色主题一键切换 + 搜索结果点击即播
 - **v2.6.0** — UI 三端升级：Cinema Hero / 毛玻璃 OSD / 快捷键 / 暂停氛围模式 / TV 独立版 / 继续观看
