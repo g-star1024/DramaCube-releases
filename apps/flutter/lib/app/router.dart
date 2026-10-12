@@ -9,11 +9,11 @@ import '../features/settings/settings_page.dart';
 import '../features/player/player_page.dart';
 import '../core/models/models.dart';
 
-/// 应用路由（底部导航 + 播放器全屏页）。
+/// 应用路由（宽屏侧栏 / 窄屏底部导航 + 播放器全屏页）。
 final appRouter = GoRouter(
   initialLocation: '/catalog',
   routes: [
-    // 底部导航壳（视频源/直播/资源库/收藏/设置）
+    // 导航壳（视频源/直播/资源库/收藏/设置）
     ShellRoute(
       builder: (context, state, child) => HomeShell(child: child),
       routes: [
@@ -24,7 +24,7 @@ final appRouter = GoRouter(
         GoRoute(path: '/settings', builder: (context, state) => const SettingsPage()),
       ],
     ),
-    // 播放器（全屏，无底部导航）
+    // 播放器（全屏，无导航壳）
     GoRoute(
       path: '/player',
       builder: (context, state) {
@@ -40,7 +40,24 @@ final appRouter = GoRouter(
   ],
 );
 
-/// 底部导航壳。
+/// 导航项定义（壳与 Rail/底栏共用）。
+class _NavItem {
+  final String path;
+  final IconData icon;
+  final IconData selectedIcon;
+  final String label;
+  const _NavItem(this.path, this.icon, this.selectedIcon, this.label);
+}
+
+const _navItems = [
+  _NavItem('/catalog', Icons.movie_outlined, Icons.movie, '视频源'),
+  _NavItem('/live', Icons.tv_outlined, Icons.tv, '电视直播'),
+  _NavItem('/nas', Icons.dns_outlined, Icons.dns, '资源库'),
+  _NavItem('/library', Icons.favorite_outline, Icons.favorite, '收藏'),
+  _NavItem('/settings', Icons.settings_outlined, Icons.settings, '设置'),
+];
+
+/// 自适应导航壳 —— 宽屏（≥900）左侧 NavigationRail，窄屏底部导航。
 class HomeShell extends StatelessWidget {
   final Widget child;
   const HomeShell({super.key, required this.child});
@@ -48,33 +65,54 @@ class HomeShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final location = GoRouterState.of(context).uri.path;
-    final index = switch (location) {
-      '/catalog' => 0,
-      '/live' => 1,
-      '/nas' => 2,
-      '/library' => 3,
-      '/settings' => 4,
-      _ => 0,
-    };
+    final index = _navItems.indexWhere((i) => location.startsWith(i.path));
+    final currentIndex = index == -1 ? 0 : index;
+    final isWide = MediaQuery.sizeOf(context).width >= 900;
+
+    if (isWide) {
+      return Scaffold(
+        body: Row(
+          children: [
+            NavigationRail(
+              selectedIndex: currentIndex,
+              onDestinationSelected: (i) => context.go(_navItems[i].path),
+              labelType: NavigationRailLabelType.all,
+              leading: const Padding(
+                padding: EdgeInsets.only(top: 12, bottom: 8),
+                child: Column(
+                  children: [
+                    Text('剧立方', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ),
+              destinations: [
+                for (final item in _navItems)
+                  NavigationRailDestination(
+                    icon: Icon(item.icon),
+                    selectedIcon: Icon(item.selectedIcon),
+                    label: Text(item.label),
+                  ),
+              ],
+            ),
+            const VerticalDivider(width: 1),
+            Expanded(child: child),
+          ],
+        ),
+      );
+    }
+
     return Scaffold(
       body: child,
       bottomNavigationBar: NavigationBar(
-        selectedIndex: index,
-        onDestinationSelected: (i) {
-          switch (i) {
-            case 0: context.go('/catalog');
-            case 1: context.go('/live');
-            case 2: context.go('/nas');
-            case 3: context.go('/library');
-            case 4: context.go('/settings');
-          }
-        },
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.movie_outlined), selectedIcon: Icon(Icons.movie), label: '视频源'),
-          NavigationDestination(icon: Icon(Icons.tv_outlined), selectedIcon: Icon(Icons.tv), label: '电视直播'),
-          NavigationDestination(icon: Icon(Icons.dns_outlined), selectedIcon: Icon(Icons.dns), label: '资源库'),
-          NavigationDestination(icon: Icon(Icons.favorite_outline), selectedIcon: Icon(Icons.favorite), label: '收藏'),
-          NavigationDestination(icon: Icon(Icons.settings_outlined), selectedIcon: Icon(Icons.settings), label: '设置'),
+        selectedIndex: currentIndex,
+        onDestinationSelected: (i) => context.go(_navItems[i].path),
+        destinations: [
+          for (final item in _navItems)
+            NavigationDestination(
+              icon: Icon(item.icon),
+              selectedIcon: Icon(item.selectedIcon),
+              label: item.label,
+            ),
         ],
       ),
     );
