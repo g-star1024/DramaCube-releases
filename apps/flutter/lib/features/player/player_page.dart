@@ -1,26 +1,31 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
+import 'package:screen_brightness/screen_brightness.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../../app/design_system.dart';
+import '../../app/motion.dart';
 import '../../app/settings_provider.dart';
 import '../../core/db/database.dart';
 import '../../core/models/models.dart';
+import '../../core/widgets/glass_panel.dart';
 import '../catalog/catalog_repository.dart';
 import '../discover/discover_engine.dart';
 
 /// 播放器页（media_kit libmpv 内核，U3 功能对齐 macOS 版 mpv）。
 ///
-/// - 选集面板（胶囊网格 + 当前定位 + 已看标记）
-/// - 播放中换源（跨源搜索 + 续播位置保留）+ 查找其他季
-/// - 自动连播 / 跳片头 / 下集预缓冲（90% 预热）
-/// - 双击全屏（桌面）/ 音量控制 / 错误覆盖层 / 倍速写回全局设置
+/// S2 三端分化（v2.5）：
+/// - 桌面：毛玻璃 OSD（自动隐藏 3s）+ 全套快捷键 + 暂停 3s 氛围模式（虚化当前帧）
+/// - 移动：双击快进退（左 -10s / 右 +10s / 中全屏）+ 边缘滑（左亮度 / 右音量）
+/// - 共通：选集/换源面板、自动连播、跳片头、下集预缓冲、倍速写回设置
 class PlayerPage extends ConsumerStatefulWidget {
   final DramaDetail detail;
   final int startIndex;
@@ -50,6 +55,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   StreamSubscription<Duration>? _positionSub;
   StreamSubscription<Duration>? _durationSub;
   StreamSubscription<String>? _errorSub;
+  StreamSubscription<bool>? _playingSub;
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
   String? _playerError;
@@ -70,11 +76,37 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   bool _sourceSearching = false;
   String _sourceQuery = '';
 
+  // ---- S2：OSD / 氛围模式 / 手势反馈 ----
+
+  /// OSD 可见性（tap / 鼠标移动唤起，播放中 3s 自动隐藏）。
+  bool _osdVisible = true;
+  Timer? _osdHideTimer;
+
+  /// 暂停氛围模式（暂停 3s 后虚化当前帧）。
+  bool _ambience = false;
+  Timer? _ambienceTimer;
+
+  /// 双击快进反馈（'-10s' / '+10s'）。
+  String? _seekFeedback;
+  Timer? _seekFeedbackTimer;
+
+  /// 边缘滑音量指示（0..100）。
+  double? _volumeIndicator;
+  double _volumeDragStart = 100;
+  double _volumeDragValue = 100;
+
+  /// 边缘滑亮度指示（0.05..1）。
+  double? _brightnessIndicator;
+  double _brightnessDragStart = 1;
+  double _brightnessDragValue = 1;
+
   bool get _isDesktop =>
       !kIsWeb &&
       (defaultTargetPlatform == TargetPlatform.windows ||
           defaultTargetPlatform == TargetPlatform.linux ||
           defaultTargetPlatform == TargetPlatform.macOS);
+
+  bool get _isMobile => !kIsWeb && !_isDesktop;
 
   @override
   void initState() {
@@ -93,6 +125,20 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     _errorSub = _player.stream.error.listen((msg) {
       if (msg.isNotEmpty && mounted) setState(() => _playerError = msg);
     });
+    // 播放状态 → OSD 隐藏策略 + 暂停氛围模式
+    _playingSub = _player.stream.playing.listen((playing) {
+      if (!mounted) return;
+      _ambienceTimer?.cancel();
+      if (playing) {
+        if (_ambience) setState(() => _ambience = false);
+        _pokeOsd();
+      } else {
+        setState(() => _osdVisible = true);
+        _ambienceTimer = Timer(const Duration(seconds: 3), () {
+          if (mounted) setState(() => _ambience = true);
+        });
+      }
+    });
     _loadWatched();
     _loadEpisode(_currentIndex);
     _progressTimer = Timer.periodic(const Duration(seconds: 5), (_) => _saveProgress());
@@ -110,12 +156,109 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     _positionSub?.cancel();
     _durationSub?.cancel();
     _errorSub?.cancel();
+    _playingSub?.cancel();
+    _osdHideTimer?.cancel();
+    _ambienceTimer?.cancel();
+    _seekFeedbackTimer?.cancel();
     _saveProgress();
     _player.dispose();
     _prebuffer?.dispose();
     _db.close();
     super.dispose();
   }
+
+  // MARK: - OSD 显隐 / 氛围 / 反馈
+
+  /// 唤起 OSD 并重置 3s 隐藏计时（暂停时常显）。
+  void _pokeOsd() {
+    if (!mounted) return;
+    setState(() {
+      _osdVisible = true;
+      _ambience = false;
+    });
+    _osdHideTimer?.cancel();
+    _osdHideTimer = Timer(const Duration(seconds: 3), () {
+      if (!mounted) return;
+      // 暂停中不隐藏（营造氛围模式前置态）
+      if (_player.state.playing) setState(() => _osdVisible = false);
+    });
+  }
+
+  void _toggleOsd() {
+    if (_osdVisible) {
+      _osdHideTimer?.cancel();
+      setState(() => _osdVisible = false);
+    } else {
+      _pokeOsd();
+    }
+  }
+
+  void _showSeekFeedback(String text) {
+    setState(() => _seekFeedback = text);
+    _seekFeedbackTimer?.cancel();
+    _seekFeedbackTimer = Timer(const Duration(milliseconds: 600), () {
+      if (mounted) setState(() => _seekFeedback = null);
+    });
+  }
+
+  Future<void> _seekBy(int seconds) async {
+    final target = _position + Duration(seconds: seconds);
+    final clamped = target < Duration.zero ? Duration.zero : target;
+    await _player.seek(clamped);
+    _showSeekFeedback(seconds > 0 ? '+${seconds}s' : '${seconds}s');
+  }
+
+  Future<void> _setVolumeDelta(double delta) async {
+    final v = (_player.state.volume + delta).clamp(0.0, 100.0);
+    await _player.setVolume(v);
+    _showSeekFeedback('音量 ${v.round()}%');
+  }
+
+  // MARK: - 快捷键（桌面）
+
+  Map<SingleActivator, VoidCallback> get _shortcuts => {
+        const SingleActivator(LogicalKeyboardKey.space): () => _player.playOrPause(),
+        const SingleActivator(LogicalKeyboardKey.arrowLeft): () => _seekBy(-10),
+        const SingleActivator(LogicalKeyboardKey.arrowRight): () => _seekBy(10),
+        const SingleActivator(LogicalKeyboardKey.arrowUp): () => _setVolumeDelta(10),
+        const SingleActivator(LogicalKeyboardKey.arrowDown): () => _setVolumeDelta(-10),
+        const SingleActivator(LogicalKeyboardKey.keyF): _toggleFullscreen,
+        if (_fullscreen)
+          const SingleActivator(LogicalKeyboardKey.escape): _toggleFullscreen,
+        ...{
+          for (final (i, key) in const [
+            (0, LogicalKeyboardKey.digit0),
+            (1, LogicalKeyboardKey.digit1),
+            (2, LogicalKeyboardKey.digit2),
+            (3, LogicalKeyboardKey.digit3),
+            (4, LogicalKeyboardKey.digit4),
+            (5, LogicalKeyboardKey.digit5),
+            (6, LogicalKeyboardKey.digit6),
+            (7, LogicalKeyboardKey.digit7),
+            (8, LogicalKeyboardKey.digit8),
+            (9, LogicalKeyboardKey.digit9),
+          ])
+            SingleActivator(key): () => _seekToFraction(i / 10),
+        },
+        const SingleActivator(LogicalKeyboardKey.bracketLeft): () =>
+            _setRateDelta(-0.25),
+        const SingleActivator(LogicalKeyboardKey.bracketRight): () =>
+            _setRateDelta(0.25),
+      };
+
+  void _seekToFraction(double f) {
+    if (_duration.inSeconds <= 0) return;
+    _player.seek(Duration(seconds: (f * _duration.inSeconds).toInt()));
+  }
+
+  Future<void> _setRateDelta(double delta) async {
+    final r = (_player.state.rate + delta).clamp(0.5, 3.0);
+    await _player.setRate(r);
+    ref.read(settingsProvider.notifier).setDefaultRate(r);
+    _showSeekFeedback('${r.toStringAsFixed(2)}x');
+  }
+
+  // MARK: - 数据逻辑（U3 保持不变）
 
   Future<void> _loadWatched() async {
     final hists = await _db.allHistories();
@@ -310,7 +453,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     await _loadEpisode(idx, resumeAt: resumeAt);
   }
 
-  // MARK: - 全屏（桌面）
+  // MARK: - 全屏
 
   bool _fullscreen = false;
 
@@ -336,196 +479,475 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   @override
   Widget build(BuildContext context) {
     final ep = _detail.episodes[_currentIndex];
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: _fullscreen
-          ? null
-          : AppBar(
-              backgroundColor: Colors.black,
-              foregroundColor: Colors.white,
-              title: Text('${_detail.drama.title} · ${ep.title}'),
-              actions: [
+
+    Widget body = Stack(
+      fit: StackFit.expand,
+      children: [
+        // 视频层（氛围模式：虚化当前帧）
+        if (_ambience)
+          ImageFiltered(
+            imageFilter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+            child: Video(controller: _controller),
+          )
+        else
+          Video(controller: _controller),
+        // 氛围模式文案层
+        if (_ambience)
+          Container(
+            color: Colors.black45,
+            alignment: Alignment.center,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _detail.drama.title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 26,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: Spacing.sm),
+                Text(
+                  '暂停中 · ${ep.title}',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.7),
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        // 顶部栏（返回 + 标题 + 选集/换源）
+        _buildTopBar(ep),
+        // 底部毛玻璃 OSD
+        _buildBottomOsd(),
+        // 手势层（移动分区 / 桌面唤起）
+        _buildGestureLayer(),
+        // 加载 / 换源中
+        if (_switching)
+          const ColoredBox(
+            color: Colors.black54,
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(color: Brand.pinkDark),
+                  SizedBox(height: Spacing.md),
+                  Text('正在切换源…', style: TextStyle(color: Colors.white)),
+                ],
+              ),
+            ),
+          ),
+        // 错误覆盖层
+        if (_playerError != null && !_switching)
+          _ErrorOverlay(
+            message: _playerError!,
+            episodeTitle: ep.title,
+            onRetry: () => _loadEpisode(_currentIndex),
+            onSwitchSource: _openSourceSheet,
+            onNextEpisode: _currentIndex < _detail.episodes.length - 1
+                ? () => _loadEpisode(_currentIndex + 1)
+                : null,
+          ),
+        // 双击快进 / 音量 / 亮度反馈
+        _buildFeedbackOverlay(),
+      ],
+    );
+
+    // 桌面：快捷键
+    if (_isDesktop) {
+      body = CallbackShortcuts(
+        bindings: _shortcuts,
+        child: Focus(autofocus: true, child: body),
+      );
+    }
+
+    return Scaffold(backgroundColor: Colors.black, body: body);
+  }
+
+  /// 顶部栏（渐变衬底 + 返回 + 标题 + 选集/换源）。
+  Widget _buildTopBar(Episode ep) {
+    return Positioned(
+      top: 0,
+      left: 0,
+      right: 0,
+      child: AnimatedSlide(
+        offset: _osdVisible ? Offset.zero : const Offset(0, -1),
+        duration: Motion.durMed,
+        curve: Motion.curveEmphasized,
+        child: AnimatedOpacity(
+          opacity: _osdVisible ? 1 : 0,
+          duration: Motion.durFast,
+          child: Container(
+            padding: EdgeInsets.only(
+              top: MediaQuery.paddingOf(context).top + 4,
+              left: Spacing.md,
+              right: Spacing.md,
+              bottom: Spacing.sm,
+            ),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Colors.black54, Colors.transparent],
+              ),
+            ),
+            child: Row(
+              children: [
                 IconButton(
-                  icon: const Icon(Icons.grid_view_outlined),
+                  icon: const Icon(Icons.arrow_back, color: Colors.white),
+                  onPressed: () {
+                    if (context.canPop()) {
+                      context.pop();
+                    } else {
+                      context.go('/discover');
+                    }
+                  },
+                ),
+                Expanded(
+                  child: Text(
+                    '${_detail.drama.title} · ${ep.title}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.white, fontSize: 15),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.grid_view_outlined, color: Colors.white),
                   tooltip: '选集',
                   onPressed: _openEpisodesSheet,
                 ),
                 IconButton(
-                  icon: const Icon(Icons.swap_horiz),
+                  icon: const Icon(Icons.swap_horiz, color: Colors.white),
                   tooltip: '换源',
                   onPressed: _openSourceSheet,
                 ),
               ],
             ),
-      body: Column(
-        children: [
-          Expanded(
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                GestureDetector(
-                  onDoubleTap: _toggleFullscreen,
-                  child: Video(controller: _controller),
-                ),
-                // 加载 / 换源中
-                if (_switching)
-                  const ColoredBox(
-                    color: Colors.black54,
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          CircularProgressIndicator(color: Brand.pinkDark),
-                          SizedBox(height: Spacing.md),
-                          Text('正在切换源…', style: TextStyle(color: Colors.white)),
-                        ],
-                      ),
-                    ),
-                  ),
-                // 错误覆盖层
-                if (_playerError != null && !_switching)
-                  _ErrorOverlay(
-                    message: _playerError!,
-                    episodeTitle: ep.title,
-                    onRetry: () => _loadEpisode(_currentIndex),
-                    onSwitchSource: _openSourceSheet,
-                    onNextEpisode: _currentIndex < _detail.episodes.length - 1
-                        ? () => _loadEpisode(_currentIndex + 1)
-                        : null,
-                  ),
-              ],
-            ),
           ),
-          // 进度条 + 控制条
-          _buildControls(ep),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildControls(Episode ep) {
-    return SafeArea(
-      child: Container(
-        color: Colors.black87,
-        padding: const EdgeInsets.symmetric(horizontal: Spacing.md, vertical: 4),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // 进度条
-            StreamBuilder<Duration>(
-              stream: _player.stream.position,
-              builder: (context, posSnap) => StreamBuilder<Duration>(
-                stream: _player.stream.duration,
-                builder: (context, durSnap) {
-                  final pos = posSnap.data ?? _position;
-                  final dur = durSnap.data ?? _duration;
-                  return Row(
-                    children: [
-                      Text(_fmt(pos),
-                          style: const TextStyle(color: Colors.white70, fontSize: 11)),
-                      Expanded(
-                        child: SliderTheme(
-                          data: SliderTheme.of(context).copyWith(
-                            trackHeight: 2,
-                            thumbShape:
-                                const RoundSliderThumbShape(enabledThumbRadius: 6),
-                          ),
-                          child: Slider(
-                            value: dur.inSeconds > 0
-                                ? (pos.inSeconds / dur.inSeconds).clamp(0.0, 1.0)
-                                : 0,
-                            onChanged: (v) => _player.seek(
-                                Duration(seconds: (v * dur.inSeconds).toInt())),
+  /// 底部毛玻璃 OSD（进度 + 控制按钮）。
+  Widget _buildBottomOsd() {
+    return Positioned(
+      left: 0,
+      right: 0,
+      bottom: 0,
+      child: AnimatedSlide(
+        offset: _osdVisible ? Offset.zero : const Offset(0, 1),
+        duration: Motion.durMed,
+        curve: Motion.curveEmphasized,
+        child: AnimatedOpacity(
+          opacity: _osdVisible ? 1 : 0,
+          duration: Motion.durFast,
+          child: SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.md),
+              child: GlassPanel(
+                blur: 24,
+                tint: const Color(0x59140E0B),
+                borderRadius: BorderRadius.circular(Radii.lg),
+                padding: const EdgeInsets.symmetric(horizontal: Spacing.md, vertical: 6),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // 进度条
+                    StreamBuilder<Duration>(
+                      stream: _player.stream.position,
+                      builder: (context, posSnap) => StreamBuilder<Duration>(
+                        stream: _player.stream.duration,
+                        builder: (context, durSnap) {
+                          final pos = posSnap.data ?? _position;
+                          final dur = durSnap.data ?? _duration;
+                          return Row(
+                            children: [
+                              Text(_fmt(pos),
+                                  style: const TextStyle(
+                                      color: Colors.white70, fontSize: 11)),
+                              Expanded(
+                                child: SliderTheme(
+                                  data: SliderTheme.of(context).copyWith(
+                                    trackHeight: 2,
+                                    thumbShape: const RoundSliderThumbShape(
+                                        enabledThumbRadius: 6),
+                                    activeTrackColor: Brand.heroPink,
+                                    thumbColor: Colors.white,
+                                    inactiveTrackColor: Colors.white24,
+                                  ),
+                                  child: Slider(
+                                    value: dur.inSeconds > 0
+                                        ? (pos.inSeconds / dur.inSeconds)
+                                            .clamp(0.0, 1.0)
+                                        : 0,
+                                    onChanged: (v) {
+                                      _pokeOsd();
+                                      _player.seek(Duration(
+                                          seconds: (v * dur.inSeconds).toInt()));
+                                    },
+                                    onChangeStart: (_) => _osdHideTimer?.cancel(),
+                                    onChangeEnd: (_) => _pokeOsd(),
+                                  ),
+                                ),
+                              ),
+                              Text('-${_fmt(dur - pos)}',
+                                  style: const TextStyle(
+                                      color: Colors.white70, fontSize: 11)),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+                    // 控制行
+                    Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.skip_previous, color: Colors.white),
+                          onPressed: _currentIndex > 0
+                              ? () => _loadEpisode(_currentIndex - 1)
+                              : null,
+                        ),
+                        StreamBuilder<bool>(
+                          stream: _player.stream.playing,
+                          builder: (context, snap) => IconButton(
+                            icon: Icon(
+                                snap.data == true ? Icons.pause : Icons.play_arrow,
+                                color: Colors.white,
+                                size: 32),
+                            onPressed: () => _player.playOrPause(),
                           ),
                         ),
-                      ),
-                      Text('-${_fmt(dur - pos)}',
-                          style: const TextStyle(color: Colors.white70, fontSize: 11)),
-                    ],
-                  );
-                },
+                        IconButton(
+                          icon: const Icon(Icons.skip_next, color: Colors.white),
+                          onPressed: _currentIndex < _detail.episodes.length - 1
+                              ? () => _loadEpisode(_currentIndex + 1)
+                              : null,
+                        ),
+                        const Spacer(),
+                        // 音量（桌面滑杆弹层 / 移动菜单）
+                        StreamBuilder<double>(
+                          stream: _player.stream.volume,
+                          builder: (context, snap) => PopupMenuButton<double>(
+                            initialValue: snap.data ?? 100,
+                            onSelected: (v) => _player.setVolume(v),
+                            itemBuilder: (_) => [
+                              const PopupMenuItem(value: 0.0, child: Text('静音')),
+                              const PopupMenuItem(value: 50.0, child: Text('50%')),
+                              const PopupMenuItem(value: 100.0, child: Text('100%')),
+                            ],
+                            child: Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: Spacing.sm),
+                              child: Icon(
+                                (snap.data ?? 100) == 0
+                                    ? Icons.volume_off
+                                    : (snap.data ?? 100) < 50
+                                        ? Icons.volume_down
+                                        : Icons.volume_up,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                            ),
+                          ),
+                        ),
+                        // 倍速（写回全局设置）
+                        StreamBuilder<double>(
+                          stream: _player.stream.rate,
+                          builder: (context, snap) => PopupMenuButton<double>(
+                            initialValue: snap.data ?? 1.0,
+                            onSelected: (rate) {
+                              _player.setRate(rate);
+                              ref
+                                  .read(settingsProvider.notifier)
+                                  .setDefaultRate(rate);
+                            },
+                            itemBuilder: (_) => [
+                              for (final r in [0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0])
+                                PopupMenuItem(value: r, child: Text('${r}x')),
+                            ],
+                            child: Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: Spacing.sm),
+                              child: Text('${snap.data ?? 1.0}x',
+                                  style: const TextStyle(
+                                      color: Colors.white, fontSize: 13)),
+                            ),
+                          ),
+                        ),
+                        // 全屏
+                        IconButton(
+                          icon: Icon(
+                            _fullscreen ? Icons.fullscreen_exit : Icons.fullscreen,
+                            color: Colors.white,
+                          ),
+                          onPressed: _toggleFullscreen,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
-            Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.skip_previous, color: Colors.white),
-                  onPressed: _currentIndex > 0
-                      ? () => _loadEpisode(_currentIndex - 1)
-                      : null,
-                ),
-                StreamBuilder<bool>(
-                  stream: _player.stream.playing,
-                  builder: (context, snap) => IconButton(
-                    icon: Icon(snap.data == true ? Icons.pause : Icons.play_arrow,
-                        color: Colors.white, size: 32),
-                    onPressed: () => _player.playOrPause(),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.skip_next, color: Colors.white),
-                  onPressed: _currentIndex < _detail.episodes.length - 1
-                      ? () => _loadEpisode(_currentIndex + 1)
-                      : null,
-                ),
-                const Spacer(),
-                // 音量
-                StreamBuilder<double>(
-                  stream: _player.stream.volume,
-                  builder: (context, snap) => PopupMenuButton<double>(
-                    initialValue: snap.data ?? 100,
-                    onSelected: (v) => _player.setVolume(v),
-                    itemBuilder: (_) => [
-                      const PopupMenuItem(value: 0.0, child: Text('静音')),
-                      const PopupMenuItem(value: 50.0, child: Text('50%')),
-                      const PopupMenuItem(value: 100.0, child: Text('100%')),
-                    ],
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: Spacing.sm),
-                      child: Icon(
-                        (snap.data ?? 100) == 0
-                            ? Icons.volume_off
-                            : (snap.data ?? 100) < 50
-                                ? Icons.volume_down
-                                : Icons.volume_up,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                    ),
-                  ),
-                ),
-                // 倍速（写回全局设置）
-                StreamBuilder<double>(
-                  stream: _player.stream.rate,
-                  builder: (context, snap) => PopupMenuButton<double>(
-                    initialValue: snap.data ?? 1.0,
-                    onSelected: (rate) {
-                      _player.setRate(rate);
-                      ref.read(settingsProvider.notifier).setDefaultRate(rate);
-                    },
-                    itemBuilder: (_) => [
-                      for (final r in [0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0])
-                        PopupMenuItem(value: r, child: Text('${r}x')),
-                    ],
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: Spacing.sm),
-                      child: Text('${snap.data ?? 1.0}x',
-                          style: const TextStyle(color: Colors.white, fontSize: 13)),
-                    ),
-                  ),
-                ),
-                // 全屏
-                IconButton(
-                  icon: Icon(
-                    _fullscreen ? Icons.fullscreen_exit : Icons.fullscreen,
-                    color: Colors.white,
-                  ),
-                  onPressed: _toggleFullscreen,
-                ),
-              ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 手势层 —— 移动端三分区（双击快进退 + 边缘滑），桌面端 hover 唤起。
+  Widget _buildGestureLayer() {
+    if (_isMobile) {
+      return Positioned.fill(
+        child: Row(
+          children: [
+            // 左区：双击 -10s；左边缘竖直拖 = 亮度
+            Expanded(
+              child: GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onTap: _toggleOsd,
+                onDoubleTap: () => _seekBy(-10),
+                onVerticalDragStart: (d) => _startBrightnessDrag(d.localPosition.dy),
+                onVerticalDragUpdate: (d) => _updateBrightnessDrag(d.localPosition.dy),
+                onVerticalDragEnd: (_) => _endBrightnessDrag(),
+                child: const SizedBox.expand(),
+              ),
+            ),
+            // 中区：双击全屏
+            Expanded(
+              child: GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onTap: _toggleOsd,
+                onDoubleTap: _toggleFullscreen,
+                child: const SizedBox.expand(),
+              ),
+            ),
+            // 右区：双击 +10s；右边缘竖直拖 = 音量
+            Expanded(
+              child: GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onTap: _toggleOsd,
+                onDoubleTap: () => _seekBy(10),
+                onVerticalDragStart: (d) =>
+                    _startVolumeDrag(d.localPosition.dy),
+                onVerticalDragUpdate: (d) => _updateVolumeDrag(d.localPosition.dy),
+                onVerticalDragEnd: (_) => _endVolumeDrag(),
+                child: const SizedBox.expand(),
+              ),
             ),
           ],
         ),
+      );
+    }
+
+    // 桌面：鼠标移动/点击唤起 OSD
+    return Positioned.fill(
+      child: MouseRegion(
+        onHover: (_) => _pokeOsd(),
+        child: GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onTap: _toggleOsd,
+          child: const SizedBox.expand(),
+        ),
+      ),
+    );
+  }
+
+  // MARK: - 移动端边缘滑（左亮度 / 右音量）
+
+  void _startBrightnessDrag(double startY) async {
+    double current = 1;
+    try {
+      current = await ScreenBrightness().application;
+    } catch (_) {}
+    if (!mounted) return;
+    setState(() {
+      _brightnessDragStart = startY;
+      _brightnessDragValue = current;
+      _brightnessIndicator = current;
+    });
+  }
+
+  void _updateBrightnessDrag(double y) {
+    final delta = (_brightnessDragStart - y) / 400; // 上滑增亮
+    final v = (_brightnessDragValue + delta).clamp(0.05, 1.0);
+    try {
+      ScreenBrightness().setApplicationScreenBrightness(v);
+    } catch (_) {}
+    setState(() => _brightnessIndicator = v);
+  }
+
+  void _endBrightnessDrag() async {
+    try {
+      await ScreenBrightness().resetApplicationScreenBrightness();
+    } catch (_) {}
+    if (mounted) setState(() => _brightnessIndicator = null);
+  }
+
+  void _startVolumeDrag(double startY) {
+    setState(() {
+      _volumeDragStart = startY;
+      _volumeDragValue = _player.state.volume;
+      _volumeIndicator = _player.state.volume;
+    });
+  }
+
+  void _updateVolumeDrag(double y) async {
+    final delta = (_volumeDragStart - y) / 3; // 上滑增音
+    final v = (_volumeDragValue + delta).clamp(0.0, 100.0);
+    await _player.setVolume(v);
+    if (mounted) setState(() => _volumeIndicator = v);
+  }
+
+  void _endVolumeDrag() {
+    if (mounted) setState(() => _volumeIndicator = null);
+  }
+
+  /// 中央反馈浮层（快进退 / 音量 / 亮度）。
+  Widget _buildFeedbackOverlay() {
+    final indicators = <Widget>[];
+
+    if (_seekFeedback != null) {
+      indicators.add(_FeedbackChip(
+        icon: _seekFeedback!.startsWith('+')
+            ? Icons.fast_forward_rounded
+            : Icons.fast_rewind_rounded,
+        label: _seekFeedback!,
+      ));
+    }
+    if (_volumeIndicator != null) {
+      indicators.add(_FeedbackChip(
+        icon: _volumeIndicator! == 0
+            ? Icons.volume_off_rounded
+            : _volumeIndicator! < 50
+                ? Icons.volume_down_rounded
+                : Icons.volume_up_rounded,
+        label: '音量 ${_volumeIndicator!.round()}%',
+        progress: _volumeIndicator! / 100,
+      ));
+    }
+    if (_brightnessIndicator != null) {
+      indicators.add(_FeedbackChip(
+        icon: _brightnessIndicator! < 0.3
+            ? Icons.brightness_low_rounded
+            : Icons.brightness_high_rounded,
+        label: '亮度 ${(_brightnessIndicator! * 100).round()}%',
+        progress: _brightnessIndicator!,
+      ));
+    }
+
+    if (indicators.isEmpty) return const SizedBox.shrink();
+    return IgnorePointer(
+      child: Center(
+        child: indicators.length == 1
+            ? indicators.first
+            : Column(
+                mainAxisSize: MainAxisSize.min,
+                children: indicators,
+              ),
       ),
     );
   }
@@ -555,6 +977,45 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     final sec = s % 60;
     if (h > 0) return '$h:${m.toString().padLeft(2, '0')}:${sec.toString().padLeft(2, '0')}';
     return '${m.toString().padLeft(2, '0')}:${sec.toString().padLeft(2, '0')}';
+  }
+}
+
+class _FeedbackChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final double? progress;
+
+  const _FeedbackChip({required this.icon, required this.label, this.progress});
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassPanel(
+      blur: 18,
+      tint: const Color(0x66140E0B),
+      borderRadius: BorderRadius.circular(Radii.lg),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: Colors.white, size: 30),
+          const SizedBox(height: 4),
+          Text(label, style: const TextStyle(color: Colors.white, fontSize: 13)),
+          if (progress != null) ...[
+            const SizedBox(height: 6),
+            SizedBox(
+              width: 90,
+              child: LinearProgressIndicator(
+                value: progress!.clamp(0.0, 1.0),
+                minHeight: 3,
+                backgroundColor: Colors.white24,
+                valueColor: const AlwaysStoppedAnimation(Brand.heroPink),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 }
 

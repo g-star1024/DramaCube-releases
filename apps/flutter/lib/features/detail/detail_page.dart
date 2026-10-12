@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -5,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../app/design_system.dart';
 import '../../core/models/models.dart';
 import '../../core/widgets/cover_image.dart';
+import '../../core/widgets/gradient_button.dart';
 import '../catalog/catalog_repository.dart';
 import '../discover/discover_engine.dart';
 import '../downloads/download_manager.dart';
@@ -209,98 +212,195 @@ class _DetailPageState extends ConsumerState<DetailPage> {
     final drama = _drama;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(drama?.title ?? '详情'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.download_outlined),
-            tooltip: '下载选集',
-            onPressed: _detail == null || _detail!.episodes.isEmpty
-                ? null
-                : _showDownloadDialog,
-          ),
-        ],
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(Spacing.lg),
-        children: [
-          // 头部：封面 + 信息
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(Radii.md),
-                child: SizedBox(
-                  width: 110,
-                  height: 147,
-                  child: CoverImage(url: drama?.coverURL, title: drama?.title ?? ''),
-                ),
-              ),
-              const SizedBox(width: Spacing.lg),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      drama?.title ?? '',
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: text),
-                    ),
-                    if ((drama?.remark ?? '').isNotEmpty) ...[
-                      const SizedBox(height: Spacing.xs),
-                      Text(drama!.remark!, style: TextStyle(fontSize: 13, color: subtitle)),
-                    ],
-                    if (_subject != null && _subject!.cardSubtitle.isNotEmpty) ...[
-                      const SizedBox(height: Spacing.xs),
-                      Text(_subject!.cardSubtitle, style: TextStyle(fontSize: 13, color: subtitle)),
-                    ],
-                  ],
-                ),
+      body: CustomScrollView(
+        slivers: [
+          // 沉浸式头部：封面铺底虚化压暗 + 前景清晰封面 + 信息
+          SliverAppBar(
+            expandedHeight: 300,
+            pinned: true,
+            title: Text(drama?.title ?? '详情', style: const TextStyle(fontSize: 16)),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.download_outlined),
+                tooltip: '下载选集',
+                onPressed: _detail == null || _detail!.episodes.isEmpty
+                    ? null
+                    : _showDownloadDialog,
               ),
             ],
-          ),
-          // 豆瓣简介
-          if (_subject != null && _subject!.intro.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: Spacing.lg),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            flexibleSpace: FlexibleSpaceBar(
+              background: Stack(
+                fit: StackFit.expand,
                 children: [
-                  Text('简介', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: text)),
-                  const SizedBox(height: Spacing.sm),
-                  Text(_subject!.intro, style: TextStyle(fontSize: 13, height: 1.6, color: subtitle)),
+                  // 封面铺底：虚化 + 压暗
+                  ImageFiltered(
+                    imageFilter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                    child: CoverImage(
+                        url: drama?.coverURL, title: drama?.title ?? ''),
+                  ),
+                  Container(color: Colors.black.withValues(alpha: 0.45)),
+                  // 底部渐变融入页面背景
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        stops: const [0.5, 1.0],
+                        colors: [
+                          Colors.transparent,
+                          Brand.background(brightness),
+                        ],
+                      ),
+                    ),
+                  ),
+                  // 前景：清晰封面（Hero 共享元素）+ 标题信息
+                  Positioned(
+                    left: Spacing.lg,
+                    right: Spacing.lg,
+                    bottom: Spacing.md,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Hero(
+                          tag: 'cover-${drama?.id ?? ''}',
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(Radii.md),
+                            child: SizedBox(
+                              width: 120,
+                              height: 160,
+                              child: CoverImage(
+                                  url: drama?.coverURL,
+                                  title: drama?.title ?? ''),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: Spacing.lg),
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.only(bottom: 4),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  drama?.title ?? '',
+                                  style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                      color: text),
+                                ),
+                                if ((drama?.remark ?? '').isNotEmpty) ...[
+                                  const SizedBox(height: Spacing.xs),
+                                  Text(drama!.remark!,
+                                      style: TextStyle(
+                                          fontSize: 13, color: subtitle)),
+                                ],
+                                if (_subject != null &&
+                                    _subject!.cardSubtitle.isNotEmpty) ...[
+                                  const SizedBox(height: Spacing.xs),
+                                  Text(_subject!.cardSubtitle,
+                                      style: TextStyle(
+                                          fontSize: 13, color: subtitle)),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
-          // 选集（已选源）
-          if (_loadingDetail)
-            const Padding(
-              padding: EdgeInsets.all(Spacing.xl),
-              child: Center(child: CircularProgressIndicator()),
-            )
-          else if (_detail != null && _detail!.episodes.isNotEmpty)
-            _EpisodesView(detail: _detail!, onPlay: _play)
-          else if (_error != null)
-            Padding(
-              padding: const EdgeInsets.only(top: Spacing.lg),
-              child: Text(_error!, style: TextStyle(fontSize: 13, color: subtitle)),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(Spacing.lg),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 胶囊操作区
+                  Row(
+                    children: [
+                      GradientButton(
+                        label: '立即观看',
+                        icon: Icons.play_arrow_rounded,
+                        height: 42,
+                        onTap: _detail != null && _detail!.episodes.isNotEmpty
+                            ? () => _play(0)
+                            : null,
+                      ),
+                      const SizedBox(width: Spacing.md),
+                      OutlinedButton.icon(
+                        onPressed: _detail == null || _detail!.episodes.isEmpty
+                            ? null
+                            : _showDownloadDialog,
+                        icon: const Icon(Icons.download_outlined, size: 18),
+                        label: const Text('下载'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 12),
+                          shape: const StadiumBorder(),
+                        ),
+                      ),
+                    ],
+                  ),
+                  // 豆瓣简介
+                  if (_subject != null && _subject!.intro.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: Spacing.lg),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('简介',
+                              style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  color: text)),
+                          const SizedBox(height: Spacing.sm),
+                          Text(_subject!.intro,
+                              style: TextStyle(
+                                  fontSize: 13,
+                                  height: 1.6,
+                                  color: subtitle)),
+                        ],
+                      ),
+                    ),
+                  // 选集（已选源）
+                  if (_loadingDetail)
+                    const Padding(
+                      padding: EdgeInsets.all(Spacing.xl),
+                      child: Center(child: CircularProgressIndicator()),
+                    )
+                  else if (_detail != null && _detail!.episodes.isNotEmpty)
+                    _EpisodesView(detail: _detail!, onPlay: _play)
+                  else if (_error != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: Spacing.lg),
+                      child: Text(_error!,
+                          style: TextStyle(fontSize: 13, color: subtitle)),
+                    ),
+                  // 跨源聚合搜索结果
+                  if (_groups.isNotEmpty || _searching)
+                    _AggregateResults(
+                      groups: _groups,
+                      searching: _searching,
+                      allDone: _allDone,
+                      queryTitle: _queryTitle,
+                      currentId: drama?.id,
+                      onSelect: (d) {
+                        setState(() {
+                          _drama = d;
+                          _detail = null;
+                          _error = null;
+                        });
+                        _loadDetail();
+                      },
+                    ),
+                ],
+              ),
             ),
-          // 跨源聚合搜索结果
-          if (_groups.isNotEmpty || _searching)
-            _AggregateResults(
-              groups: _groups,
-              searching: _searching,
-              allDone: _allDone,
-              queryTitle: _queryTitle,
-              currentId: drama?.id,
-              onSelect: (d) {
-                setState(() {
-                  _drama = d;
-                  _detail = null;
-                  _error = null;
-                });
-                _loadDetail();
-              },
-            ),
+          ),
         ],
       ),
     );

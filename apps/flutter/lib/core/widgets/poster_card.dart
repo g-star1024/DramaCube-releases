@@ -45,17 +45,21 @@ class PosterCard extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(Radii.md),
-                    border: Border.all(
-                      color: Brand.separator(brightness),
-                      width: 0.5,
+                // Hero 共享元素：详情页沉浸式转场
+                Hero(
+                  tag: 'cover-${drama.id}',
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(Radii.md),
+                      border: Border.all(
+                        color: Brand.separator(brightness),
+                        width: 0.5,
+                      ),
                     ),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(Radii.md),
-                    child: CoverImage(url: drama.coverURL, title: drama.title),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(Radii.md),
+                      child: CoverImage(url: drama.coverURL, title: drama.title),
+                    ),
                   ),
                 ),
                 // 评分角标（右上角）
