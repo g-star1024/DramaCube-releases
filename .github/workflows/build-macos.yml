@@ -38,9 +38,19 @@ jobs:
         run: flutter analyze
         working-directory: apps/flutter
 
-      - name: 构建（arm64 原生）
+      - name: 构建（Flutter 默认 universal，取 arm64 主体）
         run: flutter build macos --release
         working-directory: apps/flutter
+
+      - name: 瘦身为 arm64 专用
+        run: |
+          APP=apps/flutter/build/macos/Build/Products/Release/DramaCube.app
+          find "$APP" -type f | while read -r f; do
+            if file "$f" | grep -q "universal"; then
+              lipo "$f" -thin arm64 -output "$f.tmp" && mv "$f.tmp" "$f"
+            fi
+          done
+          codesign --force --deep --sign - "$APP"
 
       - name: 打包 DMG
         run: |
@@ -58,7 +68,7 @@ jobs:
 
   build-macos-x64:
     name: Intel (x64)
-    runs-on: macos-13
+    runs-on: macos-14
     steps:
       - name: Checkout 私有源码仓库
         uses: actions/checkout@v4
@@ -82,9 +92,19 @@ jobs:
         run: flutter analyze
         working-directory: apps/flutter
 
-      - name: 构建（Intel x64）
+      - name: 构建（Flutter 默认 universal，取 x64 主体）
         run: flutter build macos --release
         working-directory: apps/flutter
+
+      - name: 瘦身为 Intel x64 专用（lipo -thin）
+        run: |
+          APP=apps/flutter/build/macos/Build/Products/Release/DramaCube.app
+          find "$APP" -type f | while read -r f; do
+            if file "$f" | grep -q "universal"; then
+              lipo "$f" -thin x86_64 -output "$f.tmp" && mv "$f.tmp" "$f"
+            fi
+          done
+          codesign --force --deep --sign - "$APP"
 
       - name: 打包 DMG
         run: |
