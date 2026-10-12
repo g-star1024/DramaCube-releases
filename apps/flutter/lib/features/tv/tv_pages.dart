@@ -368,6 +368,7 @@ class TvSearchPage extends ConsumerStatefulWidget {
 
 class _TvSearchPageState extends ConsumerState<TvSearchPage> {
   bool _searching = false;
+  String? _playingId; // 正在拉取详情准备播放的结果 id
   final List<({String site, List<Drama> results})> _groups = [];
   Timer? _debounce;
 
@@ -375,6 +376,23 @@ class _TvSearchPageState extends ConsumerState<TvSearchPage> {
   void dispose() {
     _debounce?.cancel();
     super.dispose();
+  }
+
+  /// 点击搜索结果直接播放第一集（不再经详情页跳转）；长按才进详情。
+  Future<void> _play(Drama r) async {
+    final parts = r.id.split('|');
+    if (parts.length != 3) return;
+    setState(() => _playingId = r.id);
+    final detail = await ref
+        .read(catalogRepositoryProvider)
+        .detail(siteKey: parts[1], vodId: parts[2]);
+    if (!mounted) return;
+    setState(() => _playingId = null);
+    if (detail == null || detail.episodes.isEmpty) return;
+    context.push('/tv/player', extra: {
+      'detail': detail,
+      'startIndex': 0,
+    });
   }
 
   void _onQueryChanged(String q) {
@@ -440,7 +458,8 @@ class _TvSearchPageState extends ConsumerState<TvSearchPage> {
                     children: [
                       for (final r in g.results.take(12))
                         TvFocusable(
-                          onPressed: () => context.push('/tv/detail',
+                          onPressed: () => _play(r),
+                          onLongPress: () => context.push('/tv/detail',
                               extra: {'drama': r}),
                           child: Container(
                             padding: const EdgeInsets.symmetric(
@@ -450,10 +469,28 @@ class _TvSearchPageState extends ConsumerState<TvSearchPage> {
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(color: TvColors.surfaceHi),
                             ),
-                            child: Text(r.title,
-                                style: const TextStyle(
-                                    color: TvColors.onSurface,
-                                    fontSize: TvText.caption)),
+                            child: _playingId == r.id
+                                ? Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: TvColors.focus),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Text(r.title,
+                                          style: const TextStyle(
+                                              color: TvColors.onSurface,
+                                              fontSize: TvText.caption)),
+                                    ],
+                                  )
+                                : Text(r.title,
+                                    style: const TextStyle(
+                                        color: TvColors.onSurface,
+                                        fontSize: TvText.caption)),
                           ),
                         ),
                     ],

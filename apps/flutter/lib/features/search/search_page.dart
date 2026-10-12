@@ -25,6 +25,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   final _ctrl = TextEditingController();
   bool _searching = false;
   bool _allDone = false;
+  String? _playingId; // 正在拉取详情准备播放的结果 id
   final List<_SiteGroup> _groups = [];
 
   @override
@@ -52,6 +53,29 @@ class _SearchPageState extends ConsumerState<SearchPage> {
             if (mounted) setState(() { _searching = false; _allDone = true; });
           },
         );
+  }
+
+  /// 点击搜索结果直接播放第一集（不再经详情页跳转）；长按才进详情。
+  Future<void> _play(Drama drama) async {
+    final parts = drama.id.split('|');
+    if (parts.length != 3) return;
+    setState(() => _playingId = drama.id);
+    final detail = await ref
+        .read(catalogRepositoryProvider)
+        .detail(siteKey: parts[1], vodId: parts[2]);
+    if (!mounted) return;
+    setState(() => _playingId = null);
+    if (detail == null || detail.episodes.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('该结果暂无可播放资源，长按可查看详情'),
+      ));
+      return;
+    }
+    context.push('/player', extra: {'detail': detail, 'startIndex': 0});
+  }
+
+  void _openDetail(Drama drama) {
+    context.push('/detail', extra: {'drama': drama});
   }
 
   @override
@@ -85,7 +109,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       body: _groups.isEmpty && !_searching
           ? Center(
               child: Text(
-                '输入剧名开始搜索\n结果按源分组、搜到一个显一个',
+                '输入剧名开始搜索\n点击直接播放 · 长按查看详情',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 13, color: subtitle),
               ),
@@ -129,14 +153,34 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                             childAspectRatio: 0.55,
                           ),
                           itemCount: group.results.length,
-                          itemBuilder: (context, j) {
-                            final drama = group.results[j];
-                            return PosterCard(
-                              drama: drama,
-                              onTap: () => context.push('/detail',
-                                  extra: {'drama': drama}),
-                            );
-                          },
+          itemBuilder: (context, j) {
+            final drama = group.results[j];
+            final playing = _playingId == drama.id;
+            return Stack(
+              children: [
+                PosterCard(
+                  drama: drama,
+                  onTap: () => _play(drama),
+                  onLongPress: () => _openDetail(drama),
+                ),
+                if (playing)
+                  Positioned.fill(
+                    child: Container(
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: Colors.black54,
+                        borderRadius: BorderRadius.circular(Radii.md),
+                      ),
+                      child: const SizedBox(
+                        width: 28,
+                        height: 28,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
                         ),
                       ],
                     ),
