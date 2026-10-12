@@ -125,10 +125,9 @@ class _LivePageState extends ConsumerState<LivePage> {
   }
 
   void _showSourceManager(BuildContext context) {
-    showModalBottomSheet(
+    showDialog(
       context: context,
-      isScrollControlled: true,
-      builder: (_) => const _SourceManagerSheet(),
+      builder: (_) => const _SourceManagerDialog(),
     );
   }
 
@@ -408,15 +407,15 @@ class _LivePlayerFullPageState extends State<_LivePlayerFullPage> {
   }
 }
 
-/// 直播源管理底部弹窗。
-class _SourceManagerSheet extends ConsumerStatefulWidget {
-  const _SourceManagerSheet();
+/// 直播源管理居中对话框（新增表单 + 已有源列表，行内编辑/开关/删除）。
+class _SourceManagerDialog extends ConsumerStatefulWidget {
+  const _SourceManagerDialog();
 
   @override
-  ConsumerState<_SourceManagerSheet> createState() => _SourceManagerSheetState();
+  ConsumerState<_SourceManagerDialog> createState() => _SourceManagerDialogState();
 }
 
-class _SourceManagerSheetState extends ConsumerState<_SourceManagerSheet> {
+class _SourceManagerDialogState extends ConsumerState<_SourceManagerDialog> {
   final _urlCtrl = TextEditingController();
   final _nameCtrl = TextEditingController();
   bool _adding = false;
@@ -445,51 +444,73 @@ class _SourceManagerSheetState extends ConsumerState<_SourceManagerSheet> {
   @override
   Widget build(BuildContext context) {
     final live = ref.watch(liveManagerProvider);
-    return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-      child: Container(
-        padding: const EdgeInsets.all(24),
-        constraints: const BoxConstraints(maxHeight: 500),
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 520, maxHeight: 560),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('直播源管理', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _nameCtrl,
-              decoration: InputDecoration(
-                labelText: '名称（可选）',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 16, 8, 0),
+              child: Row(
+                children: [
+                  const Expanded(
+                    child: Text('直播源管理', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    tooltip: '关闭',
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _urlCtrl,
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: _nameCtrl,
                     decoration: InputDecoration(
-                      labelText: '直播源地址（m3u / txt）',
-                      hintText: 'https://…/iptv.m3u',
+                      labelText: '名称（可选）',
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    onSubmitted: (_) => _add(),
                   ),
-                ),
-                const SizedBox(width: 12),
-                FilledButton(
-                  onPressed: _adding ? null : _add,
-                  child: _adding
-                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Text('添加'),
-                ),
-              ],
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _urlCtrl,
+                          decoration: InputDecoration(
+                            labelText: '直播源地址（m3u / txt）',
+                            hintText: 'https://…/iptv.m3u',
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          onSubmitted: (_) => _add(),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      FilledButton(
+                        onPressed: _adding ? null : _add,
+                        child: _adding
+                            ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                            : const Text('添加'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
             Flexible(
               child: ListView(
                 shrinkWrap: true,
+                padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
                 children: [
                   for (final source in live.sources)
                     ListTile(
@@ -505,7 +526,13 @@ class _SourceManagerSheetState extends ConsumerState<_SourceManagerSheet> {
                             onChanged: (v) => ref.read(liveManagerProvider.notifier).setEnabled(source.id, v),
                           ),
                           IconButton(
+                            icon: const Icon(Icons.edit_outlined, size: 20),
+                            tooltip: '编辑',
+                            onPressed: () => _editSource(source),
+                          ),
+                          IconButton(
                             icon: const Icon(Icons.delete_outline, size: 20),
+                            tooltip: '删除',
                             onPressed: () => ref.read(liveManagerProvider.notifier).removeSource(source.id),
                           ),
                         ],
@@ -517,6 +544,106 @@ class _SourceManagerSheetState extends ConsumerState<_SourceManagerSheet> {
           ],
         ),
       ),
+    );
+  }
+
+  /// 编辑弹窗：字段预填，保存走 updateSource。
+  void _editSource(LiveSource source) {
+    showDialog(
+      context: context,
+      builder: (_) => _SourceEditDialog(source: source),
+    );
+  }
+}
+
+/// 直播源编辑对话框（与新增同款表单，字段预填，保存更新）。
+class _SourceEditDialog extends ConsumerStatefulWidget {
+  final LiveSource source;
+  const _SourceEditDialog({required this.source});
+
+  @override
+  ConsumerState<_SourceEditDialog> createState() => _SourceEditDialogState();
+}
+
+class _SourceEditDialogState extends ConsumerState<_SourceEditDialog> {
+  late final TextEditingController _nameCtrl;
+  late final TextEditingController _urlCtrl;
+  late final TextEditingController _uaCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameCtrl = TextEditingController(text: widget.source.name);
+    _urlCtrl = TextEditingController(text: widget.source.url);
+    _uaCtrl = TextEditingController(text: widget.source.userAgent ?? '');
+  }
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _urlCtrl.dispose();
+    _uaCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final url = _urlCtrl.text.trim();
+    final name = _nameCtrl.text.trim();
+    if (url.isEmpty) return;
+    await ref.read(liveManagerProvider.notifier).updateSource(
+          widget.source.id,
+          name: name.isEmpty ? url : name,
+          url: url,
+          userAgent: _uaCtrl.text.trim().isEmpty ? null : _uaCtrl.text.trim(),
+        );
+    if (!mounted) return;
+    Navigator.pop(context);
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('直播源已更新')));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: const Text('编辑直播源'),
+      content: SizedBox(
+        width: 480,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: _nameCtrl,
+                decoration: InputDecoration(
+                  labelText: '名称',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _urlCtrl,
+                decoration: InputDecoration(
+                  labelText: '直播源地址（m3u / txt）',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _uaCtrl,
+                decoration: InputDecoration(
+                  labelText: 'User-Agent（可选）',
+                  hintText: '部分源要求指定 UA 才能拉取',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
+        FilledButton(onPressed: _save, child: const Text('保存')),
+      ],
     );
   }
 }

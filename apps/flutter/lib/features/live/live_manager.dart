@@ -189,6 +189,27 @@ class LiveManager extends StateNotifier<LiveState> {
     return true;
   }
 
+  /// 更新直播源（编辑：保留 id，替换名称/地址/UA，enabled 不变）。
+  /// 地址变更后旧探测结果失效并刷新频道列表。
+  Future<void> updateSource(
+    String id, {
+    required String name,
+    required String url,
+    String? userAgent,
+  }) async {
+    state = state.copyWith(
+      sources: [
+        for (final s in state.sources)
+          s.id == id
+              ? LiveSource(id: s.id, url: url, name: name, enabled: s.enabled, userAgent: userAgent)
+              : s,
+      ],
+      health: Map.of(state.health)..remove(id),
+    );
+    await _persist();
+    await refresh();
+  }
+
   /// 启用/禁用源。
   Future<void> setEnabled(String id, bool enabled) async {
     state = state.copyWith(
@@ -207,6 +228,7 @@ class LiveManager extends StateNotifier<LiveState> {
     state = state.copyWith(
       sources: state.sources.where((s) => s.id != id).toList(),
       currentSourceId: state.currentSourceId == id ? '' : state.currentSourceId,
+      health: Map.of(state.health)..remove(id),
     );
     await _persist();
     await refresh();

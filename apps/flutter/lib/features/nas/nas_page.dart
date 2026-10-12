@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
@@ -5,6 +7,7 @@ import 'package:media_kit_video/media_kit_video.dart';
 
 import '../../core/models/models.dart';
 import '../../core/widgets/health_badge.dart';
+import 'nas_cover_generator.dart';
 import 'nas_manager.dart';
 
 /// NAS 资源库页：库选择 + 目录导航 + 视频播放（对齐 macOS 版 NASBrowseView）。
@@ -21,6 +24,16 @@ class _NASPageState extends ConsumerState<NASPage> {
   List<NASEntry> _entries = [];
   bool _loading = false;
   String? _error;
+  /// 懒渲染：首屏只渲染前 30 个视频卡片，滚近底部追加（对齐 Swift visibleCount/pageSize）。
+  int _visibleCount = 30;
+  static const _pageSize = 30;
+  final _scrollCtrl = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollCtrl.dispose();
+    super.dispose();
+  }
 
   Future<void> _browse(NASLibrary lib, String path) async {
     setState(() {
@@ -28,6 +41,7 @@ class _NASPageState extends ConsumerState<NASPage> {
       _currentPath = path;
       _loading = true;
       _error = null;
+      _visibleCount = _pageSize;
     });
     try {
       final entries = await ref.read(nasManagerProvider.notifier).listEntries(lib, path);
@@ -171,44 +185,104 @@ class _NASPageState extends ConsumerState<NASPage> {
     if (_entries.isEmpty) {
       return const Center(child: Text('空目录', style: TextStyle(color: Colors.grey)));
     }
-    // 目录在前，视频在后
+    // 目录在前（紧凑列表），视频在后（图文卡片网格，对齐 Swift NASBrowseView）。
     final dirs = _entries.where((e) => e.isDir).toList();
     final videos = _entries.where((e) => !e.isDir && NASManager.isVideo(e.name)).toList();
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        // 面包屑
+    final visible = videos.take(_visibleCount).toList();
+    final lib = _currentLib!;
+
+    return CustomScrollView(
+      controller: _scrollCtrl,
+      slivers: [
         if (_currentPath.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Text(_currentPath, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-          ),
-        for (final dir in dirs)
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.folder, color: Colors.amber),
-              title: Text(dir.name),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => _navigateTo(dir),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: Text(_currentPath, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
             ),
           ),
-        for (final video in videos)
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.play_circle_outline, color: Colors.blue),
-              title: Text(video.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-              onTap: () => _navigateTo(video),
+        // 目录区：紧凑列表（点击进入子目录）。
+        if (dirs.isNotEmpty)
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, i) => Card(
+                  child: ListTile(
+                    dense: true,
+                    leading: const Icon(Icons.folder, color: Colors.amber),
+                    title: Text(dirs[i].name),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => _navigateTo(dirs[i]),
+                  ),
+                ),
+                childCount: dirs.length,
+              ),
             ),
           ),
+        // 视频区：自适应网格图文卡片（2:3 封面 + 标题，对齐 Swift NASCard）。
+        if (visible.isNotEmpty)
+          SliverPadding(
+            padding: const EdgeInsets.all(16),
+            sliver: SliverGrid(
+              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                maxCrossAxisExtent: 160,
+                mainAxisSpacing: 16,
+                crossAxisSpacing: 16,
+                childAspectRatio: 0.52, // 2:3 封面 + 标题行的整体高宽比
+              ),
+              delegate: SliverChildBuilderDelegate(
+                (context, i) => _NASVideoCard(
+                  entry: visible[i],
+                  lib: lib,
+                  parentPath: _currentPath,
+                  onTap: () => _navigateTo(visible[i]),
+                ),
+                childCount: visible.length,
+              ),
+            ),
+          ),
+        // 懒加载哨兵：滚近底部追加渲染（对齐 Swift loadMore）。
+        SliverToBoxAdapter(
+          child: _visibleCount < videos.length
+              ? const Padding(
+                  padding: EdgeInsets.only(bottom: 24),
+                  child: Center(child: Text('加载更多…', style: TextStyle(fontSize: 12, color: Colors.grey))),
+                )
+              : videos.length > _pageSize
+                  ? Padding(
+                      padding: const EdgeInsets.only(bottom: 24),
+                      child: Center(
+                        child: Text('共 ${videos.length} 个视频',
+                            style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                      ),
+                    )
+                  : const SizedBox.shrink(),
+        ),
       ],
     );
   }
 
+  @override
+  void initState() {
+    super.initState();
+    // 滚近底部（或内容不足一屏）时追加渲染下一批，对齐 Swift 几何监听语义。
+    _scrollCtrl.addListener(() {
+      if (!_scrollCtrl.hasClients) return;
+      final pos = _scrollCtrl.position;
+      if (pos.pixels >= pos.maxScrollExtent - 400 || pos.maxScrollExtent <= 400) {
+        final total = _entries.where((e) => !e.isDir && NASManager.isVideo(e.name)).length;
+        if (_visibleCount < total && mounted) {
+          setState(() => _visibleCount = (_visibleCount + _pageSize).clamp(0, total));
+        }
+      }
+    });
+  }
+
   void _showLibraryManager(BuildContext context) {
-    showModalBottomSheet(
+    showDialog(
       context: context,
-      isScrollControlled: true,
-      builder: (_) => const _LibraryManagerSheet(),
+      builder: (_) => const _LibraryManagerDialog(),
     );
   }
 
@@ -317,15 +391,15 @@ class _LibrarySwitchSheet extends ConsumerWidget {
   }
 }
 
-/// 资源库管理底部弹窗。
-class _LibraryManagerSheet extends ConsumerStatefulWidget {
-  const _LibraryManagerSheet();
+/// 资源库管理居中对话框（新增表单 + 已有库列表，行内编辑/开关/删除）。
+class _LibraryManagerDialog extends ConsumerStatefulWidget {
+  const _LibraryManagerDialog();
 
   @override
-  ConsumerState<_LibraryManagerSheet> createState() => _LibraryManagerSheetState();
+  ConsumerState<_LibraryManagerDialog> createState() => _LibraryManagerDialogState();
 }
 
-class _LibraryManagerSheetState extends ConsumerState<_LibraryManagerSheet> {
+class _LibraryManagerDialogState extends ConsumerState<_LibraryManagerDialog> {
   final _nameCtrl = TextEditingController();
   final _urlCtrl = TextEditingController();
   final _userCtrl = TextEditingController();
@@ -363,16 +437,28 @@ class _LibraryManagerSheetState extends ConsumerState<_LibraryManagerSheet> {
   @override
   Widget build(BuildContext context) {
     final nas = ref.watch(nasManagerProvider);
-    return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-      child: Container(
-        padding: const EdgeInsets.all(24),
-        constraints: const BoxConstraints(maxHeight: 600),
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 560, maxHeight: 640),
         child: ListView(
           shrinkWrap: true,
+          padding: const EdgeInsets.all(24),
           children: [
-            const Text('资源库管理', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
+            Row(
+              children: [
+                const Expanded(
+                  child: Text('资源库管理', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  tooltip: '关闭',
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
             // 类型选择
             SegmentedButton<String>(
               segments: const [
@@ -449,7 +535,13 @@ class _LibraryManagerSheetState extends ConsumerState<_LibraryManagerSheet> {
                       onChanged: (v) => ref.read(nasManagerProvider.notifier).setEnabled(lib.id, v),
                     ),
                     IconButton(
+                      icon: const Icon(Icons.edit_outlined, size: 20),
+                      tooltip: '编辑',
+                      onPressed: () => _editLibrary(lib),
+                    ),
+                    IconButton(
                       icon: const Icon(Icons.delete_outline, size: 20),
+                      tooltip: '删除',
                       onPressed: () => ref.read(nasManagerProvider.notifier).removeLibrary(lib.id),
                     ),
                   ],
@@ -457,6 +549,237 @@ class _LibraryManagerSheetState extends ConsumerState<_LibraryManagerSheet> {
               ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// 编辑弹窗：字段预填，保存走 updateLibrary。
+  void _editLibrary(NASLibrary lib) {
+    showDialog(
+      context: context,
+      builder: (_) => _LibraryEditDialog(lib: lib),
+    );
+  }
+}
+
+/// 资源库编辑对话框（与新增同款表单，字段预填，保存更新）。
+class _LibraryEditDialog extends ConsumerStatefulWidget {
+  final NASLibrary lib;
+  const _LibraryEditDialog({required this.lib});
+
+  @override
+  ConsumerState<_LibraryEditDialog> createState() => _LibraryEditDialogState();
+}
+
+class _LibraryEditDialogState extends ConsumerState<_LibraryEditDialog> {
+  late final TextEditingController _nameCtrl;
+  late final TextEditingController _urlCtrl;
+  late final TextEditingController _userCtrl;
+  late final TextEditingController _passCtrl;
+  late String _type;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameCtrl = TextEditingController(text: widget.lib.name);
+    _urlCtrl = TextEditingController(text: widget.lib.baseURL);
+    _userCtrl = TextEditingController(text: widget.lib.username ?? '');
+    _passCtrl = TextEditingController(text: widget.lib.password ?? '');
+    _type = widget.lib.type;
+  }
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _urlCtrl.dispose();
+    _userCtrl.dispose();
+    _passCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final name = _nameCtrl.text.trim();
+    final url = _urlCtrl.text.trim();
+    if (name.isEmpty || url.isEmpty) return;
+    await ref.read(nasManagerProvider.notifier).updateLibrary(
+          widget.lib.id,
+          name: name,
+          type: _type,
+          baseURL: url,
+          username: _userCtrl.text.trim().isEmpty ? null : _userCtrl.text.trim(),
+          password: _passCtrl.text.isEmpty ? null : _passCtrl.text,
+        );
+    if (!mounted) return;
+    Navigator.pop(context);
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('资源库已更新')));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: Text('编辑资源库'),
+      content: SizedBox(
+        width: 480,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SegmentedButton<String>(
+                segments: const [
+                  ButtonSegment(value: 'webdav', label: Text('WebDAV'), icon: Icon(Icons.cloud)),
+                  ButtonSegment(value: 'mount', label: Text('本机目录'), icon: Icon(Icons.folder)),
+                ],
+                selected: {_type},
+                onSelectionChanged: (s) => setState(() => _type = s.first),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _nameCtrl,
+                decoration: InputDecoration(
+                  labelText: '名称',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _urlCtrl,
+                decoration: InputDecoration(
+                  labelText: _type == 'webdav' ? 'WebDAV 地址' : '目录路径',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+              if (_type == 'webdav') ...[
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _userCtrl,
+                        decoration: InputDecoration(
+                          labelText: '账号（可选）',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextField(
+                        controller: _passCtrl,
+                        obscureText: true,
+                        decoration: InputDecoration(
+                          labelText: '密码（可选）',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
+        FilledButton(onPressed: _save, child: const Text('保存')),
+      ],
+    );
+  }
+}
+
+/// NAS 视频卡片（对齐 Swift NASCard）：2:3 竖版封面 + 标题，首帧封面懒加载。
+/// 无封面时暖沙渐变底 + 播放图标占位；点击直接播放。
+class _NASVideoCard extends ConsumerStatefulWidget {
+  final NASEntry entry;
+  final NASLibrary lib;
+  /// 当前浏览目录（相对库根，'' = 根目录）。用于还原完整文件路径取封面。
+  final String parentPath;
+  final VoidCallback onTap;
+
+  const _NASVideoCard({
+    required this.entry,
+    required this.lib,
+    required this.parentPath,
+    required this.onTap,
+  });
+
+  @override
+  ConsumerState<_NASVideoCard> createState() => _NASVideoCardState();
+}
+
+class _NASVideoCardState extends ConsumerState<_NASVideoCard> {
+  File? _cover;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCover();
+  }
+
+  Future<void> _loadCover() async {
+    final nas = ref.read(nasManagerProvider.notifier);
+    final path = widget.parentPath.isEmpty ? widget.entry.name : '${widget.parentPath}/${widget.entry.name}';
+    final playURL = nas.fileURL(widget.lib, path);
+    final headers = nas.playHeaders(widget.lib);
+    final file = await NASCoverGenerator.shared.cover(playURL, headers: headers);
+    if (!mounted) return;
+    setState(() => _cover = file);
+  }
+
+  /// 去掉扩展名的展示标题（对齐 Swift drama.title 风格）。
+  String get _title {
+    final n = widget.entry.name;
+    final dot = n.lastIndexOf('.');
+    return dot > 0 ? n.substring(0, dot) : n;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: widget.onTap,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 2:3 竖版封面区
+          AspectRatio(
+            aspectRatio: 2 / 3,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  // 暖沙渐变占位底（对齐 Swift Brand.placeholder → secondaryBackground）。
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [cs.surfaceContainerHighest, cs.surfaceContainer],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                    ),
+                  ),
+                  if (_cover != null)
+                    Image.file(_cover!, fit: BoxFit.cover)
+                  else
+                    Center(
+                      child: Icon(Icons.play_circle_fill,
+                          size: 40, color: cs.primary.withValues(alpha: 0.55)),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            _title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+          ),
+        ],
       ),
     );
   }

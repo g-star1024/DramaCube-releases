@@ -192,10 +192,31 @@ class NASManager extends StateNotifier<NASState> {
     await _persist();
   }
 
+  /// 更新资源库（编辑：保留 id，替换名称/类型/地址/凭据，enabled 不变）。
+  /// 地址或凭据变更后旧缓存的连通性探测结果失效，清掉让用户重新测试。
+  Future<void> updateLibrary(
+    String id, {
+    required String name,
+    required String type,
+    required String baseURL,
+    String? username,
+    String? password,
+  }) async {
+    state = state.copyWith(libraries: [
+      for (final l in state.libraries)
+        l.id == id
+            ? NASLibrary(id: l.id, name: name, type: type, baseURL: baseURL,
+                username: username, password: password, enabled: l.enabled)
+            : l,
+    ], health: Map.of(state.health)..remove(id));
+    await _persist();
+  }
+
   Future<void> removeLibrary(String id) async {
     state = state.copyWith(
       libraries: state.libraries.where((l) => l.id != id).toList(),
       currentLibraryId: state.currentLibraryId == id ? '' : state.currentLibraryId,
+      health: Map.of(state.health)..remove(id),
     );
     await _persist();
   }
