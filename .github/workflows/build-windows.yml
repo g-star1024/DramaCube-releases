@@ -1,0 +1,46 @@
+name: Build Windows 安装包
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号（如 2.3.0）'
+        required: true
+        default: '2.3.0'
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: apps/flutter
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.35.4
+          channel: stable
+          cache: true
+
+      - name: 依赖
+        run: flutter pub get
+
+      - name: 分析
+        run: flutter analyze
+
+      - name: 构建
+        run: flutter build windows --release
+
+      - name: 打包（zip）
+        shell: pwsh
+        run: |
+          Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath dramacube-windows-v${{ inputs.version }}.zip
+          Get-Item dramacube-windows-v${{ inputs.version }}.zip | Select-Object Name, Length
+
+      - name: 上传 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dramacube-windows-v${{ inputs.version }}
+          path: apps/flutter/dramacube-windows-v${{ inputs.version }}.zip
+          retention-days: 7
