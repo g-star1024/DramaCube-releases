@@ -16,6 +16,7 @@ import '../../app/motion.dart';
 import '../../app/settings_provider.dart';
 import '../../core/db/database.dart';
 import '../../core/models/models.dart';
+import '../../core/platform/app_log.dart';
 import '../../core/platform/player_remote.dart';
 import '../../core/widgets/glass_panel.dart';
 import '../catalog/catalog_repository.dart';
@@ -115,6 +116,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     super.initState();
     _detail = widget.detail;
     _currentIndex = widget.startIndex.clamp(0, _detail.episodes.length - 1);
+    AppLog.player('进入播放页 title=${_detail.drama.title} start=$_currentIndex epCount=${_detail.episodes.length}');
     _positionSub = _player.stream.position.listen((d) {
       _position = d;
       _maybeAutoNext();
@@ -125,7 +127,10 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
       _maybeSkipIntro();
     });
     _errorSub = _player.stream.error.listen((msg) {
-      if (msg.isNotEmpty && mounted) setState(() => _playerError = msg);
+      if (msg.isNotEmpty) {
+        AppLog.player('播放错误 ep=$_currentIndex err=$msg');
+        if (mounted) setState(() => _playerError = msg);
+      }
     });
     // 播放状态 → OSD 隐藏策略 + 暂停氛围模式
     _playingSub = _player.stream.playing.listen((playing) {
@@ -142,6 +147,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
       }
     });
     _loadWatched();
+    AppLog.player('initState 完成，开始加载 ep=$_currentIndex');
     _loadEpisode(_currentIndex);
     _progressTimer = Timer.periodic(const Duration(seconds: 5), (_) => _saveProgress());
 
@@ -165,6 +171,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
 
   @override
   void dispose() {
+    AppLog.player('退出播放页 ep=$_currentIndex pos=${_position.inSeconds}s');
     _progressTimer?.cancel();
     _positionSub?.cancel();
     _durationSub?.cancel();
@@ -186,6 +193,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   /// 唤起 OSD 并重置 3s 隐藏计时（暂停时常显）。
   void _pokeOsd() {
     if (!mounted) return;
+    if (!_osdVisible) AppLog.player('唤起 OSD');
     setState(() {
       _osdVisible = true;
       _ambience = false;
@@ -199,6 +207,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   }
 
   void _toggleOsd() {
+    AppLog.player('手势 onTap _toggleOsd visible=$_osdVisible');
     if (_osdVisible) {
       _osdHideTimer?.cancel();
       setState(() => _osdVisible = false);
@@ -307,9 +316,12 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     final ep = _detail.episodes[index];
     final url = ep.playURL;
     if (url == null || url.isEmpty) {
+      AppLog.player('播放地址为空 ep=$index title=${ep.title}');
       setState(() => _playerError = '该集播放地址为空');
       return;
     }
+
+    AppLog.player('加载 ep=$index title=${ep.title} url=${url.length > 80 ? '${url.substring(0, 80)}…' : url}');
 
     // 续播位置：显式传入（换源保留）> 历史记录
     Duration? seekTo = resumeAt;
@@ -320,9 +332,15 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
       }
     }
 
-    await _player.open(Media(url, httpHeaders: _headersFor(url)));
-    if (seekTo != null) await _player.seek(seekTo);
-    await _player.play();
+    try {
+      await _player.open(Media(url, httpHeaders: _headersFor(url)));
+      if (seekTo != null) await _player.seek(seekTo);
+      await _player.play();
+      AppLog.player('播放成功 ep=$index seek=${seekTo?.inSeconds ?? 0}s');
+    } catch (e) {
+      AppLog.player('播放失败 ep=$index err=$e');
+      rethrow;
+    }
   }
 
   Future<void> _saveProgress() async {
@@ -380,6 +398,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   // MARK: - 换源 / 其他季
 
   Future<void> _openSourceSheet() async {
+    AppLog.player('点击换源按钮');
     if (_sourceGroups.isEmpty && _otherSeasons.isEmpty && !_sourceSearching) {
       _searchSources();
     }
@@ -453,14 +472,19 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     final detail = await ref
         .read(catalogRepositoryProvider)
         .detail(siteKey: parts[1], vodId: parts.sublist(2).join('|'));
-    if (!mounted) return;
+    if (!mounted) {
+      _switching = false; // 防残留：未挂载时也复位，避免界面卡「正在切换源…」
+      return;
+    }
     if (detail == null || detail.episodes.isEmpty) {
+      AppLog.player('换源失败：新源无可用集数 drama=${drama.title}');
       setState(() {
         _switching = false;
         _playerError = '换源失败：新源无可用集数';
       });
       return;
     }
+    AppLog.player('换源成功：${drama.title} → ${detail.episodes.length} 集');
     setState(() {
       _detail = detail;
       _watchedIds = {};
@@ -676,6 +700,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                 IconButton(
                   icon: const Icon(Icons.arrow_back, color: Colors.white),
                   onPressed: () {
+                    AppLog.player('点击返回按钮 canPop=${context.canPop()}');
                     if (context.canPop()) {
                       context.pop();
                     } else {
@@ -1033,6 +1058,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   // MARK: - 选集面板（居中对话框）
 
   Future<void> _openEpisodesSheet() async {
+    AppLog.player('点击选集按钮');
     await showDialog<void>(
       context: context,
       builder: (ctx) => Dialog(

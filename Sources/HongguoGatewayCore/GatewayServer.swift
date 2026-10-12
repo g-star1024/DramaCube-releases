@@ -518,7 +518,7 @@ public enum GatewayServer {
                 throw HTTPError(.badRequest, message: "missing title")
             }
             if let poster = await CoverEngine.shared.doubanPoster(forRawTitle: title) {
-                let proxied = CoverEngine.proxiedImageURL(poster, gatewayBase: "http://127.0.0.1:8787")
+                let proxied = CoverEngine.proxiedImageURL(poster, gatewayBase: GatewayRuntime.currentBaseURL)
                 return Self.json(GatewayEnvelope(ok: true, data: ["url": proxied]))
             }
             return Self.json(GatewayEnvelope(ok: true, data: ["url": ""]))
@@ -722,19 +722,55 @@ public enum GatewayServer {
     /// 把绝对 URL 编码进本网关直播代理地址（绝对地址，确保 AVPlayer 正确解析）。
     private static func proxyURLString(_ absolute: String) -> String {
         let enc = absolute.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? absolute
-        return "http://127.0.0.1:8787/api/live/stream?url=\(enc)"
+        return "\(GatewayRuntime.currentBaseURL)/api/live/stream?url=\(enc)"
     }
+    /// 启动网关；端口被占用时自动递增重试（最多 5 个候选），绑定成功后
+    /// 把实际端口登记到 `GatewayRuntime.setPort`，UI 经 `AppConfig.gatewayBaseURL`
+    /// 读取实际端口，避免打到抢占进程（Flutter 版 DramaCube 同占 8787 的根因修复）。
     public static func run(port: Int) async throws {
         await MediaServerBootstrap.assemble()
         // 先快速标定首屏源（红果/NAS，秒级），保证首页立即有数据；
         // 再后台并发标定全部源（150 TVBox 慢源不阻塞起听），标定后聚合逐步纳入。
         await MediaServerRegistry.shared.probeQuick()
         Task { _ = await MediaServerRegistry.shared.probeAll() }
+
+        var lastError: Error?
+        for offset in 0..<5 {
+            let candidate = port + offset
+            do {
+                try await runOnce(port: candidate)
+                return // 正常退出（停止/取消）
+            } catch {
+                lastError = error
+                // 仅「地址被占用」才递增重试；其余错误直接抛。
+                if isAddressInUse(error) {
+                    if offset < 4 { continue }
+                }
+                throw error
+            }
+        }
+        throw lastError ?? HTTPError(.serviceUnavailable, message: "no available gateway port")
+    }
+
+    /// 单端口尝试启动；绑定成功即登记实际端口后阻塞运行。
+    private static func runOnce(port: Int) async throws {
         var configuration = ApplicationConfiguration()
         configuration.address = .hostname("127.0.0.1", port: port)
         var app = Application(router: makeRouter(), configuration: configuration)
         app.logger.logLevel = .info
+        // 绑定成功：登记实际端口，UI 跟随。
+        GatewayRuntime.setPort(port)
         try await app.run()
+    }
+
+    /// 判断是否为「地址已被占用」错误（NIO ChannelError / POSIX EADDRINUSE）。
+    private static func isAddressInUse(_ error: Error) -> Bool {
+        let ns = error as NSError
+        let desc = String(describing: error).lowercased()
+        return desc.contains("address already in use")
+            || desc.contains("eaddrinuse")
+            || desc.contains("bind failed")
+            || ns.code == 48 // EADDRINUSE
     }
 
     /// 把 Encodable 编码为 JSON 响应的辅助（HB2 的 ResponseGenerator 不直接支持 Codable）。

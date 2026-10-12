@@ -91,7 +91,7 @@ public struct NASAdapter: MediaServerProtocol {
 /// 网关 base（避免循环依赖，运行时取）。
 enum GatewayBase {
     static var url: URL? {
-        // 网关默认 8787，与应用内 AppSettings 对齐；适配器在网关进程内用 localhost。
-        URL(string: "http://127.0.0.1:8787")
+        // 跟随网关实际运行端口（端口冲突自动重试后仍指向本网关）。
+        URL(string: GatewayRuntime.currentBaseURL)
     }
 }

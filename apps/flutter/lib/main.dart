@@ -8,14 +8,20 @@ import 'package:window_manager/window_manager.dart';
 
 import 'app/app.dart';
 import 'core/gateway/gateway_server.dart';
+import 'core/platform/app_log.dart';
 import 'core/platform/player_remote.dart';
 import 'core/platform/tv_mode.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // 运行日志初始化（早期，便于记录启动链路）
+  await AppLog.init();
+  AppLog.app('main 启动，平台 ${Platform.operatingSystem} ${Platform.operatingSystemVersion}');
+
   // media_kit 初始化（libmpv 播放器内核）
   MediaKit.ensureInitialized();
+  AppLog.app('MediaKit 初始化完成');
 
   // macOS 菜单栏遥控桥（Native→Dart 播放控制）
   PlayerRemoteBridge.init();
@@ -44,12 +50,17 @@ Future<void> main() async {
     try {
       await g.start();
       globalGateway = g;
+      AppLog.app('网关绑定成功 port=$p');
       break;
-    } catch (_) {
+    } catch (e) {
+      AppLog.app('网关绑定失败 port=$p err=$e');
       try {
         await g.stop();
       } catch (_) {}
     }
+  }
+  if (globalGateway == null) {
+    AppLog.error('网关绑定全部失败（8787-8791），检查端口占用');
   }
 
   runApp(const ProviderScope(child: DramaCubeApp()));

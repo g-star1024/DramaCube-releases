@@ -274,16 +274,41 @@ class NASManager extends StateNotifier<NASState> {
     return out;
   }
 
-  /// 浅层判断目录是否含视频：直接子级有视频文件即 true；否则看一层子目录（限 20 个探测，防深递归打满）。
+  /// 判断目录是否含视频：**逐级深度下探**（对齐 Swift NASEngine.collectVideos）。
+  ///
+  /// 原「浅探测」（直接子级 + 一层子目录）有漏洞：电影/年份/片名/xx.mp4 这类
+  /// ≥3 层结构会被误判为无视频而整目录过滤掉。现改为递归下探：任一后代层级
+  /// 发现视频文件即算「有视频」，一旦发现立即短路返回（找到即止，不全扫）。
+  /// 防护：限深 [_maxDepth]、单目录限扫 [_maxEntriesPerDir] 条，防巨型库/循环打满。
   Future<bool> _dirHasVideo(NASLibrary lib, String path) async {
-    final entries = lib.type == 'mount' ? await _mountList(lib, path) : await _webdavList(lib, path);
-    if (entries.any((e) => !e.isDir && isVideo(e.name))) return true;
-    // 没有直接视频 → 看一层子目录（任一含视频即算有）
-    final subdirs = entries.where((e) => e.isDir).take(20);
-    for (final s in subdirs) {
-      final sub = path.isEmpty ? s.name : '$path/${s.name}';
-      final subEntries = lib.type == 'mount' ? await _mountList(lib, sub) : await _webdavList(lib, sub);
-      if (subEntries.any((e) => !e.isDir && isVideo(e.name))) return true;
+    return _dirHasVideoAt(lib, path, 0);
+  }
+
+  static const int _maxDepth = 5;         // 对齐 Swift maxDepth
+  static const int _maxEntriesPerDir = 200; // 单目录最多扫条目（对齐 Swift 思路，适量收紧防慢库）
+
+  Future<bool> _dirHasVideoAt(NASLibrary lib, String path, int depth) async {
+    if (depth > _maxDepth) return false;
+    final List<NASEntry> entries;
+    try {
+      entries = lib.type == 'mount' ? await _mountList(lib, path) : await _webdavList(lib, path);
+    } catch (_) {
+      return false; // 单目录失败（权限/超时）视为此分支无视频，不中断其它分支
+    }
+    var scanned = 0;
+    for (final e in entries) {
+      if (scanned++ >= _maxEntriesPerDir) break;
+      if (!e.isDir) {
+        if (isVideo(e.name)) return true; // 发现视频，短路
+      }
+    }
+    // 本层无视频 → 逐级下探各子目录（任一含视频即算有）
+    scanned = 0;
+    for (final e in entries) {
+      if (!e.isDir) continue;
+      if (scanned++ >= _maxEntriesPerDir) break;
+      final sub = path.isEmpty ? e.name : '$path/${e.name}';
+      if (await _dirHasVideoAt(lib, sub, depth + 1)) return true;
     }
     return false;
   }

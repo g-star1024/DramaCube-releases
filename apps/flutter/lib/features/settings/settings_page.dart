@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../app/design_system.dart';
 import '../../app/settings_provider.dart';
 import '../../core/persistence/backup_service.dart';
+import '../../core/platform/app_log.dart';
 import '../../core/widgets/health_badge.dart';
 import '../catalog/source_manager.dart';
 
@@ -506,6 +507,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   onTap: _checkingUpdate ? null : _checkUpdate,
                 ),
                 const Divider(height: 1, indent: 16, endIndent: 16),
+                ListTile(
+                  leading: const Icon(Icons.article_outlined),
+                  title: const Text('运行日志'),
+                  subtitle: const Text('查看 / 复制当日运行日志（播放器、网关、错误）'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: _showLogSheet,
+                ),
+                const Divider(height: 1, indent: 16, endIndent: 16),
                 FutureBuilder<PackageInfo>(
                   future: PackageInfo.fromPlatform(),
                   builder: (context, snap) => ListTile(
@@ -571,6 +580,102 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 const SizedBox(height: Spacing.sm),
               ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // MARK: 运行日志
+
+  Future<void> _showLogSheet() async {
+    AppLog.app('设置页打开运行日志');
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 720, maxHeight: 560),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(Spacing.lg),
+                child: Row(
+                  children: [
+                    Text('运行日志', style: Theme.of(ctx).textTheme.titleMedium),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.refresh, size: 20),
+                      tooltip: '刷新',
+                      onPressed: () => setState(() {}),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.copy, size: 20),
+                      tooltip: '复制日志',
+                      onPressed: () async {
+                        final messenger = ScaffoldMessenger.of(ctx);
+                        final navigator = Navigator.of(ctx);
+                        final text = await AppLog.tail(500);
+                        await Clipboard.setData(ClipboardData(text: text));
+                        if (!mounted) return;
+                        navigator.pop();
+                        messenger.showSnackBar(
+                          const SnackBar(content: Text('已复制最近 500 行日志')),
+                        );
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.folder_open, size: 20),
+                      tooltip: '在 Finder 中显示',
+                      onPressed: () async {
+                        final messenger = ScaffoldMessenger.of(ctx);
+                        final ok = await AppLog.revealInFinder();
+                        if (!mounted) return;
+                        if (!ok) {
+                          messenger.showSnackBar(
+                            const SnackBar(content: Text('无法打开日志目录')),
+                          );
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: FutureBuilder<String>(
+                  future: AppLog.tail(300),
+                  builder: (context, snap) {
+                    if (!snap.hasData) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    final lines = snap.data!.split('\n');
+                    return ListView.builder(
+                      padding: const EdgeInsets.all(Spacing.md),
+                      itemCount: lines.length,
+                      itemBuilder: (ctx, i) => SelectableText(
+                        lines[i],
+                        style: const TextStyle(
+                          fontFamily: 'Menlo',
+                          fontSize: 11,
+                          height: 1.4,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const Divider(height: 1),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: Spacing.sm),
+                child: TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('关闭'),
+                ),
+              ),
+            ],
           ),
         ),
       ),

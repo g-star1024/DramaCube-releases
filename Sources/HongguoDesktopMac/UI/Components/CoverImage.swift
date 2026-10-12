@@ -152,15 +152,18 @@ public struct CoverImage: View {
         let image: NSImage?
     }
 
-    /// 封面专用 session：跟随系统网络（含系统代理分流），不强制直连。
+    /// 封面专用 session：**强制直连**（清空代理），不跟随系统代理。
     ///
-    /// 实测根因（v2.3.2）：视频源图床（采集站 CDN，如 p.bfvp26.com）强制直连时
-    /// DNS 轮询到慢边缘节点首包 6.9s、方差极大，叠加此前 10s 超时 → 首页几十张
-    /// 封面并发时部分卡片超时回占位（「视频源封面不出、发现页豆瓣正常」）；
-    /// 而豆瓣/发现页走系统代理稳定 1.5s。封面是图片不是视频流，不涉 CDN 区域
-    /// 403 限制，走系统网络（与 Flutter cached_network_image 默认行为一致）更稳。
+    /// 实测根因（v2.3.3 回正 v2.3.2 的误改）：视频源封面直接命中采集站图床
+    /// （如 p.bfvp26.com，不走网关代理）。实测该图床**直连 0.99s 秒回、走系统
+    /// 代理 15s 超时**——v2.3.2 误把封面 session 改回系统代理后，视频源封面
+    /// 全部超时回占位（「数据恢复后封面仍不加载」）。Flutter 版无强制代理概念
+    /// 即默认直连，故出图正常。采集站图床锁大陆 IP，境外代理出口必被拖死/403，
+    /// 必须强制直连（与 v2.3.1 行为一致）。
     nonisolated private static let session: URLSession = {
         let cfg = URLSessionConfiguration.default
+        // 强制直连：清空代理（采集站 CDN 锁大陆 IP，系统代理境外出口拉图超时）。
+        cfg.connectionProxyDictionary = [:]
         // 封面并发 12 时同步放宽每主机连接上限（默认 6 会级联排队）。
         cfg.httpMaximumConnectionsPerHost = 16
         cfg.timeoutIntervalForRequest = 20
