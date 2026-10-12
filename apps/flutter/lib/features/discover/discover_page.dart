@@ -1,14 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/design_system.dart';
 import '../../core/models/models.dart';
+import '../../core/widgets/cinema_hero.dart';
+import '../../core/widgets/continue_card.dart';
+import '../../core/widgets/empty_state.dart';
 import '../../core/widgets/hero_carousel.dart';
+import '../../core/widgets/media_row.dart';
 import '../../core/widgets/poster_card.dart';
+import '../../core/widgets/shimmer.dart';
 import 'discover_engine.dart';
 
-/// 发现页 —— Hero 轮播 + 热门电影/剧集/综艺/动漫四分区（对齐 macOS 版 RankView）。
+/// 发现页 —— 三端分风格（v2.5）：
+/// - 桌面（≥900）：Cinema Hero 16:6 + 继续观看 + MediaRow 陈列栏（末项露出 30%）
+/// - 移动：Hero 轮播 + 继续观看 + 四分区（收起横排 / 展开双列瀑布流）
 class DiscoverPage extends ConsumerStatefulWidget {
   const DiscoverPage({super.key});
 
@@ -26,7 +34,7 @@ class _DiscoverPageState extends ConsumerState<DiscoverPage> {
   List<DoubanHotItem> _heroItems = [];
   final List<_SectionData> _sections = [];
   bool _loading = true;
-  bool _expanded = false; // 18 条收起 / 54 条展开
+  bool _expanded = false; // 移动端：18 条收起 / 54 条展开
   String? _error;
 
   @override
@@ -66,6 +74,8 @@ class _DiscoverPageState extends ConsumerState<DiscoverPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isWide = MediaQuery.sizeOf(context).width >= 900;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('发现'),
@@ -78,52 +88,123 @@ class _DiscoverPageState extends ConsumerState<DiscoverPage> {
         ],
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? _buildSkeleton()
           : _error != null
-              ? _buildError()
+              ? EmptyState.network(subtitle: _error, onRetry: _load)
               : RefreshIndicator(
                   onRefresh: _load,
-                  child: ListView(
-                    padding: const EdgeInsets.all(Spacing.lg),
-                    children: [
-                      if (_heroItems.isNotEmpty)
-                        HeroCarousel(
-                          items: _heroItems
-                              .map((e) => e.toDrama('movie'))
-                              .toList(),
-                          onTap: (d) => _openDouban(d),
-                        ),
-                      for (final section in _sections)
-                        _SectionView(
-                          title: section.title,
-                          items: section.items,
-                          expanded: _expanded,
-                          onToggle: () {
-                            setState(() => _expanded = !_expanded);
-                            _load();
-                          },
-                          onTap: (item, kind) => _openDouban(item.toDrama(kind)),
-                        ),
-                    ],
-                  ),
+                  child: isWide ? _buildWide() : _buildMobile(),
                 ),
     );
   }
 
-  Widget _buildError() => Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.cloud_off_outlined,
-                size: 48,
-                color: Theme.of(context).colorScheme.onSurfaceVariant),
-            const SizedBox(height: Spacing.md),
-            Text(_error!, style: Theme.of(context).textTheme.bodyMedium),
-            const SizedBox(height: Spacing.md),
-            FilledButton(onPressed: _load, child: const Text('重试')),
-          ],
+  /// 桌面布局：Cinema Hero + 继续观看 + 陈列栏行。
+  Widget _buildWide() {
+    return ListView(
+      padding: const EdgeInsets.only(top: Spacing.lg, bottom: Spacing.xl),
+      children: [
+        if (_heroItems.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: Spacing.lg),
+            child: CinemaHero(
+              items: _heroItems.map((e) => e.toDrama('movie')).toList(),
+              onTap: _openDouban,
+            ),
+          ),
+        const SizedBox(height: Spacing.xl),
+        ContinueSection(
+          onSelect: (h) => context.push(
+            '/detail',
+            extra: {
+              'drama': Drama(
+                id: h.dramaId,
+                title: h.title,
+                coverURL: h.coverURL,
+              ),
+            },
+          ),
         ),
-      );
+        for (final section in _sections) ...[
+          const SizedBox(height: Spacing.xl),
+          MediaRow<DoubanHotItem>(
+            title: section.title,
+            items: section.items,
+            itemWidth: 140,
+            itemHeight: 250,
+            itemBuilder: (context, item) => PosterCard(
+              drama: item.toDrama(kindOf(section.title)),
+              rating: double.tryParse(item.rate),
+              onTap: () => _openDouban(item.toDrama(kindOf(section.title))),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  /// 移动布局：Hero 轮播 + 继续观看 + 分区（收起横排 / 展开瀑布流）。
+  Widget _buildMobile() {
+    return ListView(
+      padding: const EdgeInsets.all(Spacing.lg),
+      children: [
+        if (_heroItems.isNotEmpty)
+          HeroCarousel(
+            items: _heroItems.map((e) => e.toDrama('movie')).toList(),
+            onTap: _openDouban,
+          ),
+        ContinueSection(
+          onSelect: (h) => context.push(
+            '/detail',
+            extra: {
+              'drama': Drama(
+                id: h.dramaId,
+                title: h.title,
+                coverURL: h.coverURL,
+              ),
+            },
+          ),
+        ),
+        for (final section in _sections)
+          _SectionView(
+            title: section.title,
+            items: section.items,
+            expanded: _expanded,
+            onToggle: () {
+              setState(() => _expanded = !_expanded);
+              _load();
+            },
+            onTap: (item, kind) => _openDouban(item.toDrama(kind)),
+          ),
+      ],
+    );
+  }
+
+  /// 加载骨架屏（微光）。
+  Widget _buildSkeleton() {
+    return ListView(
+      padding: const EdgeInsets.all(Spacing.lg),
+      children: [
+        ShimmerSkeleton.landscape(height: 200),
+        const SizedBox(height: Spacing.xl),
+        ShimmerSkeleton(
+          height: 20,
+          width: 120,
+          borderRadius: BorderRadius.circular(4),
+        ),
+        const SizedBox(height: Spacing.md),
+        SizedBox(
+          height: 240,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: 6,
+            separatorBuilder: (_, __) => const SizedBox(width: Spacing.md),
+            itemBuilder: (_, __) => ShimmerSkeleton.poster(width: 140),
+          ),
+        ),
+      ],
+    );
+  }
 
   /// 点击豆瓣卡片 → 聚合详情页（按标题跨源搜索可播版本）。
   void _openDouban(Drama drama) {
@@ -131,7 +212,14 @@ class _DiscoverPageState extends ConsumerState<DiscoverPage> {
   }
 }
 
-/// 分区视图 —— 标题行 + 收起横排 / 展开网格 + 展开收起按钮。
+/// 分区 kind 映射。
+String kindOf(String title) => switch (title) {
+      '热门电影' => 'movie',
+      '热门动漫' => 'bangumi',
+      _ => 'tv',
+    };
+
+/// 移动端分区视图 —— 标题行 + 收起横排 / 展开双列瀑布流。
 class _SectionView extends StatelessWidget {
   final String title;
   final List<DoubanHotItem> items;
@@ -146,12 +234,6 @@ class _SectionView extends StatelessWidget {
     required this.onToggle,
     required this.onTap,
   });
-
-  String get _kind => switch (title) {
-        '热门电影' => 'movie',
-        '热门动漫' => 'bangumi',
-        _ => 'tv',
-      };
 
   @override
   Widget build(BuildContext context) {
@@ -198,32 +280,35 @@ class _SectionView extends StatelessWidget {
                   return SizedBox(
                     width: 126,
                     child: PosterCard(
-                      drama: item.toDrama(_kind),
+                      drama: item.toDrama(kindOf(title)),
                       rating: double.tryParse(item.rate),
-                      onTap: () => onTap(item, _kind),
+                      onTap: () => onTap(item, kindOf(title)),
                     ),
                   );
                 },
               ),
             )
           else
-            // 展开：网格（54 条）
-            GridView.builder(
+            // 展开：双列瀑布流（54 条，交替纵横比制造错落感）
+            MasonryGridView.count(
+              crossAxisCount: 2,
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                maxCrossAxisExtent: 140,
-                mainAxisSpacing: Spacing.md,
-                crossAxisSpacing: Spacing.md,
-                childAspectRatio: 0.55,
-              ),
+              mainAxisSpacing: Spacing.md,
+              crossAxisSpacing: Spacing.md,
+              padding: EdgeInsets.zero,
               itemCount: items.length,
               itemBuilder: (context, i) {
                 final item = items[i];
-                return PosterCard(
-                  drama: item.toDrama(_kind),
-                  rating: double.tryParse(item.rate),
-                  onTap: () => onTap(item, _kind),
+                // 交替纵横比（3:4 与 3:4.8）形成瀑布错落
+                final ratio = i.isEven ? 0.72 : 0.60;
+                return AspectRatio(
+                  aspectRatio: ratio,
+                  child: PosterCard(
+                    drama: item.toDrama(kindOf(title)),
+                    rating: double.tryParse(item.rate),
+                    onTap: () => onTap(item, kindOf(title)),
+                  ),
                 );
               },
             ),

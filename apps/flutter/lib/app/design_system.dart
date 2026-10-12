@@ -55,6 +55,27 @@ abstract final class Brand {
 
   /// 按外观取强调色。
   static Color accent(Brightness b) => b == Brightness.dark ? pinkDark : pink;
+
+  // MARK: v3 品牌渐变 / 焦点（三端分风格统一基底）
+
+  /// 渐变起点：品牌粉。
+  static const Color heroPink = Color(0xFFFF2D55);
+
+  /// 渐变中段：暖橘。
+  static const Color heroAmber = Color(0xFFFF9A62);
+
+  /// 渐变终点 / 焦点金：暖金。
+  static const Color heroGold = Color(0xFFFFD166);
+
+  /// 焦点色（TV 金辉光 / 桌面 hover 描边同源）。
+  static const Color focusGold = Color(0xFFFFD166);
+
+  /// 品牌渐变（左 → 右：粉 → 橘 → 金）。
+  static const LinearGradient gradientHero = LinearGradient(
+    begin: Alignment.centerLeft,
+    end: Alignment.centerRight,
+    colors: [heroPink, heroAmber, heroGold],
+  );
 }
 
 /// 间距（对齐 macOS 版 Spacing）。

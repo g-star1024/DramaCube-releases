@@ -12,47 +12,114 @@ import '../features/detail/detail_page.dart';
 import '../features/search/search_page.dart';
 import '../features/downloads/downloads_page.dart';
 import '../core/models/models.dart';
+import 'motion.dart';
+
+/// 页面转场 —— 淡入 + 上滑 12%（v3 统一转场）。
+CustomTransitionPage<void> _fadeSlidePage(Widget child, GoRouterState state) =>
+    CustomTransitionPage(
+      key: state.pageKey,
+      child: child,
+      transitionDuration: Motion.durSlow,
+      reverseTransitionDuration: Motion.durMed,
+      transitionsBuilder: (context, animation, secondary, child) {
+        final curved = CurvedAnimation(
+          parent: animation,
+          curve: Motion.curveEmphasized,
+        );
+        return FadeTransition(
+          opacity: curved,
+          child: SlideTransition(
+            position: Tween(
+              begin: const Offset(0, 0.12),
+              end: Offset.zero,
+            ).animate(curved),
+            child: child,
+          ),
+        );
+      },
+    );
 
 /// 应用路由（宽屏侧栏 / 窄屏底部导航 + 播放器全屏页）。
 final appRouter = GoRouter(
   initialLocation: '/discover',
   routes: [
-    // 导航壳（发现/视频源/直播/资源库/收藏/设置）
+    // 导航壳（发现/视频源/直播/资源库/我的/设置）
     ShellRoute(
       builder: (context, state, child) => HomeShell(child: child),
       routes: [
-        GoRoute(path: '/discover', builder: (context, state) => const DiscoverPage()),
-        GoRoute(path: '/catalog', builder: (context, state) => const CatalogPage()),
-        GoRoute(path: '/live', builder: (context, state) => const LivePage()),
-        GoRoute(path: '/nas', builder: (context, state) => const NASPage()),
-        GoRoute(path: '/library', builder: (context, state) => const LibraryPage()),
-        GoRoute(path: '/settings', builder: (context, state) => const SettingsPage()),
+        GoRoute(
+          path: '/discover',
+          pageBuilder: (context, state) =>
+              _fadeSlidePage(const DiscoverPage(), state),
+        ),
+        GoRoute(
+          path: '/catalog',
+          pageBuilder: (context, state) =>
+              _fadeSlidePage(const CatalogPage(), state),
+        ),
+        GoRoute(
+          path: '/live',
+          pageBuilder: (context, state) =>
+              _fadeSlidePage(const LivePage(), state),
+        ),
+        GoRoute(
+          path: '/nas',
+          pageBuilder: (context, state) =>
+              _fadeSlidePage(const NASPage(), state),
+        ),
+        GoRoute(
+          path: '/library',
+          pageBuilder: (context, state) =>
+              _fadeSlidePage(const LibraryPage(), state),
+        ),
+        GoRoute(
+          path: '/settings',
+          pageBuilder: (context, state) =>
+              _fadeSlidePage(const SettingsPage(), state),
+        ),
         GoRoute(
           path: '/detail',
-          builder: (context, state) {
+          pageBuilder: (context, state) {
             final extra = state.extra as Map<String, dynamic>?;
             final drama = extra?['drama'] as Drama?;
             if (drama == null) {
-              return const Scaffold(body: Center(child: Text('参数错误')));
+              return _fadeSlidePage(
+                const Scaffold(body: Center(child: Text('参数错误'))),
+                state,
+              );
             }
-            return DetailPage(drama: drama);
+            return _fadeSlidePage(DetailPage(drama: drama), state);
           },
         ),
-        GoRoute(path: '/search', builder: (context, state) => const SearchPage()),
-        GoRoute(path: '/downloads', builder: (context, state) => const DownloadsPage()),
+        GoRoute(
+          path: '/search',
+          pageBuilder: (context, state) =>
+              _fadeSlidePage(const SearchPage(), state),
+        ),
+        GoRoute(
+          path: '/downloads',
+          pageBuilder: (context, state) =>
+              _fadeSlidePage(const DownloadsPage(), state),
+        ),
       ],
     ),
     // 播放器（全屏，无导航壳）
     GoRoute(
       path: '/player',
-      builder: (context, state) {
+      pageBuilder: (context, state) {
         final extra = state.extra as Map<String, dynamic>?;
         final detail = extra?['detail'] as DramaDetail?;
         final startIndex = extra?['startIndex'] as int? ?? 0;
         if (detail == null) {
-          return const Scaffold(body: Center(child: Text('参数错误')));
+          return _fadeSlidePage(
+            const Scaffold(body: Center(child: Text('参数错误'))),
+            state,
+          );
         }
-        return PlayerPage(detail: detail, startIndex: startIndex);
+        return _fadeSlidePage(
+          PlayerPage(detail: detail, startIndex: startIndex),
+          state,
+        );
       },
     ),
   ],
@@ -70,9 +137,9 @@ class _NavItem {
 const _navItems = [
   _NavItem('/discover', Icons.explore_outlined, Icons.explore, '发现'),
   _NavItem('/catalog', Icons.movie_outlined, Icons.movie, '视频源'),
-  _NavItem('/live', Icons.tv_outlined, Icons.tv, '电视直播'),
+  _NavItem('/live', Icons.tv_outlined, Icons.tv, '直播'),
   _NavItem('/nas', Icons.dns_outlined, Icons.dns, '资源库'),
-  _NavItem('/library', Icons.favorite_outline, Icons.favorite, '收藏'),
+  _NavItem('/library', Icons.person_outline, Icons.person, '我的'),
   _NavItem('/settings', Icons.settings_outlined, Icons.settings, '设置'),
 ];
 
