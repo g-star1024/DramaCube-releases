@@ -1,0 +1,41 @@
+version: "3.8"
+
+# 剧立方 DramaCube — 本地部署
+#
+# 用法：
+#   docker compose up -d          # 启动
+#   docker compose logs -f        # 查看日志
+#   docker compose down           # 停止
+#
+# 访问：
+#   Web UI:  http://localhost:8080
+#   网关 API: http://localhost:8787/api/health
+
+services:
+  dramacube:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dramacube
+    ports:
+      - "8080:80"     # Web UI
+      - "8787:8787"   # 网关 API（直连用，也可走 nginx /api 反代）
+    volumes:
+      # 数据持久化（收藏/历史/设置 → SQLite + SharedPreferences JSON）
+      - dramacube-data:/app/data
+      # NAS 挂载目录（可选：把本机 NAS 目录挂进容器，mount 类型资源库用）
+      # - /path/to/your/nas/movies:/mnt/nas/movies:ro
+    environment:
+      # 网关端口（默认 8787）
+      - GATEWAY_PORT=8787
+    restart: unless-stopped
+    # 资源限制（Raspberry Pi 也能跑）
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 128M
+
+volumes:
+  dramacube-data:
