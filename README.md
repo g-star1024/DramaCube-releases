@@ -1,94 +1,114 @@
-# 红果短剧桌面版 · macOS 客户端
+# 剧立方 DramaCube — 全平台短剧客户端
 
-> 红果短剧桌面版的 **macOS 原生客户端**（macOS 13 Ventura+，Intel x86_64 / Apple Silicon 通用二进制）。
-> 采用 SwiftUI + AppKit 原生壳，Hummingbird 本地网关统一收口内容接入，AVPlayer 播放。
+> 多端短剧聚合播放客户端：**一个内容世界，三端体验**（移动暖阳 / 桌面影院 / TV 焦点引擎）。
+> 基于 TVBox / 豆瓣公开接口聚合全网短剧与影视资源，本地播放、离线缓存、零账号依赖。
 
 ---
 
-## 一、双仓策略（重要）
+## 一、仓库结构（Monorepo）
 
-| 仓库 | 性质 | 内容 |
+| 目录 | 客户端 | 状态 |
+|------|--------|------|
+| [`apps/flutter`](apps/flutter) | **剧立方 DramaCube Flutter 全平台版**（v2.6.0） | 主推，活跃开发 |
+| `Sources/` + `HongguoDesktopMac/` | 红果短剧 macOS 原生版（Swift 6 + SwiftUI + Hummingbird 网关） | 稳定维护 |
+
+发布策略：源码在本私有仓，安装包在公开仓 [`g-star1024/DramaCube-releases`](https://github.com/g-star1024/DramaCube-releases) 分发。
+
+## 二、平台矩阵（Flutter 版 v2.6.0）
+
+| 平台 | 产物 | 风格 |
 |------|------|------|
-| [`g-star1024/hongguo-desktop`](https://github.com/g-star1024/hongguo-desktop) | **私有** | 全部**源码**（Swift 工程、网关、文档、脚本） |
-| [`g-star1024/hongguo-desktop-releases`](https://github.com/g-star1024/hongguo-desktop-releases) | **公开** | 仅**发布产物**：安装包 `.dmg`/`.zip`、`latest.json`、README、截图（与 Windows 版同结构） |
+| Windows 10+ | `dramacube-windows-*.zip` | 桌面 Cinema |
+| Linux x64 | `dramacube-linux-*.tar.gz` | 桌面 Cinema |
+| macOS 13+（Intel / Apple Silicon 双架构） | `dramacube-macOS-x64/arm64-*.dmg` | 桌面 Cinema |
+| Android 8+ | `dramacube-android-*.apk` | 移动暖阳 |
+| Android TV / 电视模式 | 设置开启「电视模式」 | TV 独立版（Cinema Dark） |
+| Web / Docker | `flutter build web` + `Dockerfile` | 桌面 Cinema |
 
-源码不公开，客户端构建产物公开分发。发布流程见 `Scripts/build-release.sh`。
+## 三、功能总览
 
-## 二、技术栈
+- **发现**：豆瓣热门（电影/剧集/综艺/动漫）+ B 站番剧榜，桌面 Cinema Hero 16:6 视差轮播、移动双列瀑布流
+- **聚合搜索**：TVBox 多源并发搜索，「搜到一个显一个」按源分组
+- **详情**：封面铺底沉浸式头图 + 豆瓣简介 + 跨源可播版本切换 + 选集胶囊网格
+- **播放器**（media_kit / libmpv 内核）：
+  - 桌面：毛玻璃 OSD、快捷键（`Space` `←→` `↑↓` `F` `Esc` `0-9` `[ ]`）、暂停氛围模式
+  - 移动：双击快进退、边缘滑调亮度/音量、横屏沉浸
+  - TV：焦点 scrubber、大按钮 OSD、双击 OK 2 倍速
+- **智能播放**：自动连播、跳片头、下集预缓冲（90% 静默预热）、跨源换源续播
+- **下载管理**：mp4 流式下载 + m3u8 多线程分片下载与断点续传
+- **直播**：M3U/TXT 直播源聚合
+- **资源库**：WebDAV / 本地挂载目录浏览播放
+- **收藏 / 播放历史**：本地 drift 数据库，「继续观看」跨端续播
+- **本地网关**：Dart HTTP 网关（8787 端口，冲突时 8787-8791 自动降级），`/api/health` 可查版本
 
-- **语言**：Swift 6（Swift 6.0.3 / Xcode 16.2 验证）
-- **UI**：SwiftUI + AppKit（NavigationSplitView、Settings scene、原生菜单/快捷键）
-- **本地网关**：[Hummingbird 2](https://github.com/hummingbird-project/hummingbird)（Swift 原生 HTTP 服务，监听 `127.0.0.1:8787`）
-- **HTML 解析**：[SwiftSoup](https://github.com/scinfu/SwiftSoup)
-- **播放**：AVPlayer / AVKit（VideoPlayer）
-- **包管理**：Swift Package Manager
-- **目标**：macOS 13.0+，Universal Binary（`arm64 + x86_64`）
+## 四、三端设计语言（v2.5 起）
 
-## 三、内容接入架构
+统一品牌基底 **红果粉 #FF2D55 + 粉金渐变 #FF2D55 → #FF9A62 → #FFD666**，表现层分端：
 
-Windows 版是 WebView2 + Python(FastAPI) 本地服务的闭源壳。本 Mac 版**不复制其二进制**，而是从公开网页接口重建：
+| | 移动 | 桌面 | TV |
+|---|------|------|-----|
+| 主题 | 暖阳奶油（#FDFBF7） | 暖阳奶油 + 影院深色 | Cinema Dark（#0E0D0B） |
+| 布局 | 双列瀑布流 + 底部导航 | 16:6 Hero + 陈列栏行（末项露出 30%） | 聚光灯 + 常驻窄轨侧栏（56→200dp） |
+| 交互 | 手势（双击/边缘滑） | 快捷键 + 悬停预览 | D-pad 焦点引擎（缩放 1.12 + 金辉光 + 邻居压暗） |
+| 安全区 | 系统默认 | 系统默认 | 上下 60dp / 左右 80dp，字阶 ≥1.5x |
 
-```
-SwiftUI App ──HTTP──> 本地网关(Hummingbird :8787) ──HTTPS(剥离 Referer)──> novelquickapp.com / 字节 CDN
-```
+设计规范与演进路线见 [`docs/flutter-ui-upgrade-v2.5.md`](docs/flutter-ui-upgrade-v2.5.md)。
 
-- **浏览 / 搜索 / 榜单 / 详情**：解析 `novelquickapp.com` 分享落地页内联的 `window._ROUTER_DATA`（列表类接口免签名）。
-- **播放**：取解析出的 `play_url` 直链，网关代理请求 CDN 时**统一不携带 Referer**（字节 CDN 对带 Referer 返回 403）。
-- 不依赖任何逆向签名（X-Argus / spade_a），无需设备仿真或私有密钥。
-
-> 调研细节见 `.workbuddy/analysis/api-research-2026-10-09.md`。
-
-## 四、目录结构
-
-```
-hongguo-desktop/
-├── Package.swift                 # SPM 工程（Xcode 16 可直接打开）
-├── Sources/
-│   ├── HongguoCore/              # 模型 + 网页解析 + HTTP 客户端（可被 App 与网关共用）
-│   ├── HongguoGateway/           # Hummingbird 本地网关可执行（swift run 启动）
-│   └── HongguoDesktopMac/        # SwiftUI App 源码（作为库，由 Xcode App Target 引用）
-├── Tests/HongguoCoreTests/
-├── Scripts/
-│   ├── dev.sh                    # 本地开发：起网关 + 开 Xcode
-│   └── build-release.sh          # 构建通用二进制 + 打包 + 发布到 releases 仓
-└── Documentation/
-```
-
-## 五、本地开发
-
-### 方式 A：Xcode（推荐，可跑完整 App）
-
-1. `open Package.swift`（Xcode 16 直接以 SPM 工程打开，获得代码补全/预览）。
-2. `File ▸ New ▸ Target ▸ macOS ▸ App`，命名 `HongguoDesktopMacApp`，嵌入 `HongguoCore` 与 `HongguoDesktopMac` 库。
-3. 把自动生成的 `HongguoDesktopMacAppApp.swift` 改为：
-   ```swift
-   import SwiftUI
-   import HongguoDesktopMac
-   @main
-   struct Runner: App { var body: some Scene { HongguoApp().body } }
-   ```
-4. 首次运行前启动本地网关（见方式 B），或在 `Runner` 中通过 `Process` 捆绑启动 `HongguoGateway`。
-
-### 方式 B：仅验证网关（命令行）
+## 五、快速开始（Flutter 版）
 
 ```bash
-swift build
-swift run HongguoGateway        # 监听 http://127.0.0.1:8787
-curl "http://127.0.0.1:8787/api/health"
-curl "http://127.0.0.1:8787/api/search?q=关键词"
-curl "http://127.0.0.1:8787/api/detail/<分享ID>"
+cd apps/flutter
+flutter pub get
+flutter run -d macos        # 或 windows / linux / android / chrome
+flutter build web --release # Web 构建
 ```
 
-## 六、构建与发布
+环境要求：Flutter 3.35+，Dart SDK ≥3.5。国内网络建议配置：
 
 ```bash
-export GITHUB_TOKEN=你的PAT        # 用于上传到 releases 仓
-./Scripts/build-release.sh          # 产出 .dmg/.zip + latest.json 并发布
+export PUB_HOSTED_URL=https://pub.flutter-io.cn
+export FLUTTER_STORAGE_BASE_URL=https://storage.flutter-io.cn
 ```
 
-具体步骤见脚本内注释。需要 Apple Developer ID 签名 + notarization 才能免 Gatekeeper 警告（见 `Documentation/`）。
+## 六、目录结构（Flutter 版）
 
-## 七、合规说明
+```
+apps/flutter/lib/
+├── app/                    # 主题 / 设计令牌 / 路由 / 设置
+│   ├── design_system.dart  #   Brand 色板 + 间距 + 圆角 + v3 渐变/焦点令牌
+│   ├── motion.dart         #   动效令牌（150/250/400ms + 曲线）
+│   └── router.dart         #   go_router（宽屏 Rail / 窄屏底栏）
+├── core/
+│   ├── db/                 # drift 数据库（收藏 / 历史）
+│   ├── gateway/            # Dart 本地网关（8787）
+│   ├── models/             # 数据模型
+│   └── widgets/            # 通用组件（CinemaHero / MediaRow / Shimmer…）
+└── features/
+    ├── discover/           # 发现页 + 豆瓣/B站引擎
+    ├── catalog/            # TVBox 视频源 + 聚合搜索
+    ├── detail/             # 详情页
+    ├── player/             # 播放器（三端 OSD 分化）
+    ├── downloads/          # 下载管理（mp4 / m3u8 多线程）
+    ├── live/               # 直播
+    ├── nas/                # WebDAV / 挂载资源库
+    ├── library/            # 收藏 / 历史
+    ├── search/             # 聚合搜索页
+    ├── settings/           # 设置中心
+    └── tv/                 # TV 独立版（主题/焦点/侧栏/键盘/OSD/五页）
+```
 
-本项目为**个人学习/研究用途的第三方客户端**，不托管任何影视内容，所有数据来自公开网页接口；
-不破解、不 redistribution 红果/字节跳动的专有代码或资源。请遵守所在地法律法规与服务提供方条款。
+## 七、版本历史
+
+| 版本 | 内容 |
+|------|------|
+| **v2.6.0** | UI 三端升级：令牌 v3、Cinema Hero、毛玻璃 OSD、快捷键、暂停氛围模式、TV 独立版（焦点引擎 + Cinema Dark）、继续观看 |
+| v2.4.1 | 修复 macOS 黑屏（网关端口占用未捕获异常 → 8787-8791 降级） |
+| v2.4.0 | 新增 macOS 双架构（Intel / Apple Silicon）构建 |
+| v2.3.0 | Docker 镜像（Web + nginx + Dart 网关） |
+
+安装包下载：[DramaCube-releases](https://github.com/g-star1024/DramaCube-releases/releases)
+
+## 八、合规说明
+
+本项目为个人学习/研究用途的第三方客户端，不托管任何影视内容，所有数据来自公开接口；
+请遵守所在地法律法规与内容服务方条款。
