@@ -1,0 +1,101 @@
+name: Build macOS (Intel + Apple Silicon)
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号（如 2.4.0）'
+        required: true
+        default: '2.4.0'
+
+permissions:
+  contents: write
+
+jobs:
+  build-macos-arm64:
+    name: Apple Silicon (arm64)
+    runs-on: macos-14
+    steps:
+      - name: Checkout 私有源码仓库
+        uses: actions/checkout@v4
+        with:
+          repository: g-star1024/hongguo-desktop
+          token: ${{ secrets.HG_PAT }}
+          ref: main
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.35.4
+          channel: stable
+          cache: true
+
+      - name: 依赖
+        run: flutter pub get
+        working-directory: apps/flutter
+
+      - name: 分析
+        run: flutter analyze
+        working-directory: apps/flutter
+
+      - name: 构建（arm64 原生）
+        run: flutter build macos --release
+        working-directory: apps/flutter
+
+      - name: 打包 DMG
+        run: |
+          APP=apps/flutter/build/macos/Build/Products/Release/DramaCube.app
+          test -d "$APP" || { ls apps/flutter/build/macos/Build/Products/Release/; exit 1; }
+          hdiutil create -volname DramaCube -srcfolder "$APP" -ov -format UDZO \
+            dramacube-macOS-arm64-v${{ inputs.version }}.dmg
+          ls -lh dramacube-macOS-arm64-v${{ inputs.version }}.dmg
+
+      - name: 上传到 Release v${{ inputs.version }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ inputs.version }}
+          files: dramacube-macOS-arm64-v${{ inputs.version }}.dmg
+
+  build-macos-x64:
+    name: Intel (x64)
+    runs-on: macos-13
+    steps:
+      - name: Checkout 私有源码仓库
+        uses: actions/checkout@v4
+        with:
+          repository: g-star1024/hongguo-desktop
+          token: ${{ secrets.HG_PAT }}
+          ref: main
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.35.4
+          channel: stable
+          cache: true
+
+      - name: 依赖
+        run: flutter pub get
+        working-directory: apps/flutter
+
+      - name: 分析
+        run: flutter analyze
+        working-directory: apps/flutter
+
+      - name: 构建（Intel x64）
+        run: flutter build macos --release
+        working-directory: apps/flutter
+
+      - name: 打包 DMG
+        run: |
+          APP=apps/flutter/build/macos/Build/Products/Release/DramaCube.app
+          test -d "$APP" || { ls apps/flutter/build/macos/Build/Products/Release/; exit 1; }
+          hdiutil create -volname DramaCube -srcfolder "$APP" -ov -format UDZO \
+            dramacube-macOS-x64-v${{ inputs.version }}.dmg
+          ls -lh dramacube-macOS-x64-v${{ inputs.version }}.dmg
+
+      - name: 上传到 Release v${{ inputs.version }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ inputs.version }}
+          files: dramacube-macOS-x64-v${{ inputs.version }}.dmg
