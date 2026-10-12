@@ -163,11 +163,20 @@ class HomeShell extends StatelessWidget {
               selectedIndex: currentIndex,
               onDestinationSelected: (i) => context.go(_navItems[i].path),
               labelType: NavigationRailLabelType.all,
-              leading: const Padding(
-                padding: EdgeInsets.only(top: 12, bottom: 8),
+              leading: Padding(
+                padding: const EdgeInsets.only(top: 12, bottom: 8),
                 child: Column(
                   children: [
-                    Text('剧立方', style: TextStyle(fontWeight: FontWeight.bold)),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.asset(
+                        'assets/icon/app_icon.png',
+                        width: 36,
+                        height: 36,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text('剧立方', style: TextStyle(fontWeight: FontWeight.bold)),
                   ],
                 ),
               ),
