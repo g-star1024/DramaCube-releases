@@ -499,7 +499,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                     : null,
               ),
             if (_switching)
-              const ColoredBox(
+              ColoredBox(
                 color: Colors.black54,
                 child: Center(
                   child: Column(
@@ -512,8 +512,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                   ),
                 ),
               )
-            else
-              TvPlayerOsd(
+            else              TvPlayerOsd(
                 player: _player,
                 controller: _controller,
                 title: _detail.drama.title,
@@ -586,7 +585,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
         _buildGestureLayer(),
         // 加载 / 换源中
         if (_switching)
-          const ColoredBox(
+          ColoredBox(
             color: Colors.black54,
             child: Center(
               child: Column(
@@ -1068,7 +1067,7 @@ class _FeedbackChip extends StatelessWidget {
                 value: progress!.clamp(0.0, 1.0),
                 minHeight: 3,
                 backgroundColor: Colors.white24,
-                valueColor: const AlwaysStoppedAnimation(Brand.heroPink),
+                valueColor: AlwaysStoppedAnimation(Brand.heroPink),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),

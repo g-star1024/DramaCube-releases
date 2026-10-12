@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../app/design_system.dart';
+
 /// TV 主题令牌 —— Cinema Dark 影院深色（独立于三端移动/桌面）。
 abstract final class TvColors {
   /// 背景：近黑暖调。
@@ -17,8 +19,8 @@ abstract final class TvColors {
   /// 弱文字色。
   static const Color muted = Color(0xFF8F887C);
 
-  /// 焦点金辉光。
-  static const Color focus = Color(0xFFFFD166);
+  /// 焦点金辉光（跟随当前配色方案）。
+  static Color get focus => Brand.palette.focus;
 
   /// 焦点辉光强度（rgba）。
   static Color get focusGlow => focus.withValues(alpha: 0.45);

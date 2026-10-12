@@ -78,7 +78,7 @@ class ContinueCard extends StatelessWidget {
                       minHeight: 4,
                       backgroundColor: Colors.black38,
                       valueColor:
-                          const AlwaysStoppedAnimation(Brand.heroPink),
+                          AlwaysStoppedAnimation(Brand.heroPink),
                     ),
                   ),
                 ),

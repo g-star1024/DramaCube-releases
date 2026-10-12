@@ -310,6 +310,31 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 ),
                 const Divider(height: 1, indent: 16, endIndent: 16),
                 ListTile(
+                  leading: const Icon(Icons.color_lens_outlined),
+                  title: const Text('配色主题'),
+                  subtitle: const Text('五套色板一键切换，TV 焦点色同步'),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 18,
+                        height: 18,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: AppPalettes.byId(settings.paletteId).gradient,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        AppPalettes.byId(settings.paletteId).name,
+                        style: TextStyle(color: Theme.of(context).colorScheme.primary),
+                      ),
+                    ],
+                  ),
+                  onTap: _showPaletteSheet,
+                ),
+                const Divider(height: 1, indent: 16, endIndent: 16),
+                ListTile(
                   leading: const Icon(Icons.grid_view_outlined),
                   title: const Text('界面缩放'),
                   subtitle: Slider(
@@ -493,6 +518,56 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // MARK: 配色主题弹层
+
+  void _showPaletteSheet() {
+    final currentId = ref.read(settingsProvider).paletteId;
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(Spacing.lg),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('配色主题', style: Theme.of(ctx).textTheme.titleMedium),
+              const SizedBox(height: Spacing.md),
+              for (final p in AppPalettes.all)
+                ListTile(
+                  leading: Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: p.gradient,
+                    ),
+                  ),
+                  title: Text(p.name),
+                  subtitle: Text(switch (p.id) {
+                    'hongguo' => '默认 · 暖阳奶油 + 粉金渐变（S1-S3 v2.5 基线）',
+                    'rose' => '玫瑰金 · 暖调深红 + 金',
+                    'blue' => '科技蓝 · 冷峻明快',
+                    'forest' => '森林绿 · 自然清新',
+                    'purple' => '暗夜紫 · 梦幻深邃',
+                    _ => '',
+                  }),
+                  trailing: currentId == p.id
+                      ? Icon(Icons.check, color: Theme.of(ctx).colorScheme.primary)
+                      : null,
+                  onTap: () {
+                    ref.read(settingsProvider.notifier).setPalette(p.id);
+                    Navigator.pop(ctx);
+                  },
+                ),
+              const SizedBox(height: Spacing.sm),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -66,7 +66,7 @@ class _TvHomePageState extends ConsumerState<TvHomePage> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Center(
+      return Center(
         child: CircularProgressIndicator(color: TvColors.focus),
       );
     }
@@ -261,7 +261,7 @@ class _TvDetailPageState extends ConsumerState<TvDetailPage> {
           ),
           const SizedBox(height: 28),
           if (_loading)
-            const Center(
+            Center(
                 child: CircularProgressIndicator(color: TvColors.focus)),
           if (_detail != null && _detail!.episodes.isNotEmpty) ...[
             Text('选集（${_detail!.episodes.length} 集）',
@@ -313,7 +313,7 @@ class _TvDetailPageState extends ConsumerState<TvDetailPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(g.site,
-                        style: const TextStyle(
+                        style: TextStyle(
                             color: TvColors.focus, fontSize: TvText.caption)),
                     const SizedBox(height: 8),
                     Wrap(
@@ -422,7 +422,7 @@ class _TvSearchPageState extends ConsumerState<TvSearchPage> {
           TvKeyboard(onChanged: _onQueryChanged),
           const SizedBox(height: 24),
           if (_searching)
-            const Center(
+            Center(
                 child: CircularProgressIndicator(color: TvColors.focus)),
           for (final g in _groups)
             Padding(
@@ -431,7 +431,7 @@ class _TvSearchPageState extends ConsumerState<TvSearchPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(g.site,
-                      style: const TextStyle(
+                      style: TextStyle(
                           color: TvColors.focus, fontSize: TvText.caption)),
                   const SizedBox(height: 10),
                   Wrap(
@@ -517,7 +517,7 @@ class _TvLivePageState extends ConsumerState<TvLivePage> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.live_tv_rounded,
+                      Icon(Icons.live_tv_rounded,
                           color: TvColors.focus, size: 36),
                       const SizedBox(height: 10),
                       Text(channels[i].name,

@@ -18,6 +18,7 @@ class AppSettings {
   final BufferStrategy bufferStrategy;
   final int cacheHours; // 内容缓存时长（小时）
   final bool tvMode; // 电视模式（TV 独立版：Cinema Dark + 焦点引擎）
+  final String paletteId; // 配色方案（AppPalettes.id）
 
   const AppSettings({
     this.appearance = Appearance.system,
@@ -28,6 +29,7 @@ class AppSettings {
     this.bufferStrategy = BufferStrategy.medium,
     this.cacheHours = 6,
     this.tvMode = false,
+    this.paletteId = 'hongguo',
   });
 
   ThemeMode get themeMode => switch (appearance) {
@@ -45,6 +47,7 @@ class AppSettings {
     BufferStrategy? bufferStrategy,
     int? cacheHours,
     bool? tvMode,
+    String? paletteId,
   }) =>
       AppSettings(
         appearance: appearance ?? this.appearance,
@@ -55,6 +58,7 @@ class AppSettings {
         bufferStrategy: bufferStrategy ?? this.bufferStrategy,
         cacheHours: cacheHours ?? this.cacheHours,
         tvMode: tvMode ?? this.tvMode,
+        paletteId: paletteId ?? this.paletteId,
       );
 }
 
@@ -82,6 +86,7 @@ class SettingsNotifier extends Notifier<AppSettings> {
               BufferStrategy.medium,
       cacheHours: _prefs.getInt('cacheHours') ?? 6,
       tvMode: _prefs.getBool('tvMode') ?? false,
+      paletteId: _prefs.getString('paletteId') ?? 'hongguo',
     );
   }
 
@@ -136,6 +141,11 @@ class SettingsNotifier extends Notifier<AppSettings> {
   void setTVMode(bool v) {
     state = state.copyWith(tvMode: v);
     _write('tvMode', v);
+  }
+
+  void setPalette(String id) {
+    state = state.copyWith(paletteId: id);
+    _write('paletteId', id);
   }
 }
 

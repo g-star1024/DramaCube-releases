@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'design_system.dart';
 import 'settings_provider.dart';
 import 'theme.dart';
 import 'router.dart';
@@ -14,6 +15,8 @@ class DramaCubeApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsProvider);
+    // 配色方案一键切换：设置变更即换色板，主题层下次 build 整体生效。
+    Brand.palette = AppPalettes.byId(settings.paletteId);
     return MaterialApp.router(
       title: '剧立方 DramaCube',
       debugShowCheckedModeBanner: false,
