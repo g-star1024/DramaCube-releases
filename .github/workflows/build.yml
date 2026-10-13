@@ -66,6 +66,10 @@ jobs:
           channel: stable
           cache: true
 
+      - name: Setup MSVC (VS2022 工具链，修复 CMake 找不到 Visual Studio)
+        if: matrix.platform == 'windows'
+        uses: microsoft/setup-msbuild@v2
+
       - name: 依赖
         run: flutter pub get
 
@@ -142,7 +146,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cd apps/flutter
           REPO="${{ github.repository }}"
           TAG="v${{ inputs.version }}"
           if ! gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
@@ -152,5 +155,6 @@ jobs:
           fi
           shopt -s nullglob
           files=(dramacube-*.zip dramacube-*.tar.gz dramacube-*.apk dramacube-*.dmg)
+          if [ ${#files[@]} -eq 0 ]; then echo "无构建产物可上传"; exit 1; fi
           gh release upload "$TAG" "${files[@]}" --repo "$REPO" --clobber
           echo "已发布： https://github.com/${REPO}/releases/tag/${TAG}"
