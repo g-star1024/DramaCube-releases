@@ -41,6 +41,8 @@ jobs:
           - { platform: mac-x64,   os: macos-13       }
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
+    permissions:
+      contents: write
     defaults:
       run:
         working-directory: apps/flutter
@@ -66,7 +68,7 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Setup MSVC (VS2022 工具链，修复 CMake 找不到 Visual Studio)
+      - name: Setup MSVC (VS2022 工具链)
         if: matrix.platform == 'windows'
         uses: microsoft/setup-msbuild@v2
 
@@ -77,9 +79,14 @@ jobs:
         if: matrix.platform == 'windows'
         run: flutter analyze
 
-      - name: 构建 Windows
+      - name: 构建 Windows（激活 VS2022 环境，让 CMake 找到生成器）
         if: matrix.platform == 'windows'
-        run: flutter build windows --release
+        shell: pwsh
+        run: |
+          $vsPath = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          Write-Host "VS path: $vsPath"
+          & "$vsPath\Common7\Tools\Launch-VsDevShell.ps1" -Arch amd64 -HostArch amd64
+          flutter build windows --release
 
       - name: 构建 Linux
         if: matrix.platform == 'linux'
