@@ -105,7 +105,8 @@ public final class SourceManager: ObservableObject {
     @Published public private(set) var subscriptionURLs: [String] = []
 
     private let defaults = UserDefaults.standard
-    private let base = AppConfig.gatewayBaseURL
+    /// 网关基址实时读取（不能缓存）：端口冲突递增后仍要打到实际端口。
+    private var base: String { AppConfig.gatewayBaseURL }
     /// 直连网关（绕过系统代理；127.0.0.1 本不应走代理，但全局代理可能拦）。
     private let session: URLSession = {
         let c = URLSessionConfiguration.default
@@ -480,6 +481,8 @@ public final class SourceManager: ObservableObject {
     // MARK: - 工具
 
     private func get<T: Codable & Sendable>(_ urlString: String) async throws -> T {
+        // 启动竞态修复：等网关 ready 再发（与 CatalogService.decode 对齐），避免首刷 -1004。
+        await GatewayRuntime.waitUntilReady(maxSeconds: 15)
         guard let url = URL(string: urlString) else { throw URLError(.badURL) }
         let (data, _) = try await session.data(from: url)
         let env = try JSONDecoder().decode(GatewayEnvelope<T>.self, from: data)
