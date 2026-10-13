@@ -126,8 +126,10 @@ class _LibraryPageState extends ConsumerState<LibraryPage>
     }
   }
 
-  /// 打开条目：tvbox 直播；豆瓣条目走详情页（聚合搜可播版本）。
-  Future<void> _openDrama(String dramaId) async {
+  /// 打开条目：tvbox 源按 episodeId 恢复到对应集（player 内再按 progressOf 续播）；
+  /// 豆瓣条目走详情页（聚合搜可播版本）。
+  /// 修复 #201：此前任何历史条目点开都 startIndex=0 从第一集起播。
+  Future<void> _openDrama(String dramaId, {String? episodeId}) async {
     final parts = dramaId.split('|');
     if (parts.isEmpty) return;
     if (parts.first == 'douban') {
@@ -143,6 +145,8 @@ class _LibraryPageState extends ConsumerState<LibraryPage>
       if (title.isEmpty) return;
       context.push('/detail', extra: {
         'drama': Drama(id: dramaId, title: title, coverURL: cover),
+        // 历史入口：详情加载完自动续播到本剧最新进度那一集
+        'resumeFromHistory': true,
       });
       return;
     }
@@ -150,7 +154,16 @@ class _LibraryPageState extends ConsumerState<LibraryPage>
     final repo = ref.read(catalogRepositoryProvider);
     final detail = await repo.detail(siteKey: parts[1], vodId: parts[2]);
     if (detail == null || !mounted) return;
-    context.push('/player', extra: {'detail': detail, 'startIndex': 0});
+    var startIndex = 0;
+    if (episodeId != null) {
+      final idx = detail.episodes.indexWhere((e) => e.id == episodeId);
+      if (idx >= 0) startIndex = idx;
+    }
+    context.push('/player', extra: {
+      'detail': detail,
+      'startIndex': startIndex,
+      'startEpisodeId': episodeId,
+    });
   }
 
   @override
@@ -301,7 +314,7 @@ class _LibraryPageState extends ConsumerState<LibraryPage>
               if (_editing) {
                 _toggleSelected(h.key);
               } else {
-                _openDrama(h.dramaId);
+                _openDrama(h.dramaId, episodeId: h.episodeId);
               }
             },
             onLongPress: _editing ? null : () {

@@ -13,6 +13,7 @@ import '../features/detail/detail_page.dart';
 import '../features/search/search_page.dart';
 import '../features/downloads/downloads_page.dart';
 import '../core/models/models.dart';
+import '../core/state/immersive_mode.dart';
 import 'motion.dart';
 
 /// 页面转场 —— 淡入 + 上滑 12%（v3 统一转场）。
@@ -88,13 +89,17 @@ final appRouter = GoRouter(
           pageBuilder: (context, state) {
             final extra = state.extra as Map<String, dynamic>?;
             final drama = extra?['drama'] as Drama?;
+            final resumeFromHistory = extra?['resumeFromHistory'] as bool? ?? false;
             if (drama == null) {
               return _fadeSlidePage(
                 const Scaffold(body: Center(child: Text('参数错误'))),
                 state,
               );
             }
-            return _fadeSlidePage(DetailPage(drama: drama), state);
+            return _fadeSlidePage(
+              DetailPage(drama: drama, resumeFromHistory: resumeFromHistory),
+              state,
+            );
           },
         ),
         GoRoute(
@@ -116,6 +121,7 @@ final appRouter = GoRouter(
         final extra = state.extra as Map<String, dynamic>?;
         final detail = extra?['detail'] as DramaDetail?;
         final startIndex = extra?['startIndex'] as int? ?? 0;
+        final startEpisodeId = extra?['startEpisodeId'] as String?;
         if (detail == null) {
           return _fadeSlidePage(
             const Scaffold(body: Center(child: Text('参数错误'))),
@@ -123,7 +129,11 @@ final appRouter = GoRouter(
           );
         }
         return _fadeSlidePage(
-          PlayerPage(detail: detail, startIndex: startIndex),
+          PlayerPage(
+            detail: detail,
+            startIndex: startIndex,
+            startEpisodeId: startEpisodeId,
+          ),
           state,
         );
       },
@@ -161,61 +171,70 @@ class HomeShell extends StatelessWidget {
     final currentIndex = index == -1 ? 0 : index;
     final isWide = MediaQuery.sizeOf(context).width >= 900;
 
-    if (isWide) {
-      return Scaffold(
-        body: Row(
-          children: [
-            NavigationRail(
-              selectedIndex: currentIndex,
-              onDestinationSelected: (i) => context.go(_navItems[i].path),
-              labelType: NavigationRailLabelType.all,
-              leading: Padding(
-                padding: const EdgeInsets.only(top: 12, bottom: 8),
-                child: Column(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.asset(
-                        'assets/icon/app_icon.png',
-                        width: 36,
-                        height: 36,
-                      ),
+    return ValueListenableBuilder<bool>(
+      valueListenable: ImmersiveMode.active,
+      builder: (context, immersive, _) {
+        // 沉浸态（资源库/直播推全屏播放页）：不渲染导航，内容占满全宽。
+        if (immersive) return Scaffold(body: child);
+
+        if (isWide) {
+          return Scaffold(
+            body: Row(
+              children: [
+                NavigationRail(
+                  selectedIndex: currentIndex,
+                  onDestinationSelected: (i) => context.go(_navItems[i].path),
+                  labelType: NavigationRailLabelType.all,
+                  leading: Padding(
+                    padding: const EdgeInsets.only(top: 12, bottom: 8),
+                    child: Column(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.asset(
+                            'assets/icon/app_icon.png',
+                            width: 36,
+                            height: 36,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        const Text('剧立方',
+                            style: TextStyle(fontWeight: FontWeight.bold)),
+                      ],
                     ),
-                    const SizedBox(height: 4),
-                    const Text('剧立方', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                  destinations: [
+                    for (final item in _navItems)
+                      NavigationRailDestination(
+                        icon: Icon(item.icon),
+                        selectedIcon: Icon(item.selectedIcon),
+                        label: Text(item.label),
+                      ),
                   ],
                 ),
-              ),
-              destinations: [
-                for (final item in _navItems)
-                  NavigationRailDestination(
-                    icon: Icon(item.icon),
-                    selectedIcon: Icon(item.selectedIcon),
-                    label: Text(item.label),
-                  ),
+                const VerticalDivider(width: 1),
+                Expanded(child: child),
               ],
             ),
-            const VerticalDivider(width: 1),
-            Expanded(child: child),
-          ],
-        ),
-      );
-    }
+          );
+        }
 
-    return Scaffold(
-      body: child,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: currentIndex,
-        onDestinationSelected: (i) => context.go(_navItems[i].path),
-        destinations: [
-          for (final item in _navItems)
-            NavigationDestination(
-              icon: Icon(item.icon),
-              selectedIcon: Icon(item.selectedIcon),
-              label: item.label,
-            ),
-        ],
-      ),
+        return Scaffold(
+          body: child,
+          bottomNavigationBar: NavigationBar(
+            selectedIndex: currentIndex,
+            onDestinationSelected: (i) => context.go(_navItems[i].path),
+            destinations: [
+              for (final item in _navItems)
+                NavigationDestination(
+                  icon: Icon(item.icon),
+                  selectedIcon: Icon(item.selectedIcon),
+                  label: item.label,
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

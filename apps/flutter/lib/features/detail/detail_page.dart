@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/design_system.dart';
+import '../../core/db/database.dart';
 import '../../core/models/models.dart';
 import '../../core/widgets/cover_image.dart';
 import '../../core/widgets/gradient_button.dart';
@@ -16,9 +17,19 @@ import '../downloads/download_manager.dart';
 ///
 /// 入参两种：
 /// - `{'drama': Drama}`：tvbox 直载选集；douban 条目先聚合搜索可播版本。
+/// - 附 `resumeFromHistory: true`（历史/继续观看入口）时：进入即按历史记录
+///   匹配最新进度那一集并直接起播（集列表加载出来后自动跳播放器）。
 class DetailPage extends ConsumerStatefulWidget {
   final Drama drama;
-  const DetailPage({super.key, required this.drama});
+
+  /// 历史/继续观看入口置 true：详情加载完成后自动续播到历史那一集。
+  final bool resumeFromHistory;
+
+  const DetailPage({
+    super.key,
+    required this.drama,
+    this.resumeFromHistory = false,
+  });
 
   @override
   ConsumerState<DetailPage> createState() => _DetailPageState();
@@ -133,6 +144,8 @@ class _DetailPageState extends ConsumerState<DetailPage> {
         }
       }
     });
+    // 历史/继续观看入口：集列表就绪后直接续播到历史那一集。
+    _maybeResumeFromHistory();
   }
 
   void _play(int index) {
@@ -142,6 +155,31 @@ class _DetailPageState extends ConsumerState<DetailPage> {
       'detail': detail,
       'startIndex': index,
     });
+  }
+
+  // MARK: 历史续播
+
+  /// 从「继续观看/历史」卡片进入时，在剧集列表加载完成后调用一次：
+  /// 找到本剧历史里最新进度那条，按其「集标题」在当前集列表里找同标题集直接起播。
+  /// player 内部再按 progressOf(dramaId, episodeId) 恢复秒数（episodeId 规则一致则命中）。
+  bool _resumeTried = false;
+  Future<void> _maybeResumeFromHistory() async {
+    if (!widget.resumeFromHistory || _resumeTried) return;
+    final detail = _detail;
+    if (detail == null || detail.episodes.isEmpty) return;
+    _resumeTried = true;
+
+    final histories = await AppDatabase().allHistories();
+    if (!mounted) return;
+    // 本剧历史按更新时间倒序（最新看的那集优先）。
+    final mine = histories.where((h) => h.dramaId == widget.drama.id).toList()
+      ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+    if (mine.isEmpty) return;
+    final latest = mine.first;
+    final idx = detail.episodes.indexWhere((e) => e.title == latest.episodeTitle);
+    if (idx >= 0) {
+      _play(idx);
+    }
   }
 
   // MARK: 批量下载选集

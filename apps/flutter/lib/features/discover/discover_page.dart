@@ -121,6 +121,8 @@ class _DiscoverPageState extends ConsumerState<DiscoverPage> {
                 title: h.title,
                 coverURL: h.coverURL,
               ),
+              // 历史入口：详情加载完自动续播到本剧最新进度那一集
+              'resumeFromHistory': true,
             },
           ),
         ),
@@ -161,6 +163,7 @@ class _DiscoverPageState extends ConsumerState<DiscoverPage> {
                 title: h.title,
                 coverURL: h.coverURL,
               ),
+              'resumeFromHistory': true,
             },
           ),
         ),

@@ -33,7 +33,17 @@ class PlayerPage extends ConsumerStatefulWidget {
   final DramaDetail detail;
   final int startIndex;
 
-  const PlayerPage({super.key, required this.detail, this.startIndex = 0});
+  /// 续播到具体一集（历史记录卡片点击时传入）。
+  /// player 内 _loadEpisode 会再查 progressOf 恢复秒数；此 id 用于「剧集换了新源/集列表重排后」
+  /// 仍能按 episodeId 精确落集（episodeId 为空或找不到时回退 startIndex）。
+  final String? startEpisodeId;
+
+  const PlayerPage({
+    super.key,
+    required this.detail,
+    this.startIndex = 0,
+    this.startEpisodeId,
+  });
 
   @override
   ConsumerState<PlayerPage> createState() => _PlayerPageState();
@@ -115,7 +125,14 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   void initState() {
     super.initState();
     _detail = widget.detail;
-    _currentIndex = widget.startIndex.clamp(0, _detail.episodes.length - 1);
+    // 优先按 startEpisodeId 精确落集（历史恢复）；找不到再回退 startIndex。
+    var idx = widget.startIndex;
+    final startEpId = widget.startEpisodeId;
+    if (startEpId != null) {
+      final byId = _detail.episodes.indexWhere((e) => e.id == startEpId);
+      if (byId >= 0) idx = byId;
+    }
+    _currentIndex = idx.clamp(0, _detail.episodes.length - 1);
     AppLog.player('进入播放页 title=${_detail.drama.title} start=$_currentIndex epCount=${_detail.episodes.length}');
     _positionSub = _player.stream.position.listen((d) {
       _position = d;
@@ -791,136 +808,143 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                 blur: 24,
                 tint: const Color(0x59140E0B),
                 borderRadius: BorderRadius.circular(Radii.lg),
-                padding: const EdgeInsets.symmetric(horizontal: Spacing.md, vertical: 6),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
+                padding: const EdgeInsets.symmetric(horizontal: Spacing.sm, vertical: 2),
+                // 单行紧凑控制条：上集/播放/下集 + 时间 + 进度 + 剩余 + 音量/倍速/全屏。
+                child: Row(
                   children: [
-                    // 进度条
-                    StreamBuilder<Duration>(
-                      stream: _player.stream.position,
-                      builder: (context, posSnap) => StreamBuilder<Duration>(
-                        stream: _player.stream.duration,
-                        builder: (context, durSnap) {
-                          final pos = posSnap.data ?? _position;
-                          final dur = durSnap.data ?? _duration;
-                          return Row(
-                            children: [
-                              Text(_fmt(pos),
-                                  style: const TextStyle(
-                                      color: Colors.white70, fontSize: 11)),
-                              Expanded(
-                                child: SliderTheme(
-                                  data: SliderTheme.of(context).copyWith(
-                                    trackHeight: 2,
-                                    thumbShape: const RoundSliderThumbShape(
-                                        enabledThumbRadius: 6),
-                                    activeTrackColor: Brand.heroPink,
-                                    thumbColor: Colors.white,
-                                    inactiveTrackColor: Colors.white24,
-                                  ),
-                                  child: Slider(
-                                    value: dur.inSeconds > 0
-                                        ? (pos.inSeconds / dur.inSeconds)
-                                            .clamp(0.0, 1.0)
-                                        : 0,
-                                    onChanged: (v) {
-                                      _pokeOsd();
-                                      _player.seek(Duration(
-                                          seconds: (v * dur.inSeconds).toInt()));
-                                    },
-                                    onChangeStart: (_) => _osdHideTimer?.cancel(),
-                                    onChangeEnd: (_) => _pokeOsd(),
-                                  ),
-                                ),
-                              ),
-                              Text('-${_fmt(dur - pos)}',
-                                  style: const TextStyle(
-                                      color: Colors.white70, fontSize: 11)),
-                            ],
-                          );
-                        },
+                    IconButton(
+                      iconSize: 20,
+                      visualDensity: VisualDensity.compact,
+                      icon: const Icon(Icons.skip_previous, color: Colors.white),
+                      onPressed: _currentIndex > 0
+                          ? () => _loadEpisode(_currentIndex - 1)
+                          : null,
+                    ),
+                    StreamBuilder<bool>(
+                      stream: _player.stream.playing,
+                      builder: (context, snap) => IconButton(
+                        iconSize: 26,
+                        visualDensity: VisualDensity.compact,
+                        icon: Icon(
+                            snap.data == true ? Icons.pause : Icons.play_arrow,
+                            color: Colors.white),
+                        onPressed: () => _player.playOrPause(),
                       ),
                     ),
-                    // 控制行
-                    Row(
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.skip_previous, color: Colors.white),
-                          onPressed: _currentIndex > 0
-                              ? () => _loadEpisode(_currentIndex - 1)
-                              : null,
+                    IconButton(
+                      iconSize: 20,
+                      visualDensity: VisualDensity.compact,
+                      icon: const Icon(Icons.skip_next, color: Colors.white),
+                      onPressed: _currentIndex < _detail.episodes.length - 1
+                          ? () => _loadEpisode(_currentIndex + 1)
+                          : null,
+                    ),
+                    const SizedBox(width: 4),
+                    // 进度（时间 + 进度条 + 剩余，同一行）
+                    Expanded(
+                      child: StreamBuilder<Duration>(
+                        stream: _player.stream.position,
+                        builder: (context, posSnap) => StreamBuilder<Duration>(
+                          stream: _player.stream.duration,
+                          builder: (context, durSnap) {
+                            final pos = posSnap.data ?? _position;
+                            final dur = durSnap.data ?? _duration;
+                            return Row(
+                              children: [
+                                Text(_fmt(pos),
+                                    style: const TextStyle(
+                                        color: Colors.white70, fontSize: 11)),
+                                Expanded(
+                                  child: SliderTheme(
+                                    data: SliderTheme.of(context).copyWith(
+                                      trackHeight: 2,
+                                      thumbShape: const RoundSliderThumbShape(
+                                          enabledThumbRadius: 5),
+                                      overlayShape: const RoundSliderOverlayShape(
+                                          overlayRadius: 10),
+                                      activeTrackColor: Brand.heroPink,
+                                      thumbColor: Colors.white,
+                                      inactiveTrackColor: Colors.white24,
+                                    ),
+                                    child: Slider(
+                                      value: dur.inSeconds > 0
+                                          ? (pos.inSeconds / dur.inSeconds)
+                                              .clamp(0.0, 1.0)
+                                          : 0,
+                                      onChanged: (v) {
+                                        _pokeOsd();
+                                        _player.seek(Duration(
+                                            seconds: (v * dur.inSeconds).toInt()));
+                                      },
+                                      onChangeStart: (_) => _osdHideTimer?.cancel(),
+                                      onChangeEnd: (_) => _pokeOsd(),
+                                    ),
+                                  ),
+                                ),
+                                Text('-${_fmt(dur - pos)}',
+                                    style: const TextStyle(
+                                        color: Colors.white70, fontSize: 11)),
+                              ],
+                            );
+                          },
                         ),
-                        StreamBuilder<bool>(
-                          stream: _player.stream.playing,
-                          builder: (context, snap) => IconButton(
-                            icon: Icon(
-                                snap.data == true ? Icons.pause : Icons.play_arrow,
-                                color: Colors.white,
-                                size: 32),
-                            onPressed: () => _player.playOrPause(),
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.skip_next, color: Colors.white),
-                          onPressed: _currentIndex < _detail.episodes.length - 1
-                              ? () => _loadEpisode(_currentIndex + 1)
-                              : null,
-                        ),
-                        const Spacer(),
-                        // 音量（桌面滑杆弹层 / 移动菜单）
-                        StreamBuilder<double>(
-                          stream: _player.stream.volume,
-                          builder: (context, snap) => PopupMenuButton<double>(
-                            initialValue: snap.data ?? 100,
-                            onSelected: (v) => _player.setVolume(v),
-                            itemBuilder: (_) => [
-                              const PopupMenuItem(value: 0.0, child: Text('静音')),
-                              const PopupMenuItem(value: 50.0, child: Text('50%')),
-                              const PopupMenuItem(value: 100.0, child: Text('100%')),
-                            ],
-                            child: Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: Spacing.sm),
-                              child: Icon(
-                                (snap.data ?? 100) == 0
-                                    ? Icons.volume_off
-                                    : (snap.data ?? 100) < 50
-                                        ? Icons.volume_down
-                                        : Icons.volume_up,
-                                color: Colors.white,
-                                size: 20,
-                              ),
-                            ),
-                          ),
-                        ),
-                        // 倍速（仅当前会话生效，不回写设置中心默认倍速）
-                        StreamBuilder<double>(
-                          stream: _player.stream.rate,
-                          builder: (context, snap) => PopupMenuButton<double>(
-                            initialValue: snap.data ?? 1.0,
-                            onSelected: (rate) => _player.setRate(rate),
-                            itemBuilder: (_) => [
-                              for (final r in [0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0])
-                                PopupMenuItem(value: r, child: Text('${r}x')),
-                            ],
-                            child: Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: Spacing.sm),
-                              child: Text('${snap.data ?? 1.0}x',
-                                  style: const TextStyle(
-                                      color: Colors.white, fontSize: 13)),
-                            ),
-                          ),
-                        ),
-                        // 全屏
-                        IconButton(
-                          icon: Icon(
-                            _fullscreen ? Icons.fullscreen_exit : Icons.fullscreen,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    // 音量
+                    StreamBuilder<double>(
+                      stream: _player.stream.volume,
+                      builder: (context, snap) => PopupMenuButton<double>(
+                        initialValue: snap.data ?? 100,
+                        onSelected: (v) => _player.setVolume(v),
+                        itemBuilder: (_) => [
+                          const PopupMenuItem(value: 0.0, child: Text('静音')),
+                          const PopupMenuItem(value: 50.0, child: Text('50%')),
+                          const PopupMenuItem(value: 100.0, child: Text('100%')),
+                        ],
+                        child: Padding(
+                          padding:
+                              const EdgeInsets.symmetric(horizontal: Spacing.xs),
+                          child: Icon(
+                            (snap.data ?? 100) == 0
+                                ? Icons.volume_off
+                                : (snap.data ?? 100) < 50
+                                    ? Icons.volume_down
+                                    : Icons.volume_up,
                             color: Colors.white,
+                            size: 18,
                           ),
-                          onPressed: _toggleFullscreen,
                         ),
-                      ],
+                      ),
+                    ),
+                    // 倍速（仅当前会话生效，不回写设置中心默认倍速）
+                    StreamBuilder<double>(
+                      stream: _player.stream.rate,
+                      builder: (context, snap) => PopupMenuButton<double>(
+                        initialValue: snap.data ?? 1.0,
+                        onSelected: (rate) => _player.setRate(rate),
+                        itemBuilder: (_) => [
+                          for (final r in [0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0])
+                            PopupMenuItem(value: r, child: Text('${r}x')),
+                        ],
+                        child: Padding(
+                          padding:
+                              const EdgeInsets.symmetric(horizontal: Spacing.xs),
+                          child: Text('${snap.data ?? 1.0}x',
+                              style: const TextStyle(
+                                  color: Colors.white, fontSize: 12)),
+                        ),
+                      ),
+                    ),
+                    // 全屏
+                    IconButton(
+                      iconSize: 20,
+                      visualDensity: VisualDensity.compact,
+                      icon: Icon(
+                        _fullscreen ? Icons.fullscreen_exit : Icons.fullscreen,
+                        color: Colors.white,
+                      ),
+                      onPressed: _toggleFullscreen,
                     ),
                   ],
                 ),

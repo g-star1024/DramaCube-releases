@@ -8,6 +8,7 @@ import 'package:media_kit_video/media_kit_video.dart';
 import '../../core/models/models.dart';
 import '../../core/widgets/health_badge.dart';
 import 'nas_cover_generator.dart';
+import '../../core/state/immersive_mode.dart';
 import 'nas_manager.dart';
 
 /// NAS 资源库页：库选择 + 目录导航 + 视频播放（对齐 macOS 版 NASBrowseView）。
@@ -1006,12 +1007,15 @@ class _NASPlayerPageState extends State<_NASPlayerPage> {
   @override
   void initState() {
     super.initState();
+    // 从导航壳内 push 的播放页：隐藏侧边导航/底部导航，内容占满全宽。
+    ImmersiveMode.active.value = true;
     _player.open(Media(widget.url, httpHeaders: widget.headers));
     _player.play();
   }
 
   @override
   void dispose() {
+    ImmersiveMode.active.value = false;
     _player.dispose();
     super.dispose();
   }

@@ -89,8 +89,105 @@ class NASCoverGenerator {
   }
 
   /// 截第 2 秒首帧（JPEG 字节）。失败返回 null。
-  /// WebDAV 远程流 mpv demuxer 建链慢（飞牛 NAS 实测 8s 不够），超时放宽到 20s。
+  ///
+  /// v2.7.7 起改走外部进程截帧（根因修复）：
+  /// media_kit 后台 Player 在 macOS 上对 WebDAV 远程流系统性超时（tracks/duration 事件
+  /// 始终不来，全量 8s/15s 超时刷屏）；同一 URL 用外部 ffprobe/mpv 直接拉 1-3s 必出图。
+  /// 优先 ffmpeg/ffprobe（系统 /usr/local/bin 常见），找不到再回退 media_kit（本地文件仍可用）。
   Future<Uint8List?> _grabFrame(String playURL, Map<String, String> headers) async {
+    final isRemote = playURL.startsWith('http://') || playURL.startsWith('https://');
+    if (isRemote) {
+      final bytes = await _grabViaExternal(playURL, headers);
+      if (bytes != null) return bytes;
+      // 外部工具不可用时回退 media_kit（失败率高，仅兜底）。
+      AppLog.app('外部截帧工具不可用/失败，回退 media_kit url=${playURL.length > 60 ? '${playURL.substring(0, 60)}…' : playURL}');
+      return _grabViaMediaKit(playURL, headers);
+    }
+    return _grabViaMediaKit(playURL, headers);
+  }
+
+  /// 外部进程截帧：ffmpeg（优先）→ mpv。带鉴权 headers。
+  Future<Uint8List?> _grabViaExternal(String playURL, Map<String, String> headers) async {
+    final headerStr = headers.entries.map((e) => '${e.key}: ${e.value}\r\n').join();
+    // ffmpeg: -ss 2 快速 seek 到第 2 秒抽一帧 jpeg 到 stdout（pipe:1）。
+    final ffmpeg = await _which('ffmpeg');
+    if (ffmpeg != null) {
+      final res = await _runFrame(ffmpeg, [
+        '-hide_banner', '-loglevel', 'error',
+        if (headerStr.isNotEmpty) ...['-headers', headerStr],
+        '-ss', '2',
+        '-i', playURL,
+        '-frames:v', '1',
+        '-f', 'image2pipe', '-vcodec', 'mjpeg', '-q:v', '3',
+        'pipe:1',
+      ]);
+      if (res != null) return res;
+    }
+    final mpv = await _which('mpv');
+    if (mpv != null) {
+      // mpv 截图必须写文件（不支持 pipe），写到临时文件再读回。
+      final tmp = File('${Directory.systemTemp.path}/dramacube-cover-${DateTime.now().microsecondsSinceEpoch}.jpg');
+      try {
+        final args = <String>[
+          '--no-config', '--no-audio', '--quiet',
+          if (headerStr.isNotEmpty) '--http-header-fields=$headerStr',
+          '--start=2',
+          '--frames=2',
+          '--no-sub', '--no-osc', '--no-osd-bar',
+          '--screenshot-format=jpg',
+          '--screenshot-jpeg-quality=85',
+          '--screenshot-directory=${tmp.parent.path}',
+          '--screenshot-template=${tmp.path.replaceAll('${tmp.parent.path}/', '').replaceAll('.jpg', '')}',
+          playURL,
+        ];
+        await Process.run(mpv, args).timeout(const Duration(seconds: 15));
+        if (await tmp.exists()) {
+          final b = await tmp.readAsBytes();
+          if (b.isNotEmpty) return b;
+        }
+      } catch (_) {} finally {
+        try { if (await tmp.exists()) await tmp.delete(); } catch (_) {}
+      }
+    }
+    return null;
+  }
+
+  Future<Uint8List?> _runFrame(String bin, List<String> args) async {
+    try {
+      final proc = await Process.start(bin, args);
+      final out = <int>[];
+      proc.stdout.listen(out.addAll);
+      final code = await proc.exitCode.timeout(const Duration(seconds: 15));
+      if (code == 0 && out.isNotEmpty) return Uint8List.fromList(out);
+    } catch (e) {
+      AppLog.app('外部截帧异常 bin=$bin err=$e');
+    }
+    return null;
+  }
+
+  Future<String?> _which(String name) async {
+    if (!Platform.isMacOS && !Platform.isLinux && !Platform.isWindows) return null;
+    try {
+      final res = await Process.run(
+        Platform.isWindows ? 'where' : 'which',
+        [name],
+      ).timeout(const Duration(seconds: 5));
+      if (res.exitCode == 0) {
+        final first = (res.stdout as String).trim().split('\n').first.trim();
+        if (first.isNotEmpty) return first;
+      }
+    } catch (_) {}
+    // 常见安装路径兜底（which 受 PATH 影响可能查不到）。
+    for (final p in Platform.isWindows
+        ? ['C:/Program Files/ffmpeg/bin/$name.exe']
+        : ['/usr/local/bin/$name', '/opt/homebrew/bin/$name', '/usr/bin/$name']) {
+      if (File(p).existsSync()) return p;
+    }
+    return null;
+  }
+
+  /// media_kit 兜底截帧（本地文件 / 外部工具缺失场景）。
+  Future<Uint8List?> _grabViaMediaKit(String playURL, Map<String, String> headers) async {
     final player = Player();
     try {
       await player.open(Media(playURL, httpHeaders: headers), play: false);
