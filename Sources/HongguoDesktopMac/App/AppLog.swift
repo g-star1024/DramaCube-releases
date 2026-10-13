@@ -50,6 +50,13 @@ public enum AppLog {
         }
     }
 
+    // MARK: - 便捷分类
+
+    public static func app(_ message: @autoclosure () -> String) { log(.app, message()) }
+    public static func net(_ message: @autoclosure () -> String) { log(.net, message()) }
+    public static func player(_ message: @autoclosure () -> String) { log(.player, message()) }
+    public static func error(_ message: @autoclosure () -> String) { log(.error, message()) }
+
     // MARK: - 内部
 
     private static func timestamp() -> String {

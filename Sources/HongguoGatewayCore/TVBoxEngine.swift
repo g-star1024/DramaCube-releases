@@ -426,7 +426,7 @@ public actor TVBoxEngine {
     private func fetchList(site s: Site, page: Int, typeId: Int? = nil, timeoutSecs: Int = 15) async throws -> [Vod] {
         var comps = URLComponents(string: s.api)
         var items = [
-            URLQueryItem(name: "ac", value: "list"),
+            URLQueryItem(name: "ac", value: "videolist"),  // v2.3.4：ac=list 精简响应不含 vod_pic 致封面全占位，对齐 Flutter 用 videolist 全量字段
             URLQueryItem(name: "pg", value: String(page)),
         ]
         if let t = typeId { items.append(URLQueryItem(name: "t", value: String(t))) }

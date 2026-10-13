@@ -100,6 +100,7 @@ public struct CoverImage: View {
         image = nil
         // 无源封面：直接走豆瓣回退
         guard let url else {
+            AppLog.net("封面无 URL title=\(title ?? "-")，走豆瓣回退")
             await loadDoubanFallback()
             return
         }
@@ -109,6 +110,7 @@ public struct CoverImage: View {
         if let img {
             image = img
         } else {
+            AppLog.net("封面直连失败 url=\(url.host ?? "?") title=\(title ?? "-")，走豆瓣回退")
             // 源封面加载失败：尝试豆瓣回退
             await loadDoubanFallback()
         }
@@ -117,19 +119,23 @@ public struct CoverImage: View {
     /// 豆瓣封面回退：按标题查网关 /api/cover，取豆瓣海报（经 image-proxy 防盗链）。
     private func loadDoubanFallback() async {
         guard let title, !title.trimmingCharacters(in: .whitespaces).isEmpty else {
+            AppLog.net("封面无标题，放弃豆瓣回退")
             failed = true
             return
         }
         guard let fallback = await Self.fetchDoubanCoverURL(title: title) else {
+            AppLog.net("豆瓣回退无封面 title=\(title)")
             guard !Task.isCancelled else { return }
             failed = true
             return
         }
+        AppLog.net("豆瓣回退命中 title=\(title) url=\(fallback.host ?? "?")")
         let img = await Self.fetchAndDecode(fallback).image
         guard !Task.isCancelled else { return }
         if let img {
             image = img
         } else {
+            AppLog.net("豆瓣回退封面解码失败 title=\(title)")
             failed = true
         }
     }
@@ -138,12 +144,26 @@ public struct CoverImage: View {
     nonisolated private static func fetchDoubanCoverURL(title: String) async -> URL? {
         struct CoverResp: Codable { let ok: Bool; let data: [String: String]? }
         guard let q = title.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
-              let url = URL(string: "\(AppConfig.gatewayBaseURL)/api/cover?title=\(q)") else { return nil }
+              let url = URL(string: "\(AppConfig.gatewayBaseURL)/api/cover?title=\(q)") else {
+            AppLog.net("豆瓣回退 URL 构造失败 title=\(title)")
+            return nil
+        }
         var req = URLRequest(url: url, timeoutInterval: 8)
         req.cachePolicy = .returnCacheDataElseLoad
-        guard let (data, _) = try? await URLSession.shared.data(for: req),
-              let resp = try? JSONDecoder().decode(CoverResp.self, from: data),
-              resp.ok, let u = resp.data?["url"], !u.isEmpty else { return nil }
+        guard let (data, httpResp) = try? await URLSession.shared.data(for: req) else {
+            AppLog.net("豆瓣回退请求失败 title=\(title)（网关未就绪或网络错误）")
+            return nil
+        }
+        guard let http = httpResp as? HTTPURLResponse, http.statusCode == 200 else {
+            let code = (httpResp as? HTTPURLResponse)?.statusCode ?? -1
+            AppLog.net("豆瓣回退非 200 title=\(title) code=\(code)")
+            return nil
+        }
+        guard let resp = try? JSONDecoder().decode(CoverResp.self, from: data),
+              resp.ok, let u = resp.data?["url"], !u.isEmpty else {
+            AppLog.net("豆瓣回退解析失败 title=\(title)（豆瓣无此片或无海报）")
+            return nil
+        }
         return URL(string: u)
     }
 
@@ -186,20 +206,34 @@ public struct CoverImage: View {
         await CoverGate.shared.acquire()
         defer { Task { await CoverGate.shared.release() } }
         // 失败重试一次（边缘节点偶发慢/丢包，重试常换到更快节点）。
+        var lastError: String?
+        var lastCode: Int?
         for attempt in 0...1 {
             do {
                 let (data, resp) = try await session.data(for: req)
-                if let http = resp as? HTTPURLResponse, http.statusCode == 200 {
-                    URLCache.shared.storeCachedResponse(CachedURLResponse(response: http, data: data), for: req)
-                }
-                if let img = decodeDownsampled(data) {
-                    return DecodedImage(image: img)
+                if let http = resp as? HTTPURLResponse {
+                    lastCode = http.statusCode
+                    if http.statusCode == 200 {
+                        URLCache.shared.storeCachedResponse(CachedURLResponse(response: http, data: data), for: req)
+                        if let img = decodeDownsampled(data) {
+                            return DecodedImage(image: img)
+                        } else {
+                            lastError = "解码失败 data=\(data.count)B"
+                        }
+                    } else {
+                        lastError = "HTTP \(http.statusCode)"
+                    }
+                } else {
+                    lastError = "非 HTTP 响应"
                 }
             } catch {
-                // 末次失败才放弃；非末次继续重试
-                if attempt == 1 { return DecodedImage(image: nil) }
+                lastError = error.localizedDescription
             }
+            // 非末次继续重试
+            if attempt == 0 { continue }
         }
+        // 两次都失败：埋日志（含 URL host、状态码/错误、尝试次数）
+        AppLog.net("封面下载失败 host=\(url.host ?? "?") code=\(lastCode ?? -1) err=\(lastError ?? "?")")
         return DecodedImage(image: nil)
     }
 
