@@ -13,7 +13,7 @@
 #   linux     ubuntu-latest   → dramacube-linux-v<ver>.tar.gz
 #   android   ubuntu-latest   → dramacube-android-v<ver>.apk
 #   mac-arm64 macos-14        → dramacube-macOS-arm64-v<ver>.dmg
-#   mac-x64   macos-13        → dramacube-macOS-x64-v<ver>.dmg
+#   mac-x64   macos-14        → dramacube-macOS-x64-v<ver>.dmg
 
 name: build
 
@@ -38,7 +38,7 @@ jobs:
           - { platform: linux,     os: ubuntu-latest  }
           - { platform: android,   os: ubuntu-latest  }
           - { platform: mac-arm64, os: macos-14       }
-          - { platform: mac-x64,   os: macos-13       }
+          - { platform: mac-x64,   os: macos-14       }
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
     permissions:
