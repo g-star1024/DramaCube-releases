@@ -162,7 +162,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
       },
     );
 
-    // 初始倍速 = 全局默认倍速
+    // 起播倍速 = 设置中心「默认倍速」（播放器内临时调节不回写设置，避免覆盖用户配置）。
     final settings = ref.read(settingsProvider);
     if (settings.defaultRate != 1.0) {
       _player.setRate(settings.defaultRate);
@@ -264,9 +264,9 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
             SingleActivator(key): () => _seekToFraction(i / 10),
         },
         const SingleActivator(LogicalKeyboardKey.bracketLeft): () =>
-            _setRateDelta(-0.25),
+            _stepRate(-0.25),
         const SingleActivator(LogicalKeyboardKey.bracketRight): () =>
-            _setRateDelta(0.25),
+            _stepRate(0.25),
       };
 
   void _seekToFraction(double f) {
@@ -274,10 +274,10 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     _player.seek(Duration(seconds: (f * _duration.inSeconds).toInt()));
   }
 
-  Future<void> _setRateDelta(double delta) async {
+  /// 快捷键 [/] 步进倍速（仅当前会话生效，不回写设置中心默认倍速）。
+  Future<void> _stepRate(double delta) async {
     final r = (_player.state.rate + delta).clamp(0.5, 3.0);
     await _player.setRate(r);
-    ref.read(settingsProvider.notifier).setDefaultRate(r);
     _showSeekFeedback('${r.toStringAsFixed(2)}x');
   }
 
@@ -399,8 +399,20 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
 
   Future<void> _openSourceSheet() async {
     AppLog.player('点击换源按钮');
+    // 换源搜索缓存：当前实例无结果时先试全局缓存（按标题 key，5 分钟 TTL）。
     if (_sourceGroups.isEmpty && _otherSeasons.isEmpty && !_sourceSearching) {
-      _searchSources();
+      final q = DiscoverEngine.normalize(_detail.drama.title);
+      final cached = _SourceSearchCache.read(q);
+      if (cached != null) {
+        _sourceQuery = q;
+        setState(() {
+          _sourceGroups = List.of(cached.groups);
+          _otherSeasons = List.of(cached.otherSeasons);
+        });
+        AppLog.player('换源搜索命中缓存 query=$q groups=${cached.groups.length}');
+      } else {
+        _searchSources();
+      }
     }
     await showDialog<void>(
       context: context,
@@ -458,7 +470,11 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
             });
           },
           onAllDone: () {
-            if (mounted) setState(() => _sourceSearching = false);
+            if (mounted) {
+              setState(() => _sourceSearching = false);
+              // 搜索完成写入缓存（按规范化标题 key）。
+              _SourceSearchCache.write(_sourceQuery, _sourceGroups, _otherSeasons);
+            }
           },
         );
   }
@@ -488,6 +504,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     setState(() {
       _detail = detail;
       _watchedIds = {};
+      // 换源后清实例结果：下次打开换源面板走全局缓存（按新标题 key 读取）。
       _sourceGroups = [];
       _otherSeasons = [];
       _switching = false;
@@ -555,7 +572,8 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                   ),
                 ),
               )
-            else              TvPlayerOsd(
+            else
+              TvPlayerOsd(
                 player: _player,
                 controller: _controller,
                 title: _detail.drama.title,
@@ -864,17 +882,12 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                             ),
                           ),
                         ),
-                        // 倍速（写回全局设置）
+                        // 倍速（仅当前会话生效，不回写设置中心默认倍速）
                         StreamBuilder<double>(
                           stream: _player.stream.rate,
                           builder: (context, snap) => PopupMenuButton<double>(
                             initialValue: snap.data ?? 1.0,
-                            onSelected: (rate) {
-                              _player.setRate(rate);
-                              ref
-                                  .read(settingsProvider.notifier)
-                                  .setDefaultRate(rate);
-                            },
+                            onSelected: (rate) => _player.setRate(rate),
                             itemBuilder: (_) => [
                               for (final r in [0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0])
                                 PopupMenuItem(value: r, child: Text('${r}x')),
@@ -1143,6 +1156,38 @@ class _SiteGroup {
   final String siteName;
   final List<Drama> results;
   _SiteGroup(this.siteName, this.results);
+}
+
+/// 换源搜索结果缓存（按规范化标题 key，TTL 5 分钟）。
+/// 避免同部剧反复点「换源」时全量重搜——结果短时稳定，过期后自然重搜。
+class _SourceSearchCache {
+  final List<_SiteGroup> groups;
+  final List<Drama> otherSeasons;
+  final DateTime at;
+  _SourceSearchCache(this.groups, this.otherSeasons) : at = DateTime.now();
+
+  bool get fresh => DateTime.now().difference(at) < const Duration(minutes: 5);
+
+  static final Map<String, _SourceSearchCache> _map = {};
+
+  static _SourceSearchCache? read(String query) {
+    final c = _map[query];
+    if (c == null) return null;
+    if (!c.fresh) {
+      _map.remove(query);
+      return null;
+    }
+    return c;
+  }
+
+  static void write(String query, List<_SiteGroup> groups, List<Drama> seasons) {
+    // 防内存膨胀：最多保留 20 条，超量清最旧。
+    if (_map.length >= 20) {
+      final oldest = _map.entries.reduce((a, b) => a.value.at.isBefore(b.value.at) ? a : b);
+      _map.remove(oldest.key);
+    }
+    _map[query] = _SourceSearchCache(List.of(groups), List.of(seasons));
+  }
 }
 
 /// 错误覆盖层（重试 / 换源 / 下集）。

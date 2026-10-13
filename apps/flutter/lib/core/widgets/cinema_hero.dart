@@ -89,8 +89,14 @@ class _CinemaHeroState extends State<CinemaHero> {
     final safeIndex = _index.clamp(0, count - 1);
     final current = widget.items[safeIndex];
 
-    return AspectRatio(
-      aspectRatio: 16 / 6,
+    // 高度封顶：16/6 比例在宽窗口（如 macOS 全屏 2560px）会把轮播撑到近 1000px 高，
+    // 严重挤压下方内容。按宽度算比例高度后 clamp 到 [220, 380]，窗口再宽也不继续长高。
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final w = constraints.maxWidth;
+        final h = (w * 6 / 16).clamp(220.0, 380.0);
+        return SizedBox(
+      height: h,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(Radii.lg),
         child: Stack(
@@ -259,6 +265,8 @@ class _CinemaHeroState extends State<CinemaHero> {
           ],
         ),
       ),
+        );
+      },
     );
   }
 }

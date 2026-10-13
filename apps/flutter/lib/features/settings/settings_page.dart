@@ -214,6 +214,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 ListTile(
                   leading: const Icon(Icons.speed),
                   title: const Text('默认倍速'),
+                  subtitle: const Text('每次起播时应用的倍速；播放器内临时调节不回写'),
                   trailing: Text(
                     '${settings.defaultRate}x',
                     style: TextStyle(color: Theme.of(context).colorScheme.primary),

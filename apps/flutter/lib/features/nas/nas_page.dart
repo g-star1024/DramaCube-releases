@@ -44,6 +44,8 @@ class _NASPageState extends ConsumerState<NASPage> {
   }
 
   /// 首页：扫描默认（当前/首个启用）库的所有视频并平铺展示。
+  /// 磁盘缓存（TTL 10 分钟，对齐 Swift NASBrowseView scanCacheTTL=600s）：
+  /// 命中直接复用不全量重扫；force（手动「重新扫描」）跳过缓存强制重扫并回写。
   Future<void> _scanHomeLibrary(NASState nas, {bool force = false}) async {
     if (_homeLoading) return;
     if (_homeScanned && !force) return;
@@ -51,6 +53,24 @@ class _NASPageState extends ConsumerState<NASPage> {
       (l) => l.id == nas.currentLibraryId && l.enabled,
       orElse: () => nas.enabledLibraries.first,
     );
+    final mgr = ref.read(nasManagerProvider.notifier);
+    // ① 非强制：先试磁盘缓存，命中直接展示（不进入 loading，体验对齐 Swift 缓存优先）。
+    if (!force) {
+      final cached = await mgr.readScanCache(lib, '');
+      if (cached != null && cached.isNotEmpty) {
+        if (!mounted) return;
+        setState(() {
+          _homeVideos = cached;
+          _homeLib = lib;
+          _homeLoading = false;
+          _homeError = null;
+          _homeScanned = true;
+          _visibleCount = _pageSize;
+        });
+        return;
+      }
+    }
+    // ② 无缓存/强制：全量扫描并回写缓存。
     setState(() {
       _homeLoading = true;
       _homeError = null;
@@ -58,13 +78,15 @@ class _NASPageState extends ConsumerState<NASPage> {
       _visibleCount = _pageSize;
     });
     try {
-      final videos = await ref.read(nasManagerProvider.notifier).collectVideos(lib);
+      final videos = await mgr.collectVideos(lib);
       if (!mounted) return;
       setState(() {
         _homeVideos = videos;
         _homeLoading = false;
         _homeScanned = true;
       });
+      // 扫描成功回写磁盘缓存（不 await，后台写不阻塞 UI）。
+      mgr.writeScanCache(lib, '', videos);
     } catch (e) {
       if (!mounted) return;
       setState(() {

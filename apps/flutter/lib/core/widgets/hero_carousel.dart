@@ -81,8 +81,13 @@ class _HeroCarouselState extends State<HeroCarousel> {
   Widget build(BuildContext context) {
     if (widget.items.isEmpty) return const SizedBox.shrink();
 
-    return AspectRatio(
-      aspectRatio: 21 / 9,
+    // 高度封顶：21/9 比例在宽窗口下会把轮播撑得过高，clamp 到 [200, 340]。
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final w = constraints.maxWidth;
+        final h = (w * 9 / 21).clamp(200.0, 340.0);
+        return SizedBox(
+      height: h,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(Radii.lg),
         child: Stack(
@@ -185,6 +190,8 @@ class _HeroCarouselState extends State<HeroCarousel> {
           ],
         ),
       ),
+        );
+      },
     );
   }
 }

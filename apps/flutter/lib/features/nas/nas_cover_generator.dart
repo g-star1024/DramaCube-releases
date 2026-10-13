@@ -6,6 +6,9 @@ import 'dart:typed_data';
 import 'package:media_kit/media_kit.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../core/platform/app_log.dart';
+
+
 /// NAS 视频首帧封面生成器（对齐 macOS 版 NASCoverGenerator）。
 ///
 /// media_kit 播放到第 2 秒截首帧，磁盘缓存到 Application Support/DramaCube/nas-covers/。
@@ -64,15 +67,20 @@ class NASCoverGenerator {
     try {
       if (await dest.exists()) return dest;
       _inFlight.add(key);
+      final short = playURL.length > 90 ? '${playURL.substring(0, 90)}…' : playURL;
+      AppLog.app('封面生成开始 key=$key url=$short headers=${headers.keys.join(",")}');
       final bytes = await _grabFrame(playURL, headers);
       if (bytes == null || bytes.isEmpty) {
         _failed.add(key);
+        AppLog.app('封面生成失败 key=$key（截帧空/超时/不支持）');
         return null;
       }
       await dest.writeAsBytes(bytes, flush: true);
+      AppLog.app('封面生成成功 key=$key bytes=${bytes.length}');
       return dest;
-    } catch (_) {
+    } catch (e) {
       _failed.add(key);
+      AppLog.app('封面生成异常 key=$key err=$e');
       return null;
     } finally {
       _inFlight.remove(key);
@@ -92,7 +100,8 @@ class NASCoverGenerator {
       await Future.delayed(const Duration(milliseconds: 300));
       return await player.screenshot(format: 'image/jpeg')
           .timeout(const Duration(seconds: 5), onTimeout: () => null);
-    } catch (_) {
+    } catch (e) {
+      AppLog.app('封面截帧异常 url=${playURL.length > 80 ? '${playURL.substring(0, 80)}…' : playURL} err=$e');
       return null;
     } finally {
       await player.dispose();

@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/models/models.dart';
+import '../../core/persistence/disk_cache.dart';
 
 /// NAS 资源库管理器（对齐 macOS 版 NASEngine + NASManager）。
 ///
@@ -325,6 +326,39 @@ class NASManager extends StateNotifier<NASState> {
     final out = <NASEntry>[];
     await _collectInto(lib, path, depth, out);
     return out;
+  }
+
+  // MARK: 扫描结果磁盘缓存（对齐 Swift NASBrowseView scanCacheTTL=600s + DiskCache）
+
+  /// 扫描缓存 TTL：10 分钟内重复进资源库首页直接复用，不全量重扫。
+  static const Duration scanCacheTTL = Duration(minutes: 10);
+
+  /// 缓存 key（对齐 Swift `nas:scan:[libId]:[path]`；libId 用 id 而非 name，改名不失效）。
+  static String scanCacheKey(String libId, String path) => 'nas:scan:$libId:$path';
+
+  /// 读扫描缓存：命中且新鲜返回视频列表，否则 null。
+  Future<List<NASEntry>?> readScanCache(NASLibrary lib, String path) async {
+    final v = await DiskCache.shared.read(scanCacheKey(lib.id, path), maxAge: scanCacheTTL);
+    if (v is! List) return null;
+    final out = <NASEntry>[];
+    for (final e in v) {
+      if (e is Map) {
+        final name = e['name']?.toString();
+        final p = e['path']?.toString();
+        if (name != null && name.isNotEmpty) {
+          out.add(NASEntry(name: name, isDir: false, path: p));
+        }
+      }
+    }
+    return out.isEmpty ? null : out;
+  }
+
+  /// 写扫描缓存（含库地址，避免不同库同 id 冲突——id 本身是毫秒时间戳已唯一，地址仅冗余信息）。
+  Future<void> writeScanCache(NASLibrary lib, String path, List<NASEntry> videos) {
+    return DiskCache.shared.write(
+      scanCacheKey(lib.id, path),
+      [for (final e in videos) {'name': e.name, 'path': e.path ?? e.name}],
+    );
   }
 
   static const int _maxCollectTotal = 5000;

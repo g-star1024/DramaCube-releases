@@ -1,5 +1,6 @@
 # Swift / SPM
 .build/
+.build-x86/
 .swiftpm/
 Packages/
 xcuserdata/
