@@ -61,14 +61,13 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Setup Flutter
+      - name: Setup Flutter（3.39+ 才识别 VS2026 生成器，windows-latest 已装 VS2026）
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: 3.35.4
           channel: stable
           cache: true
 
-      - name: Setup MSVC (VS2022 工具链)
+      - name: Setup MSVC 工具链
         if: matrix.platform == 'windows'
         uses: microsoft/setup-msbuild@v2
 
@@ -79,10 +78,11 @@ jobs:
         if: matrix.platform == 'windows'
         run: flutter analyze
 
-      - name: 构建 Windows（激活 VS2022 环境，让 CMake 找到生成器）
+      - name: 构建 Windows（激活 VS DevShell，让 CMake 找到 VS2026 生成器）
         if: matrix.platform == 'windows'
         shell: pwsh
         run: |
+          flutter --version
           $vsPath = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
           Write-Host "VS path: $vsPath"
           & "$vsPath\Common7\Tools\Launch-VsDevShell.ps1" -Arch amd64 -HostArch amd64
