@@ -29,10 +29,51 @@ class _NASPageState extends ConsumerState<NASPage> {
   static const _pageSize = 30;
   final _scrollCtrl = ScrollController();
 
+  // MARK: 资源库首页「全库扫描视频网格」状态（对齐 Swift NASBrowseView 平铺所有视频）
+  /// 首页扫描到的全部视频（含完整相对路径）。
+  List<NASEntry> _homeVideos = [];
+  bool _homeLoading = false;
+  String? _homeError;
+  NASLibrary? _homeLib;
+  bool _homeScanned = false;
+
   @override
   void dispose() {
     _scrollCtrl.dispose();
     super.dispose();
+  }
+
+  /// 首页：扫描默认（当前/首个启用）库的所有视频并平铺展示。
+  Future<void> _scanHomeLibrary(NASState nas, {bool force = false}) async {
+    if (_homeLoading) return;
+    if (_homeScanned && !force) return;
+    final lib = nas.libraries.firstWhere(
+      (l) => l.id == nas.currentLibraryId && l.enabled,
+      orElse: () => nas.enabledLibraries.first,
+    );
+    setState(() {
+      _homeLoading = true;
+      _homeError = null;
+      _homeLib = lib;
+      _visibleCount = _pageSize;
+    });
+    try {
+      final videos = await ref.read(nasManagerProvider.notifier).collectVideos(lib);
+      if (!mounted) return;
+      setState(() {
+        _homeVideos = videos;
+        _homeLoading = false;
+        _homeScanned = true;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _homeVideos = [];
+        _homeLoading = false;
+        _homeError = e.toString();
+        _homeScanned = true;
+      });
+    }
   }
 
   Future<void> _browse(NASLibrary lib, String path) async {
@@ -142,22 +183,13 @@ class _NASPageState extends ConsumerState<NASPage> {
           ),
         );
       }
-      return ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          for (final lib in nas.enabledLibraries)
-            Card(
-              child: ListTile(
-                leading: Icon(lib.type == 'webdav' ? Icons.cloud_outlined : Icons.folder_outlined),
-                title: Text(lib.name),
-                subtitle: Text(lib.baseURL, maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 11)),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => _browse(lib, ''),
-              ),
-            ),
-        ],
-      );
+      // 资源库首页：自动扫描默认库的全部视频，平铺成带首帧封面的网格
+      //（对齐 Swift NASBrowseView：直出当前库下全部视频，点击直接播放）。
+      if (!_homeScanned && !_homeLoading) {
+        // 首帧触发扫描（仅一次）。
+        WidgetsBinding.instance.addPostFrameCallback((_) => _scanHomeLibrary(nas));
+      }
+      return _buildHomeGrid(nas);
     }
 
     // 目录浏览
@@ -264,6 +296,141 @@ class _NASPageState extends ConsumerState<NASPage> {
     );
   }
 
+  /// 资源库首页「全库视频网格」：直接平铺扫描到的全部视频（带首帧封面），
+  /// 顶部一行库切换/浏览目录/重新扫描操作。对齐 Swift NASBrowseView。
+  Widget _buildHomeGrid(NASState nas) {
+    if (_homeLoading) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text('正在扫描媒体库…', style: TextStyle(color: Colors.grey)),
+          ],
+        ),
+      );
+    }
+    if (_homeError != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, size: 64, color: Colors.grey),
+            const SizedBox(height: 16),
+            Text('扫描失败', style: TextStyle(color: Colors.grey[700], fontSize: 16)),
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Text(_homeError!,
+                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                  textAlign: TextAlign.center),
+            ),
+            const SizedBox(height: 16),
+            FilledButton(
+              onPressed: () => _scanHomeLibrary(nas, force: true),
+              child: const Text('重试'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final lib = _homeLib;
+    final visible = _homeVideos.take(_visibleCount).toList();
+    return CustomScrollView(
+      controller: _scrollCtrl,
+      slivers: [
+        // 顶部操作行：当前库 + 重新扫描 + 浏览目录
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child: Row(
+              children: [
+                Icon(lib?.type == 'webdav' ? Icons.cloud_outlined : Icons.folder_outlined,
+                    size: 18, color: Colors.grey[600]),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    lib?.name ?? '',
+                    style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: () => _scanHomeLibrary(nas, force: true),
+                  icon: const Icon(Icons.refresh, size: 16),
+                  label: const Text('重新扫描', style: TextStyle(fontSize: 12)),
+                ),
+                TextButton.icon(
+                  onPressed: () { if (lib != null) _browse(lib, ''); },
+                  icon: const Icon(Icons.folder_open, size: 16),
+                  label: const Text('浏览目录', style: TextStyle(fontSize: 12)),
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (_homeVideos.isEmpty)
+          const SliverFillRemaining(
+            child: Center(
+              child: Text('该库暂无视频\n支持 mp4 / mkv / mov / m4v / avi / wmv / flv / ts / m3u8',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey)),
+            ),
+          )
+        else ...[
+          SliverPadding(
+            padding: const EdgeInsets.all(16),
+            sliver: SliverGrid(
+              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                maxCrossAxisExtent: 160,
+                mainAxisSpacing: 16,
+                crossAxisSpacing: 16,
+                childAspectRatio: 0.52,
+              ),
+              delegate: SliverChildBuilderDelegate(
+                (context, i) => _NASVideoCard(
+                  entry: visible[i],
+                  lib: lib!,
+                  parentPath: '', // entry.path 已含完整相对路径
+                  onTap: () => _playHomeVideo(visible[i]),
+                ),
+                childCount: visible.length,
+              ),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 24),
+              child: Center(
+                child: Text(
+                  _visibleCount < _homeVideos.length
+                      ? '加载更多…'
+                      : '共 ${_homeVideos.length} 个视频',
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  /// 播放首页扫描到的视频（entry.path 已是相对库根完整路径）。
+  void _playHomeVideo(NASEntry entry) {
+    final lib = _homeLib;
+    if (lib == null) return;
+    final nas = ref.read(nasManagerProvider.notifier);
+    final url = nas.fileURL(lib, entry.fullPath);
+    final headers = nas.playHeaders(lib);
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => _NASPlayerPage(title: entry.name, url: url, headers: headers),
+    ));
+  }
+
   @override
   void initState() {
     super.initState();
@@ -272,7 +439,10 @@ class _NASPageState extends ConsumerState<NASPage> {
       if (!_scrollCtrl.hasClients) return;
       final pos = _scrollCtrl.position;
       if (pos.pixels >= pos.maxScrollExtent - 400 || pos.maxScrollExtent <= 400) {
-        final total = _entries.where((e) => !e.isDir && NASManager.isVideo(e.name)).length;
+        // 首页视频网格与目录浏览共用懒加载，按当前上下文取总数。
+        final total = _currentLib == null
+            ? _homeVideos.length
+            : _entries.where((e) => !e.isDir && NASManager.isVideo(e.name)).length;
         if (_visibleCount < total && mounted) {
           setState(() => _visibleCount = (_visibleCount + _pageSize).clamp(0, total));
         }
@@ -726,7 +896,10 @@ class _NASVideoCardState extends ConsumerState<_NASVideoCard> {
 
   Future<void> _loadCover() async {
     final nas = ref.read(nasManagerProvider.notifier);
-    final path = widget.parentPath.isEmpty ? widget.entry.name : '${widget.parentPath}/${widget.entry.name}';
+    // entry.path 非空（首页全库扫描）时直接用完整相对路径；
+    // 否则目录浏览用 parentPath+name 还原（对齐 Swift 封面缓存键 = 播放地址）。
+    final path = widget.entry.path ??
+        (widget.parentPath.isEmpty ? widget.entry.name : '${widget.parentPath}/${widget.entry.name}');
     final playURL = nas.fileURL(widget.lib, path);
     final headers = nas.playHeaders(widget.lib);
     final file = await NASCoverGenerator.shared.cover(playURL, headers: headers);

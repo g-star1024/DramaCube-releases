@@ -107,6 +107,31 @@ class SourceState {
     return list;
   }
 
+  /// 全部站点排序（含禁用）：可用源按延迟升序 → 未测试 → 失效/禁用沉底。
+  /// 供设置中心站点管理展示——测速后一眼看到最快源，失效源自动排到最后。
+  List<TVBoxSite> get sortedSites {
+    final list = List<TVBoxSite>.from(sites);
+    int rank(TVBoxSite s) {
+      if (disabled.contains(s.key)) return 3; // 手动禁用沉底
+      final h = health[s.key];
+      if (h == null) return 1; // 未测试居中
+      return h.ok ? 0 : 2; // 可用最前，失效沉底
+    }
+
+    list.sort((a, b) {
+      final ra = rank(a);
+      final rb = rank(b);
+      if (ra != rb) return ra - rb;
+      final la = health[a.key]?.latencyMs;
+      final lb = health[b.key]?.latencyMs;
+      if (la == null && lb == null) return 0;
+      if (la == null) return 1;
+      if (lb == null) return -1;
+      return la - lb;
+    });
+    return list;
+  }
+
   /// 延迟最低的可用源（无可用源时返回 null）。
   TVBoxSite? get fastestSite {
     for (final s in sortedEnabledSites) {

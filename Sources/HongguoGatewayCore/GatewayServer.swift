@@ -760,6 +760,20 @@ public enum GatewayServer {
         app.logger.logLevel = .info
         // 绑定成功：登记实际端口，UI 跟随。
         GatewayRuntime.setPort(port)
+        // app.run() 阻塞且绑定成功前不返回。并行起一个就绪探测：循环连接 /api/health，
+        // 连通即标记 ready，让 UI 的 waitUntilReady 放行（修复启动竞态，首屏不再 -1004）。
+        Task {
+            for _ in 0..<100 { // 最多 20s
+                if GatewayRuntime.isReady { return }
+                if let u = URL(string: "http://127.0.0.1:\(port)/api/health"),
+                   let (_, r) = try? await URLSession.shared.data(from: u),
+                   (r as? HTTPURLResponse)?.statusCode == 200 {
+                    GatewayRuntime.markReady()
+                    return
+                }
+                try? await Task.sleep(nanoseconds: 200_000_000)
+            }
+        }
         try await app.run()
     }
 

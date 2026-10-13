@@ -467,21 +467,22 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             Card(
               child: Column(
                 children: [
-                  for (var i = 0; i < sm.sites.length; i++) ...[
+                  // 测速后按延迟升序，失效/禁用源沉底（对齐源切换弹层排序规则）
+                  for (var i = 0; i < sm.sortedSites.length; i++) ...[
                     if (i > 0) const Divider(height: 1, indent: 16, endIndent: 16),
                     _SiteTile(
-                      site: sm.sites[i],
-                      disabled: sm.disabled.contains(sm.sites[i].key),
-                      isCurrent: sm.currentSource == sm.sites[i].key,
-                      testing: _testingKey && _testingSiteKey == sm.sites[i].key,
-                      health: sm.health[sm.sites[i].key],
+                      site: sm.sortedSites[i],
+                      disabled: sm.disabled.contains(sm.sortedSites[i].key),
+                      isCurrent: sm.currentSource == sm.sortedSites[i].key,
+                      testing: _testingKey && _testingSiteKey == sm.sortedSites[i].key,
+                      health: sm.health[sm.sortedSites[i].key],
                       onToggle: () => ref
                           .read(sourceManagerProvider.notifier)
-                          .toggleDisabled(sm.sites[i].key),
-                      onTest: () => _test(sm.sites[i].key),
+                          .toggleDisabled(sm.sortedSites[i].key),
+                      onTest: () => _test(sm.sortedSites[i].key),
                       onSetCurrent: () => ref
                           .read(sourceManagerProvider.notifier)
-                          .setCurrentSource(sm.sites[i].key),
+                          .setCurrentSource(sm.sortedSites[i].key),
                     ),
                   ],
                 ],

@@ -35,6 +35,7 @@ public enum GatewayRuntime {
     /// 线程安全读写实际端口（读多写一次，用锁即可）。
     private static let lock = NSLock()
     nonisolated(unsafe) private static var _port: Int = AppConfig.gatewayPort
+    nonisolated(unsafe) private static var _ready: Bool = false
 
     /// 实际监听端口（未启动时为默认 8787）。
     public static var currentPort: Int {
@@ -45,8 +46,33 @@ public enum GatewayRuntime {
     /// 实际网关基址。
     public static var currentBaseURL: String { "http://127.0.0.1:\(currentPort)" }
 
+    /// 网关是否已真正监听就绪（app.run() 成功绑定后开始接受连接）。
+    public static var isReady: Bool {
+        lock.lock(); defer { lock.unlock() }
+        return _ready
+    }
+
     /// 绑定成功后登记实际端口（仅网关侧调用）。
     public static func setPort(_ port: Int) {
         lock.lock(); _port = port; lock.unlock()
+    }
+
+    /// 标记网关已就绪（仅网关侧在 app.run() 监听成功后调用）。
+    /// 不打 AppLog：HongguoCore 不依赖 HongguoDesktopMac（避免反向依赖）。
+    public static func markReady() {
+        lock.lock(); _ready = true; lock.unlock()
+    }
+
+    /// 等待网关就绪（轮询 isReady，最多 maxSeconds 秒）。
+    /// 修复启动竞态：UI 首屏请求在网关 assemble+probeQuick（约 3-5s）完成前发出会 -1004，
+    /// 这里挂起直到网关真正接受连接再放行，超时兜底放行避免永久卡死。
+    @discardableResult
+    public static func waitUntilReady(maxSeconds: Double = 15) async -> Bool {
+        let deadline = Date().addingTimeInterval(maxSeconds)
+        while Date() < deadline {
+            if isReady { return true }
+            try? await Task.sleep(nanoseconds: 200_000_000) // 200ms 轮询
+        }
+        return isReady
     }
 }

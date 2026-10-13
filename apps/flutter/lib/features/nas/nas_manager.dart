@@ -21,7 +21,11 @@ class NASEntry {
   final bool isDir;
   /// 目录专用：是否含可播放视频（浅层探测）。false 的空目录在 UI 过滤掉（对齐 Swift 只出有视频的内容）。
   final bool hasVideo;
-  const NASEntry({required this.name, required this.isDir, this.hasVideo = true});
+  /// 相对库根的完整路径（递归扫描时填充；普通目录项可空，UI 用 parentPath+name 还原）。
+  final String? path;
+  const NASEntry({required this.name, required this.isDir, this.hasVideo = true, this.path});
+  /// 展示/播放用完整相对路径：优先 path，否则回退 name（根目录项）。
+  String get fullPath => path ?? name;
 }
 
 /// 资源库连通性探测结果。
@@ -311,6 +315,47 @@ class NASManager extends StateNotifier<NASState> {
       if (await _dirHasVideoAt(lib, sub, depth + 1)) return true;
     }
     return false;
+  }
+
+  /// 递归收集某目录下全部视频文件（对齐 Swift NASEngine.collectVideos）。
+  ///
+  /// 返回的 NASEntry.isDir=false、path=相对库根完整路径，供资源库首页平铺展示+取首帧封面。
+  /// 防护：限深 [_maxDepth]、单目录限扫 [_maxEntriesPerDir] 条、总数限 5000，防巨型库打满。
+  Future<List<NASEntry>> collectVideos(NASLibrary lib, {String path = '', int depth = 0}) async {
+    final out = <NASEntry>[];
+    await _collectInto(lib, path, depth, out);
+    return out;
+  }
+
+  static const int _maxCollectTotal = 5000;
+
+  Future<void> _collectInto(NASLibrary lib, String path, int depth, List<NASEntry> out) async {
+    if (depth > _maxDepth || out.length >= _maxCollectTotal) return;
+    final List<NASEntry> entries;
+    try {
+      entries = lib.type == 'mount' ? await _mountList(lib, path) : await _webdavList(lib, path);
+    } catch (_) {
+      return; // 单目录失败跳过，不中断其它分支
+    }
+    var scanned = 0;
+    for (final e in entries) {
+      if (out.length >= _maxCollectTotal) return;
+      if (scanned++ >= _maxEntriesPerDir) break;
+      if (e.isDir) continue;
+      if (isVideo(e.name)) {
+        final full = path.isEmpty ? e.name : '$path/${e.name}';
+        out.add(NASEntry(name: e.name, isDir: false, path: full));
+      }
+    }
+    // 下探子目录
+    scanned = 0;
+    for (final e in entries) {
+      if (out.length >= _maxCollectTotal) return;
+      if (!e.isDir) continue;
+      if (scanned++ >= _maxEntriesPerDir) break;
+      final sub = path.isEmpty ? e.name : '$path/${e.name}';
+      await _collectInto(lib, sub, depth + 1, out);
+    }
   }
 
   /// 构造文件播放 URL（webdav 直链 / mount file://）。

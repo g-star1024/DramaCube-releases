@@ -620,12 +620,12 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
               ],
             ),
           ),
+        // 手势层（移动分区 / 桌面唤起）——必须在 OSD 之下，否则全屏透明手势层会吞掉按钮点击
+        _buildGestureLayer(),
         // 顶部栏（返回 + 标题 + 选集/换源）
         _buildTopBar(ep),
         // 底部毛玻璃 OSD
         _buildBottomOsd(),
-        // 手势层（移动分区 / 桌面唤起）
-        _buildGestureLayer(),
         // 加载 / 换源中
         if (_switching)
           ColoredBox(
@@ -674,7 +674,10 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
       top: 0,
       left: 0,
       right: 0,
-      child: AnimatedSlide(
+      // OSD 隐藏时不拦截手势（让单击穿透到手势层唤起）；可见时正常接收按钮点击
+      child: IgnorePointer(
+        ignoring: !_osdVisible,
+        child: AnimatedSlide(
         offset: _osdVisible ? Offset.zero : const Offset(0, -1),
         duration: Motion.durMed,
         curve: Motion.curveEmphasized,
@@ -730,6 +733,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
             ),
           ),
         ),
+        ),
       ),
     );
   }
@@ -740,7 +744,10 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
       left: 0,
       right: 0,
       bottom: 0,
-      child: AnimatedSlide(
+      // OSD 隐藏时不拦截手势；可见时正常接收进度条/按钮交互
+      child: IgnorePointer(
+        ignoring: !_osdVisible,
+        child: AnimatedSlide(
         offset: _osdVisible ? Offset.zero : const Offset(0, 1),
         duration: Motion.durMed,
         curve: Motion.curveEmphasized,
@@ -896,6 +903,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
               ),
             ),
           ),
+        ),
         ),
       ),
     );

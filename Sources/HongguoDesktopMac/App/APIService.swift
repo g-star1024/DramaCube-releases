@@ -11,7 +11,9 @@ import HongguoCore
 @MainActor
 public final class CatalogService: ObservableObject {
     public static let shared = CatalogService()
-    private let base = AppConfig.gatewayBaseURL
+    /// 网关基址实时读取（不能缓存）：启动初期网关可能尚未绑定到实际端口，
+    /// 缓存会导致端口冲突重试后仍打到旧端口。
+    private var base: String { AppConfig.gatewayBaseURL }
 
     /// 直连网关（绕过系统代理；127.0.0.1 本不应走代理，但全局代理可能拦）。
     private let session: URLSession = {
@@ -26,6 +28,9 @@ public final class CatalogService: ObservableObject {
     /// JSON 解码放后台线程（v1.0.5 卡死修复）：列表/详情 payload 可达数百 KB，
     /// JSONDecoder 在主线程执行会造成可感知的掉帧。
     private func decode<T: Codable & Sendable>(_ url: URL, retries: Int = 3) async throws -> T {
+        // 启动竞态修复：先等网关真正 ready（监听成功）再发请求，
+        // 覆盖冷启动窗口（网关 assemble+probeQuick 约 3-5s），避免首屏 -1004。
+        await GatewayRuntime.waitUntilReady(maxSeconds: 15)
         var lastError: Error?
         let tag = url.path + (url.query.map { "?\($0)" } ?? "")
         for attempt in 0..<max(1, retries) {
