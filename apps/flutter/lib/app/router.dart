@@ -6,6 +6,7 @@ import '../features/live/live_page.dart';
 import '../features/nas/nas_page.dart';
 import '../features/library/library_page.dart';
 import '../features/settings/settings_page.dart';
+import '../features/settings/site_manager_page.dart';
 import '../features/player/player_page.dart';
 import '../features/discover/discover_page.dart';
 import '../features/detail/detail_page.dart';
@@ -76,6 +77,11 @@ final appRouter = GoRouter(
           path: '/settings',
           pageBuilder: (context, state) =>
               _fadeSlidePage(const SettingsPage(), state),
+        ),
+        GoRoute(
+          path: '/settings/sites',
+          pageBuilder: (context, state) =>
+              _fadeSlidePage(const SiteManagerPage(), state),
         ),
         GoRoute(
           path: '/detail',

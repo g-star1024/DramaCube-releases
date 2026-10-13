@@ -521,7 +521,16 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   Future<void> _toggleFullscreen() async {
     if (!mounted) return;
     setState(() => _fullscreen = !_fullscreen);
-    if (!kIsWeb && _isDesktop) {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.macOS) {
+      // macOS 走原生通道（window_manager 0.4.3 toggleFullScreen 在 macOS 14 SIGILL 崩溃，
+      // 崩溃栈 WindowManager.setFullScreen+304；原生通道先激活窗口再 toggle 规避）。
+      try {
+        await _fullscreenChannel
+            .invokeMethod('setFullScreen', {'isFullScreen': _fullscreen});
+      } catch (e) {
+        AppLog.player('全屏切换失败 err=$e');
+      }
+    } else if (!kIsWeb && _isDesktop) {
       try {
         await windowManager.setFullScreen(_fullscreen);
       } catch (_) {}
@@ -534,6 +543,8 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
       }
     }
   }
+
+  static const _fullscreenChannel = MethodChannel('dramacube/fullscreen');
 
   // MARK: - UI
 

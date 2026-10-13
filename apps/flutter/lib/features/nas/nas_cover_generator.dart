@@ -89,17 +89,20 @@ class NASCoverGenerator {
   }
 
   /// 截第 2 秒首帧（JPEG 字节）。失败返回 null。
+  /// WebDAV 远程流 mpv demuxer 建链慢（飞牛 NAS 实测 8s 不够），超时放宽到 20s。
   Future<Uint8List?> _grabFrame(String playURL, Map<String, String> headers) async {
     final player = Player();
     try {
       await player.open(Media(playURL, httpHeaders: headers), play: false);
-      await player.stream.duration
-          .firstWhere((d) => d > Duration.zero)
-          .timeout(const Duration(seconds: 8));
+      // 等首个视频轨就绪（track 事件比 duration>0 更早、更稳）：
+      // duration 需要 demuxer 读够索引才出，远程 WebDAV 上 track 先到。
+      await player.stream.tracks
+          .firstWhere((t) => t.video.isNotEmpty)
+          .timeout(const Duration(seconds: 15));
       await player.seek(const Duration(seconds: 2));
-      await Future.delayed(const Duration(milliseconds: 300));
+      await Future.delayed(const Duration(milliseconds: 400));
       return await player.screenshot(format: 'image/jpeg')
-          .timeout(const Duration(seconds: 5), onTimeout: () => null);
+          .timeout(const Duration(seconds: 8), onTimeout: () => null);
     } catch (e) {
       AppLog.app('封面截帧异常 url=${playURL.length > 80 ? '${playURL.substring(0, 80)}…' : playURL} err=$e');
       return null;

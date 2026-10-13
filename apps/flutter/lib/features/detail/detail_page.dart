@@ -88,10 +88,14 @@ class _DetailPageState extends ConsumerState<DetailPage> {
   }
 
   /// 豆瓣条目专用：详情未加载且聚合已有结果时，自动选第一个可播结果。
+  /// 同时兜「历史源失效自动降级聚合」场景：_error 已置位说明原源无集数，
+  /// 聚合出第一个可播结果即自动切过去（不再要求豆瓣 id）。
   bool _autoSelected = false;
   void _autoSelectFirst() {
     final parts = (_drama?.id ?? '').split('|');
-    if (parts.isEmpty || parts.first != 'douban') return; // 仅豆瓣条目
+    final isDouban = parts.isNotEmpty && parts.first == 'douban';
+    final fallbackFromDeadSource = !isDouban && _error != null;
+    if (!isDouban && !fallbackFromDeadSource) return;
     if (_autoSelected || _detail != null) return;
     if (_groups.isEmpty || _groups.first.results.isEmpty) return;
     _autoSelected = true;
@@ -121,7 +125,12 @@ class _DetailPageState extends ConsumerState<DetailPage> {
       _detail = detail;
       _loadingDetail = false;
       if (detail == null || detail.episodes.isEmpty) {
-        _error = '该源暂无可播放集数，可尝试下方其他源';
+        // 源失效/无集数时自动降级聚合搜索（对齐豆瓣条目路径）：
+        // 历史/收藏里存的源可能已挂，首次进入不应灰死按钮只能返回再进。
+        _error = '该源暂无可播放集数，正在检索其他源…';
+        if (!_searching && _groups.isEmpty) {
+          _aggregate();
+        }
       }
     });
   }

@@ -80,7 +80,7 @@ class GatewayServer {
         }),
       );
 
-  Response _health(Request req) => Response.ok(jsonEncode({'ok': true, 'version': '2.7.5'}));
+  Response _health(Request req) => Response.ok(jsonEncode({'ok': true, 'version': '2.7.6'}));
 
   // MARK: TVBox
 

@@ -10,6 +10,7 @@ class AppDelegate: FlutterAppDelegate {
     let controller = mainFlutterWindow?.contentViewController as! FlutterViewController
     let registrar = controller.registrar(forPlugin: "StatusBarController")
     statusBar = StatusBarController(registrar: registrar)
+    FullscreenChannel.register(with: controller.registrar(forPlugin: "FullscreenChannel"))
     super.applicationDidFinishLaunching(notification)
   }
 

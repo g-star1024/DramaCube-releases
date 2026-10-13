@@ -289,8 +289,8 @@ class NASManager extends StateNotifier<NASState> {
     return _dirHasVideoAt(lib, path, 0);
   }
 
-  static const int _maxDepth = 5;         // 对齐 Swift maxDepth
-  static const int _maxEntriesPerDir = 200; // 单目录最多扫条目（对齐 Swift 思路，适量收紧防慢库）
+  static const int _maxDepth = 5;           // 对齐 Swift maxDepth
+  static const int _maxEntriesPerDir = 500; // 单目录最多扫条目（对齐 Swift maxEntries=500）
 
   Future<bool> _dirHasVideoAt(NASLibrary lib, String path, int depth) async {
     if (depth > _maxDepth) return false;

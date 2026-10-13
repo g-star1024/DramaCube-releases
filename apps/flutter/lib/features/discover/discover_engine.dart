@@ -1,13 +1,15 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/settings_provider.dart';
 import '../../core/models/models.dart';
 
 /// 发现页数据引擎 —— 移植 macOS 版 CoverEngine.swift。
 ///
 /// 数据源：豆瓣「最近热门」（电影/剧集/综艺）+ B站番剧榜（动漫）。
-/// 全部国内直连（dio 默认不走系统代理），带 1h/6h 内存缓存。
-final discoverEngineProvider = Provider<DiscoverEngine>((ref) => DiscoverEngine());
+/// 全部国内直连（dio 默认不走系统代理），内存缓存 TTL 跟随设置中心「内容缓存时长」。
+final discoverEngineProvider = Provider<DiscoverEngine>(
+    (ref) => DiscoverEngine(cacheHours: ref.watch(settingsProvider).cacheHours));
 
 /// 豆瓣热门条目（对齐 macOS 版 DoubanHotItem）。
 class DoubanHotItem {
@@ -50,6 +52,14 @@ class DoubanSubject {
 }
 
 class DiscoverEngine {
+  /// 内容缓存时长（小时），来自设置中心；改动后 Provider 重建、缓存自然清空。
+  final int cacheHours;
+  DiscoverEngine({this.cacheHours = 6});
+
+  Duration get _hotTtl => Duration(hours: cacheHours);
+  // 条目详情变更频率低，给 4 倍于列表的 TTL（原 6h/1h 比例保持）。
+  Duration get _subjectTtl => Duration(hours: cacheHours * 4);
+
   final _dio = Dio(BaseOptions(
     connectTimeout: const Duration(seconds: 10),
     receiveTimeout: const Duration(seconds: 10),
@@ -78,8 +88,7 @@ class DiscoverEngine {
   }) async {
     final key = '$kind|$category|$type|$limit|$start';
     final cached = _hotCache[key];
-    if (cached != null &&
-        DateTime.now().difference(cached.$2).inMinutes < 60) {
+    if (cached != null && DateTime.now().difference(cached.$2) < _hotTtl) {
       return cached.$1;
     }
     try {
@@ -120,12 +129,11 @@ class DiscoverEngine {
 
   // MARK: - 豆瓣条目详情
 
-  /// 拉豆瓣条目详情（rexxar movie/tv 条目接口），缓存 6h。
+  /// 拉豆瓣条目详情（rexxar movie/tv 条目接口），缓存跟随设置中心时长 ×4。
   Future<DoubanSubject?> doubanSubject({required String id, required String kind}) async {
     final key = '$kind|$id';
     final cached = _subjectCache[key];
-    if (cached != null &&
-        DateTime.now().difference(cached.$2).inMinutes < 360) {
+    if (cached != null && DateTime.now().difference(cached.$2) < _subjectTtl) {
       return cached.$1;
     }
     final path = kind == 'tv' ? 'tv' : 'movie';
@@ -152,8 +160,7 @@ class DiscoverEngine {
   Future<List<DoubanHotItem>> bilibiliBangumiRank({int limit = 54}) async {
     final realKey = 'bili|bangumi|$limit';
     final cached = _hotCache[realKey];
-    if (cached != null &&
-        DateTime.now().difference(cached.$2).inMinutes < 60) {
+    if (cached != null && DateTime.now().difference(cached.$2) < _hotTtl) {
       return cached.$1;
     }
     try {
