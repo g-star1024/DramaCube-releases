@@ -1,0 +1,156 @@
+# Flutter 全平台打包发布（本公开仓 CI 构建，Actions 免费）
+#
+# 手动触发（workflow_dispatch）：
+#   gh workflow run build.yml -R g-star1024/DramaCube-releases -f ref=main -f version=2.7.8
+#   gh workflow run build.yml -R g-star1024/DramaCube-releases -f ref=v2.7.8 -f version=2.7.8
+#
+# 机制：本仓 workflow 用 SOURCE_PAT checkout 私有源码仓 g-star1024/hongguo-desktop
+# 的 Flutter 工程（apps/flutter）→ 五平台矩阵并行构建 → 发布到本仓 Release。
+# 私有源码仓零 CI 分钟消耗（不再扣费）。
+#
+# 平台矩阵：
+#   windows   windows-latest  → dramacube-windows-v<ver>.zip
+#   linux     ubuntu-latest   → dramacube-linux-v<ver>.tar.gz
+#   android   ubuntu-latest   → dramacube-android-v<ver>.apk
+#   mac-arm64 macos-14        → dramacube-macOS-arm64-v<ver>.dmg
+#   mac-x64   macos-13        → dramacube-macOS-x64-v<ver>.dmg
+
+name: build
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "私有源码仓 hongguo-desktop 的 ref（main / vX.Y.Z tag / commit）"
+        required: true
+        default: "main"
+      version:
+        description: "版本号（如 2.7.8，发布 tag 为 v<version>）"
+        required: true
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { platform: windows,   os: windows-latest }
+          - { platform: linux,     os: ubuntu-latest  }
+          - { platform: android,   os: ubuntu-latest  }
+          - { platform: mac-arm64, os: macos-14       }
+          - { platform: mac-x64,   os: macos-13       }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: apps/flutter
+    steps:
+      - name: Checkout 私有源码仓
+        uses: actions/checkout@v4
+        with:
+          repository: g-star1024/hongguo-desktop
+          ref: ${{ github.event.inputs.ref }}
+          token: ${{ secrets.SOURCE_PAT }}
+
+      - name: Setup Java (Android)
+        if: matrix.platform == 'android'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.35.4
+          channel: stable
+          cache: true
+
+      - name: 依赖
+        run: flutter pub get
+
+      - name: 分析
+        if: matrix.platform == 'windows'
+        run: flutter analyze
+
+      - name: 构建 Windows
+        if: matrix.platform == 'windows'
+        run: flutter build windows --release
+
+      - name: 构建 Linux
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libmpv-dev mpv
+          flutter build linux --release
+
+      - name: 构建 Android
+        if: matrix.platform == 'android'
+        run: flutter build apk --release
+
+      - name: 构建 macOS
+        if: matrix.platform == 'mac-arm64' || matrix.platform == 'mac-x64'
+        run: flutter build macos --release
+
+      - name: 打包 Windows
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath dramacube-windows-v${{ inputs.version }}.zip
+          Get-Item dramacube-windows-v${{ inputs.version }}.zip | Select-Object Name, Length
+
+      - name: 打包 Linux
+        if: matrix.platform == 'linux'
+        shell: bash
+        run: |
+          tar -czf dramacube-linux-v${{ inputs.version }}.tar.gz -C build/linux/x64/release/bundle .
+          ls -lh dramacube-linux-v${{ inputs.version }}.tar.gz
+
+      - name: 整理 Android
+        if: matrix.platform == 'android'
+        shell: bash
+        run: |
+          cp build/app/outputs/flutter-apk/app-release.apk dramacube-android-v${{ inputs.version }}.apk
+          ls -lh dramacube-android-v${{ inputs.version }}.apk
+
+      - name: 打包 macOS
+        if: matrix.platform == 'mac-arm64' || matrix.platform == 'mac-x64'
+        shell: bash
+        run: |
+          APP=$(find build/macos/Build/Products/Release -maxdepth 1 -name "*.app" | head -1)
+          echo "APP=$APP"
+          ARCH_SUFFIX=$([ "${{ matrix.platform }}" = "mac-arm64" ] && echo "arm64" || echo "x64")
+          echo "ARCH_SUFFIX=$ARCH_SUFFIX" >> "$GITHUB_ENV"
+          hdiutil create -volname "剧立方" -srcfolder "$APP" -ov -format UDZO "dramacube-macOS-${ARCH_SUFFIX}-v${{ inputs.version }}.dmg"
+          ls -lh dramacube-macOS-*.dmg
+
+      - name: 上传 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dramacube-${{ matrix.platform }}-v${{ inputs.version }}
+          path: |
+            apps/flutter/dramacube-*.zip
+            apps/flutter/dramacube-*.tar.gz
+            apps/flutter/dramacube-*.apk
+            apps/flutter/dramacube-*.dmg
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: 发布到本仓 Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd apps/flutter
+          REPO="${{ github.repository }}"
+          TAG="v${{ inputs.version }}"
+          if ! gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
+            gh release create "$TAG" --repo "$REPO" \
+              --title "剧立方 DramaCube ${TAG}" \
+              --notes "Flutter 全平台构建（本仓 GitHub Actions）。源码：hongguo-desktop @ ${{ github.event.inputs.ref }}"
+          fi
+          shopt -s nullglob
+          files=(dramacube-*.zip dramacube-*.tar.gz dramacube-*.apk dramacube-*.dmg)
+          gh release upload "$TAG" "${files[@]}" --repo "$REPO" --clobber
+          echo "已发布： https://github.com/${REPO}/releases/tag/${TAG}"
