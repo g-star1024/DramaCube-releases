@@ -124,20 +124,32 @@ jobs:
           cp build/app/outputs/flutter-apk/app-release.apk dramacube-android-v${{ inputs.version }}.apk
           ls -lh dramacube-android-v${{ inputs.version }}.apk
 
-      - name: 注入 aria2c 下载引擎（macOS，盘搜磁力/电驴/http 直链下载）
+      - name: 注入 aria2c + ffmpeg（macOS，下载引擎 + 封面截帧）
         if: matrix.platform == 'mac-arm64' || matrix.platform == 'mac-x64'
         shell: bash
         run: |
           APP=$(find build/macos/Build/Products/Release -maxdepth 1 -name "*.app" | head -1)
           ARCH=$([ "${{ matrix.platform }}" = "mac-arm64" ] && echo "arm64" || echo "x86_64")
+          HELPERS="$APP/Contents/Helpers"
+          mkdir -p "$HELPERS"
+
+          # aria2c（盘搜磁力/电驴/http 直链下载）
           SRC="macos/Runner/Resources/aria2/aria2c-${ARCH}"
           [ -f "$SRC" ] || { echo "::error::aria2c binary missing: $SRC"; exit 1; }
-          mkdir -p "$APP/Contents/Helpers"
-          cp "$SRC" "$APP/Contents/Helpers/aria2c"
-          chmod +x "$APP/Contents/Helpers/aria2c"
-          xattr -d com.apple.quarantine "$APP/Contents/Helpers/aria2c" 2>/dev/null || true
-          codesign --force --sign - --options runtime "$APP/Contents/Helpers/aria2c"
-          ls -lh "$APP/Contents/Helpers/aria2c"
+          cp "$SRC" "$HELPERS/aria2c"
+          chmod +x "$HELPERS/aria2c"
+          xattr -d com.apple.quarantine "$HELPERS/aria2c" 2>/dev/null || true
+          codesign --force --sign - --options runtime "$HELPERS/aria2c"
+
+          # ffmpeg（NAS 封面截帧，沙箱内可执行）
+          FFSRC="macos/Runner/Resources/ffmpeg/ffmpeg-${ARCH}"
+          [ -f "$FFSRC" ] || { echo "::error::ffmpeg binary missing: $FFSRC"; exit 1; }
+          cp "$FFSRC" "$HELPERS/ffmpeg"
+          chmod +x "$HELPERS/ffmpeg"
+          xattr -d com.apple.quarantine "$HELPERS/ffmpeg" 2>/dev/null || true
+          codesign --force --sign - --options runtime "$HELPERS/ffmpeg"
+
+          ls -lh "$HELPERS/"
           # 重签整个 .app（使新 entitlements 含 disable-library-validation 生效，
           # 否则沙箱会拒绝执行 ad-hoc 签名的 aria2c）
           ENT="macos/Runner/Release.entitlements"
