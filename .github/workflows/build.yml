@@ -30,6 +30,8 @@ on:
       version:
         description: "版本号（如 2.7.8，发布 tag 为 v<version>）"
         required: true
+  push:
+    branches: [main]
 
 jobs:
   build:
@@ -54,7 +56,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: g-star1024/hongguo-desktop
-          ref: ${{ github.event.inputs.ref }}
+          ref: ${{ inputs.ref || 'main' }}
           token: ${{ secrets.SOURCE_PAT }}
 
       - name: Setup Java (Android)
@@ -110,22 +112,22 @@ jobs:
         if: matrix.platform == 'windows'
         shell: pwsh
         run: |
-          Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath dramacube-windows-v${{ inputs.version }}.zip
-          Get-Item dramacube-windows-v${{ inputs.version }}.zip | Select-Object Name, Length
+          Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath dramacube-windows-v${{ inputs.version || 'dev' }}.zip
+          Get-Item dramacube-windows-v${{ inputs.version || 'dev' }}.zip | Select-Object Name, Length
 
       - name: 打包 Linux
         if: matrix.platform == 'linux'
         shell: bash
         run: |
-          tar -czf dramacube-linux-v${{ inputs.version }}.tar.gz -C build/linux/x64/release/bundle .
-          ls -lh dramacube-linux-v${{ inputs.version }}.tar.gz
+          tar -czf dramacube-linux-v${{ inputs.version || 'dev' }}.tar.gz -C build/linux/x64/release/bundle .
+          ls -lh dramacube-linux-v${{ inputs.version || 'dev' }}.tar.gz
 
       - name: 整理 Android
         if: matrix.platform == 'android'
         shell: bash
         run: |
-          cp build/app/outputs/flutter-apk/app-release.apk dramacube-android-v${{ inputs.version }}.apk
-          ls -lh dramacube-android-v${{ inputs.version }}.apk
+          cp build/app/outputs/flutter-apk/app-release.apk dramacube-android-v${{ inputs.version || 'dev' }}.apk
+          ls -lh dramacube-android-v${{ inputs.version || 'dev' }}.apk
 
       - name: 注入 libtorrent + ffmpeg（macOS，下载引擎 + 封面截帧）
         if: matrix.platform == 'mac-arm64' || matrix.platform == 'mac-x64'
@@ -171,13 +173,13 @@ jobs:
           echo "APP=$APP"
           ARCH_SUFFIX=$([ "${{ matrix.platform }}" = "mac-arm64" ] && echo "arm64" || echo "x64")
           echo "ARCH_SUFFIX=$ARCH_SUFFIX" >> "$GITHUB_ENV"
-          hdiutil create -volname "剧立方" -srcfolder "$APP" -ov -format UDZO "dramacube-macOS-${ARCH_SUFFIX}-v${{ inputs.version }}.dmg"
+          hdiutil create -volname "剧立方" -srcfolder "$APP" -ov -format UDZO "dramacube-macOS-${ARCH_SUFFIX}-v${{ inputs.version || 'dev' }}.dmg"
           ls -lh dramacube-macOS-*.dmg
 
       - name: 上传 artifact
         uses: actions/upload-artifact@v4
         with:
-          name: dramacube-${{ matrix.platform }}-v${{ inputs.version }}
+          name: dramacube-${{ matrix.platform }}-v${{ inputs.version || 'dev' }}
           path: |
             apps/flutter/dramacube-*.zip
             apps/flutter/dramacube-*.tar.gz
@@ -193,11 +195,11 @@ jobs:
         run: |
           set -euo pipefail
           REPO="${{ github.repository }}"
-          TAG="v${{ inputs.version }}"
+          TAG="v${{ inputs.version || 'dev' }}"
           if ! gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
             gh release create "$TAG" --repo "$REPO" \
               --title "剧立方 DramaCube ${TAG}" \
-              --notes "Flutter 全平台构建（本仓 GitHub Actions）。源码：hongguo-desktop @ ${{ github.event.inputs.ref }}"
+              --notes "Flutter 全平台构建（本仓 GitHub Actions）。源码：hongguo-desktop @ ${{ inputs.ref || 'main' }}"
           fi
           shopt -s nullglob
           files=(dramacube-*.zip dramacube-*.tar.gz dramacube-*.apk dramacube-*.dmg)
