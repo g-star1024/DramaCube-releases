@@ -8,6 +8,9 @@
 # 的 Flutter 工程（apps/flutter）→ 五平台矩阵并行构建 → 发布到本仓 Release。
 # 私有源码仓零 CI 分钟消耗（不再扣费）。
 #
+# ⚠️ 本文件是工作区副本（源仓库 hongguo-desktop），真正的 CI 在 DramaCube-releases
+# 仓。改动后需同步到 g-star1024/DramaCube-releases/.github/workflows/build.yml。
+#
 # 平台矩阵：
 #   windows   windows-latest  → dramacube-windows-v<ver>.zip
 #   linux     ubuntu-latest   → dramacube-linux-v<ver>.tar.gz
@@ -124,22 +127,25 @@ jobs:
           cp build/app/outputs/flutter-apk/app-release.apk dramacube-android-v${{ inputs.version }}.apk
           ls -lh dramacube-android-v${{ inputs.version }}.apk
 
-      - name: 注入 aria2c + ffmpeg（macOS，下载引擎 + 封面截帧）
+      - name: 注入 libtorrent + ffmpeg（macOS，下载引擎 + 封面截帧）
         if: matrix.platform == 'mac-arm64' || matrix.platform == 'mac-x64'
         shell: bash
         run: |
           APP=$(find build/macos/Build/Products/Release -maxdepth 1 -name "*.app" | head -1)
           ARCH=$([ "${{ matrix.platform }}" = "mac-arm64" ] && echo "arm64" || echo "x86_64")
           HELPERS="$APP/Contents/Helpers"
-          mkdir -p "$HELPERS"
+          FRAMEWORKS="$APP/Contents/Frameworks"
+          mkdir -p "$HELPERS" "$FRAMEWORKS"
 
-          # aria2c（盘搜磁力/电驴/http 直链下载）
-          SRC="macos/Runner/Resources/aria2/aria2c-${ARCH}"
-          [ -f "$SRC" ] || { echo "::error::aria2c binary missing: $SRC"; exit 1; }
-          cp "$SRC" "$HELPERS/aria2c"
-          chmod +x "$HELPERS/aria2c"
-          xattr -d com.apple.quarantine "$HELPERS/aria2c" 2>/dev/null || true
-          codesign --force --sign - --options runtime "$HELPERS/aria2c"
+          # libtorrent 下载引擎（磁力/BT，进程内 FFI 加载，替换原 aria2 外部进程）
+          # 放 Frameworks（Flutter 标准 dylib 位置），DynamicLibrary.open 显式 dlopen。
+          LTSRC="macos/Runner/Resources/libtorrent/libtorrent-rasterbar-${ARCH}.dylib"
+          [ -f "$LTSRC" ] || { echo "::error::libtorrent dylib missing: $LTSRC"; exit 1; }
+          cp "$LTSRC" "$FRAMEWORKS/libtorrent-rasterbar.dylib"
+          chmod 755 "$FRAMEWORKS/libtorrent-rasterbar.dylib"
+          xattr -d com.apple.quarantine "$FRAMEWORKS/libtorrent-rasterbar.dylib" 2>/dev/null || true
+          install_name_tool -id "@rpath/libtorrent-rasterbar.dylib" "$FRAMEWORKS/libtorrent-rasterbar.dylib"
+          codesign --force --sign - --options runtime "$FRAMEWORKS/libtorrent-rasterbar.dylib"
 
           # ffmpeg（NAS 封面截帧，沙箱内可执行）
           FFSRC="macos/Runner/Resources/ffmpeg/ffmpeg-${ARCH}"
@@ -149,9 +155,9 @@ jobs:
           xattr -d com.apple.quarantine "$HELPERS/ffmpeg" 2>/dev/null || true
           codesign --force --sign - --options runtime "$HELPERS/ffmpeg"
 
-          ls -lh "$HELPERS/"
+          ls -lh "$FRAMEWORKS/libtorrent-rasterbar.dylib" "$HELPERS/ffmpeg"
           # 重签整个 .app（使新 entitlements 含 disable-library-validation 生效，
-          # 否则沙箱会拒绝执行 ad-hoc 签名的 aria2c）
+          # 否则沙箱会拒绝 dlopen ad-hoc 签名的 libtorrent dylib / 执行 ffmpeg）
           ENT="macos/Runner/Release.entitlements"
           codesign --force --deep --sign - --entitlements "$ENT" "$APP"
           echo "已重签 $APP（entitlements: $ENT）"
