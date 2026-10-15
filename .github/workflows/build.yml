@@ -124,6 +124,21 @@ jobs:
           cp build/app/outputs/flutter-apk/app-release.apk dramacube-android-v${{ inputs.version }}.apk
           ls -lh dramacube-android-v${{ inputs.version }}.apk
 
+      - name: 注入 aria2c 下载引擎（macOS，盘搜磁力/电驴/http 直链下载）
+        if: matrix.platform == 'mac-arm64' || matrix.platform == 'mac-x64'
+        shell: bash
+        run: |
+          APP=$(find build/macos/Build/Products/Release -maxdepth 1 -name "*.app" | head -1)
+          ARCH=$([ "${{ matrix.platform }}" = "mac-arm64" ] && echo "arm64" || echo "x86_64")
+          SRC="macos/Runner/Resources/aria2/aria2c-${ARCH}"
+          [ -f "$SRC" ] || { echo "::error::aria2c binary missing: $SRC"; exit 1; }
+          mkdir -p "$APP/Contents/Helpers"
+          cp "$SRC" "$APP/Contents/Helpers/aria2c"
+          chmod +x "$APP/Contents/Helpers/aria2c"
+          xattr -d com.apple.quarantine "$APP/Contents/Helpers/aria2c" 2>/dev/null || true
+          codesign --force --sign - "$APP/Contents/Helpers/aria2c"
+          ls -lh "$APP/Contents/Helpers/aria2c"
+
       - name: 打包 macOS
         if: matrix.platform == 'mac-arm64' || matrix.platform == 'mac-x64'
         shell: bash
