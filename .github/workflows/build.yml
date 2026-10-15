@@ -136,8 +136,14 @@ jobs:
           cp "$SRC" "$APP/Contents/Helpers/aria2c"
           chmod +x "$APP/Contents/Helpers/aria2c"
           xattr -d com.apple.quarantine "$APP/Contents/Helpers/aria2c" 2>/dev/null || true
-          codesign --force --sign - "$APP/Contents/Helpers/aria2c"
+          codesign --force --sign - --options runtime "$APP/Contents/Helpers/aria2c"
           ls -lh "$APP/Contents/Helpers/aria2c"
+          # 重签整个 .app（使新 entitlements 含 disable-library-validation 生效，
+          # 否则沙箱会拒绝执行 ad-hoc 签名的 aria2c）
+          ENT="macos/Runner/Release.entitlements"
+          codesign --force --deep --sign - --entitlements "$ENT" "$APP"
+          echo "已重签 $APP（entitlements: $ENT）"
+          codesign -d --entitlements - "$APP" 2>&1 | grep -A1 "disable-library-validation" || echo "警告: disable-library-validation 未找到"
 
       - name: 打包 macOS
         if: matrix.platform == 'mac-arm64' || matrix.platform == 'mac-x64'
