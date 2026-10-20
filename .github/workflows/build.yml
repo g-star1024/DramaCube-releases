@@ -66,46 +66,46 @@ jobs:
       - name: 核对源码版本（防 checkout 到旧代码，v2.7.37 事故教训）
         # 版本号写进校验串，与文件名占位符同步 bump/还原
         # 必须显式 shell: bash——defaults 只设 working-directory，Windows 默认 pwsh
+        # run 块默认 set -e：诊断命令全部 || true，最后才做版本判断
         shell: bash
         run: |
-          V=$(grep -m1 '^version:' apps/flutter/pubspec.yaml || echo "NOTFOUND")
-          echo "pubspec: $V"
-          echo "pwd: $(pwd)"; ls; head -3 apps/flutter/pubspec.yaml 2>/dev/null || true
-          git log --oneline -1
-          git rev-parse HEAD
+          set +e
+          V=$(grep -m1 '^version:' apps/flutter/pubspec.yaml); echo "grep_exit=$? V=[$V]"
+          echo "pwd: $(pwd)"; ls
+          echo "--- pubspec head ---"; head -3 apps/flutter/pubspec.yaml; echo "head_exit=$?"
+          git log --oneline -1; git rev-parse HEAD
+          set -e
           echo "$V" | grep -q "2.7.37" || { echo "❌ 源码版本与发布版本不符，构建中止"; exit 1; }
 
       - name: 生成诊断日志
         if: always()
         shell: bash
         run: |
+          set +e
           {
             echo "run=${{ github.run_id }} platform=${{ matrix.platform }} sha=$(git rev-parse HEAD)"
             git log --oneline -3
             echo "--- pubspec grep ---"
-            grep -m1 '^version:' apps/flutter/pubspec.yaml || echo "grep NO MATCH"
+            grep -m1 '^version:' apps/flutter/pubspec.yaml; echo "grep_exit=$?"
             echo "--- pubspec head ---"
-            head -12 apps/flutter/pubspec.yaml || echo "pubspec NOT FOUND"
+            head -12 apps/flutter/pubspec.yaml; echo "head_exit=$?"
             echo "--- guard simulation ---"
-            V=$(grep -m1 '^version:' apps/flutter/pubspec.yaml || echo "NOTFOUND")
+            V=$(grep -m1 '^version:' apps/flutter/pubspec.yaml)
             echo "V=[$V]"
             echo "$V" | grep -q "2.7.37" && echo "GUARD WOULD PASS" || echo "GUARD WOULD FAIL"
             echo "--- pwd/ls ---"
             pwd; ls
-          } > /tmp/ci-diag.txt 2>&1 || true
-          cat /tmp/ci-diag.txt || true
-          BLOB=$(git hash-object -w /tmp/ci-diag.txt)
-          TREE=$(printf "100644 blob %s\tci-diag.txt\n" "$BLOB" | git mktree)
-          CMT=$(git commit-tree "$TREE" -m "diag run ${{ github.run_id }}")
-          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" "$CMT:refs/heads/ci-diag-v2737" 2>&1 | tail -2 || true
+          } > /tmp/ci-diag.txt 2>&1
+          echo "diag_gen_exit=$?"
+          cat /tmp/ci-diag.txt
 
       - name: 上传诊断 artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ci-diag-${{ matrix.platform }}
-          path: ci-diag-${{ matrix.platform }}.txt
-          if-no-files-found: ignore
+          path: /tmp/ci-diag.txt
+          if-no-files-found: error
 
       - name: Setup Java (Android)
         if: matrix.platform == 'android'
