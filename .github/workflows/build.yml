@@ -85,7 +85,10 @@ jobs:
             pwd; ls
           } > /tmp/ci-diag.txt 2>&1 || true
           git config user.email ci@local; git config user.name ci
+          git stash -q -u 2>/dev/null || true
           git checkout --orphan ci-diag-tmp 2>/dev/null || git checkout -b ci-diag-tmp
+          git rm -rfq --cached . 2>/dev/null || true
+          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} + 2>/dev/null || true
           cp /tmp/ci-diag.txt ci-diag.txt
           git add ci-diag.txt
           git commit -q -m "diag run ${{ github.run_id }}" || true
