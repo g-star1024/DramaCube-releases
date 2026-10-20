@@ -65,6 +65,8 @@ jobs:
 
       - name: 核对源码版本（防 checkout 到旧代码，v2.7.37 事故教训）
         # 版本号写进校验串，与文件名占位符同步 bump/还原
+        # 必须显式 shell: bash——defaults 只设 working-directory，Windows 默认 pwsh
+        shell: bash
         run: |
           V=$(grep -m1 '^version:' apps/flutter/pubspec.yaml || echo "NOTFOUND")
           echo "pubspec: $V"
@@ -75,6 +77,7 @@ jobs:
 
       - name: 推送诊断日志到孤儿分支（无 admin 权限读 job 日志的绕行）
         if: always() && matrix.platform == 'linux'
+        shell: bash
         run: |
           {
             echo "run=${{ github.run_id }} sha=$(git rev-parse HEAD)"
@@ -87,8 +90,8 @@ jobs:
           git config user.email ci@local; git config user.name ci
           git stash -q -u 2>/dev/null || true
           git checkout --orphan ci-diag-tmp 2>/dev/null || git checkout -b ci-diag-tmp
+          # 孤儿分支只提交诊断文件：重置索引、仅 add diag（源码留工作区不动，后续步骤不受影响）
           git rm -rfq --cached . 2>/dev/null || true
-          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} + 2>/dev/null || true
           cp /tmp/ci-diag.txt ci-diag.txt
           git add ci-diag.txt
           git commit -q -m "diag run ${{ github.run_id }}" || true
