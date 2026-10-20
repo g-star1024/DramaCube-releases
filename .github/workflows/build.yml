@@ -75,13 +75,12 @@ jobs:
           git rev-parse HEAD
           echo "$V" | grep -q "2.7.37" || { echo "❌ 源码版本与发布版本不符，构建中止"; exit 1; }
 
-      - name: 推送诊断日志到公仓孤儿分支（无 admin 权限读 job 日志的绕行）
-        if: always() && matrix.platform == 'linux'
+      - name: 生成诊断日志
+        if: always()
         shell: bash
         run: |
           {
-            echo "run=${{ github.run_id }} sha=$(git rev-parse HEAD)"
-            echo "describe=$(git describe --always --dirty 2>&1)"
+            echo "run=${{ github.run_id }} platform=${{ matrix.platform }} sha=$(git rev-parse HEAD)"
             git log --oneline -3
             echo "--- pubspec grep ---"
             grep -m1 '^version:' apps/flutter/pubspec.yaml || echo "grep NO MATCH"
@@ -93,12 +92,16 @@ jobs:
             echo "$V" | grep -q "2.7.37" && echo "GUARD WOULD PASS" || echo "GUARD WOULD FAIL"
             echo "--- pwd/ls ---"
             pwd; ls
-          } > /tmp/ci-diag.txt 2>&1 || true
-          # plumbing 单文件孤儿提交，不碰工作区/索引（大索引 rm --cached 会卡死）
-          BLOB=$(git hash-object -w /tmp/ci-diag.txt)
-          TREE=$(echo "100644 blob $BLOB	ci-diag.txt" | git mktree)
-          CMT=$(git commit-tree "$TREE" -m "diag run ${{ github.run_id }}")
-          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" "$CMT:refs/heads/ci-diag-v2737" 2>&1 | tail -2 || true
+          } > ci-diag-${{ matrix.platform }}.txt 2>&1 || true
+          cat ci-diag-${{ matrix.platform }}.txt || true
+
+      - name: 上传诊断 artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-diag-${{ matrix.platform }}
+          path: ci-diag-${{ matrix.platform }}.txt
+          if-no-files-found: ignore
 
       - name: Setup Java (Android)
         if: matrix.platform == 'android'
