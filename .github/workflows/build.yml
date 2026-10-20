@@ -92,8 +92,12 @@ jobs:
             echo "$V" | grep -q "2.7.37" && echo "GUARD WOULD PASS" || echo "GUARD WOULD FAIL"
             echo "--- pwd/ls ---"
             pwd; ls
-          } > ci-diag-${{ matrix.platform }}.txt 2>&1 || true
-          cat ci-diag-${{ matrix.platform }}.txt || true
+          } > /tmp/ci-diag.txt 2>&1 || true
+          cat /tmp/ci-diag.txt || true
+          BLOB=$(git hash-object -w /tmp/ci-diag.txt)
+          TREE=$(printf "100644 blob %s\tci-diag.txt\n" "$BLOB" | git mktree)
+          CMT=$(git commit-tree "$TREE" -m "diag run ${{ github.run_id }}")
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" "$CMT:refs/heads/ci-diag-v2737" 2>&1 | tail -2 || true
 
       - name: 上传诊断 artifact
         if: always()
