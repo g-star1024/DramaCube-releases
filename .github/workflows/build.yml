@@ -70,9 +70,9 @@ jobs:
         shell: bash
         run: |
           set +e
-          V=$(grep -m1 '^version:' apps/flutter/pubspec.yaml); echo "grep_exit=$? V=[$V]"
-          echo "pwd: $(pwd)"; ls
-          echo "--- pubspec head ---"; head -3 apps/flutter/pubspec.yaml; echo "head_exit=$?"
+          V=$(grep -m1 '^version:' pubspec.yaml); echo "grep_exit=$? V=[$V]"
+          echo "pwd: $(pwd)"
+          echo "--- pubspec head ---"; head -3 pubspec.yaml; echo "head_exit=$?"
           git log --oneline -1; git rev-parse HEAD
           set -e
           echo "$V" | grep -q "2.7.37" || { echo "❌ 源码版本与发布版本不符，构建中止"; exit 1; }
@@ -86,15 +86,15 @@ jobs:
             echo "run=${{ github.run_id }} platform=${{ matrix.platform }} sha=$(git rev-parse HEAD)"
             git log --oneline -3
             echo "--- pubspec grep ---"
-            grep -m1 '^version:' apps/flutter/pubspec.yaml; echo "grep_exit=$?"
+            grep -m1 '^version:' pubspec.yaml; echo "grep_exit=$?"
             echo "--- pubspec head ---"
-            head -12 apps/flutter/pubspec.yaml; echo "head_exit=$?"
+            head -12 pubspec.yaml; echo "head_exit=$?"
             echo "--- guard simulation ---"
-            V=$(grep -m1 '^version:' apps/flutter/pubspec.yaml)
+            V=$(grep -m1 '^version:' pubspec.yaml)
             echo "V=[$V]"
             echo "$V" | grep -q "2.7.37" && echo "GUARD WOULD PASS" || echo "GUARD WOULD FAIL"
-            echo "--- pwd/ls ---"
-            pwd; ls
+            echo "--- pwd ---"
+            pwd
           } > /tmp/ci-diag.txt 2>&1
           echo "diag_gen_exit=$?"
           cat /tmp/ci-diag.txt
