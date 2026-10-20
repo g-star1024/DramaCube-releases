@@ -66,9 +66,11 @@ jobs:
       - name: 核对源码版本（防 checkout 到旧代码，v2.7.37 事故教训）
         # 版本号写进校验串，与文件名占位符同步 bump/还原
         run: |
-          V=$(grep -m1 '^version:' apps/flutter/pubspec.yaml)
+          V=$(grep -m1 '^version:' apps/flutter/pubspec.yaml || echo "NOTFOUND")
           echo "pubspec: $V"
+          echo "pwd: $(pwd)"; ls; head -3 apps/flutter/pubspec.yaml 2>/dev/null || true
           git log --oneline -1
+          git rev-parse HEAD
           echo "$V" | grep -q "2.7.37" || { echo "❌ 源码版本与发布版本不符，构建中止"; exit 1; }
 
       - name: Setup Java (Android)
