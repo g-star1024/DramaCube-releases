@@ -100,12 +100,12 @@ jobs:
           cat /tmp/ci-diag.txt
 
       - name: 上传诊断 artifact
-        if: always()
+        if: always() && matrix.platform != 'windows'
         uses: actions/upload-artifact@v4
         with:
           name: ci-diag-${{ matrix.platform }}
           path: /tmp/ci-diag.txt
-          if-no-files-found: error
+          if-no-files-found: ignore
 
       - name: Setup Java (Android)
         if: matrix.platform == 'android'
