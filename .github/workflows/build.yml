@@ -60,12 +60,12 @@ jobs:
         with:
           repository: g-star1024/hongguo-desktop
           # push 触发时 inputs 为空，用 force_ref 兜底钉死源码 commit，防 main 缓存漂移
-          ref: ${{ inputs.ref || inputs.force_ref || '527374a3a391f94f13e6b04b904837164c6cec85' }}
+          ref: ${{ inputs.ref || inputs.force_ref || '59b7fc882891fe2f1e2645797c51fd2de29c1a51' }}
           token: ${{ secrets.SOURCE_PAT }}
 
       - name: 核对源码版本（防 checkout 到旧代码，v2.7.37 事故教训）
         # 仅在发布构建（版本占位符被 bump 为真实版本号）时启用；dev 占位符状态跳过
-        if: ${{ 'dev' != '2.7.41' }}
+        if: ${{ 'dev' != '2.7.42' }}
         # 版本号写进校验串，与文件名占位符同步 bump/还原
         # 必须显式 shell: bash——defaults 只设 working-directory，Windows 默认 pwsh
         # run 块默认 set -e：诊断命令全部 || true，最后才做版本判断
@@ -77,7 +77,7 @@ jobs:
           echo "--- pubspec head ---"; head -3 pubspec.yaml; echo "head_exit=$?"
           git log --oneline -1; git rev-parse HEAD
           set -e
-          echo "$V" | grep -q "2.7.41" || { echo "❌ 源码版本与发布版本不符，构建中止"; exit 1; }
+          echo "$V" | grep -q "2.7.42" || { echo "❌ 源码版本与发布版本不符，构建中止"; exit 1; }
 
       - name: 生成诊断日志
         if: always()
@@ -94,7 +94,7 @@ jobs:
             echo "--- guard simulation ---"
             V=$(grep -m1 '^version:' pubspec.yaml)
             echo "V=[$V]"
-            echo "$V" | grep -q "2.7.41" && echo "GUARD WOULD PASS" || echo "GUARD WOULD FAIL"
+            echo "$V" | grep -q "2.7.42" && echo "GUARD WOULD PASS" || echo "GUARD WOULD FAIL"
             echo "--- pwd ---"
             pwd
           } > /tmp/ci-diag.txt 2>&1
@@ -249,7 +249,7 @@ jobs:
           if ! gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
             gh release create "$TAG" --repo "$REPO" \
               --title "剧立方 DramaCube ${TAG}" \
-              --notes "Flutter 全平台构建（本仓 GitHub Actions）。源码：hongguo-desktop @ ${{ inputs.ref || '527374a3a391f94f13e6b04b904837164c6cec85' }}"
+              --notes "Flutter 全平台构建（本仓 GitHub Actions）。源码：hongguo-desktop @ ${{ inputs.ref || '59b7fc882891fe2f1e2645797c51fd2de29c1a51' }}"
           fi
           shopt -s nullglob
           files=(dramacube-*.zip dramacube-*.tar.gz dramacube-*.apk dramacube-*.dmg)
