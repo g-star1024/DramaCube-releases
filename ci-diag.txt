@@ -1,0 +1,31 @@
+run=39360705560 platform=mac-x64 sha=6997fd7cdb4cfd5174b2083d09ad2bec8bc81a50
+6997fd7 feat(flutter): v2.7.37 下载管理独立区块 + 详情页选集下载状态同步
+--- pubspec grep ---
+grep: apps/flutter/pubspec.yaml: No such file or directory
+grep NO MATCH
+--- pubspec head ---
+head: apps/flutter/pubspec.yaml: No such file or directory
+pubspec NOT FOUND
+--- guard simulation ---
+grep: apps/flutter/pubspec.yaml: No such file or directory
+V=[NOTFOUND]
+GUARD WOULD FAIL
+--- pwd/ls ---
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter
+ARCHITECTURE.md
+Dockerfile
+MODULE_BOUNDARY.md
+README.md
+analysis_options.yaml
+android
+assets
+docker
+docker-compose.yml
+lib
+linux
+macos
+pubspec.lock
+pubspec.yaml
+test
+web
+windows
