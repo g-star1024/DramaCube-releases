@@ -60,12 +60,12 @@ jobs:
         with:
           repository: g-star1024/hongguo-desktop
           # push 触发时 inputs 为空，用 force_ref 兜底钉死源码 commit，防 main 缓存漂移
-          ref: ${{ inputs.ref || inputs.force_ref || 'f68ab37b1ce580d6c3e02639b146cc314f5ce766' }}
+          ref: ${{ inputs.ref || inputs.force_ref || '527374a3a391f94f13e6b04b904837164c6cec85' }}
           token: ${{ secrets.SOURCE_PAT }}
 
       - name: 核对源码版本（防 checkout 到旧代码，v2.7.37 事故教训）
         # 仅在发布构建（版本占位符被 bump 为真实版本号）时启用；dev 占位符状态跳过
-        if: ${{ 'dev' != '2.7.40' }}
+        if: ${{ 'dev' != '2.7.41' }}
         # 版本号写进校验串，与文件名占位符同步 bump/还原
         # 必须显式 shell: bash——defaults 只设 working-directory，Windows 默认 pwsh
         # run 块默认 set -e：诊断命令全部 || true，最后才做版本判断
@@ -162,22 +162,22 @@ jobs:
         if: matrix.platform == 'windows'
         shell: pwsh
         run: |
-          Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath dramacube-windows-v${{ inputs.version || '2.7.40' }}.zip
-          Get-Item dramacube-windows-v${{ inputs.version || '2.7.40' }}.zip | Select-Object Name, Length
+          Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath dramacube-windows-v${{ inputs.version || '2.7.41' }}.zip
+          Get-Item dramacube-windows-v${{ inputs.version || '2.7.41' }}.zip | Select-Object Name, Length
 
       - name: 打包 Linux
         if: matrix.platform == 'linux'
         shell: bash
         run: |
-          tar -czf dramacube-linux-v${{ inputs.version || '2.7.40' }}.tar.gz -C build/linux/x64/release/bundle .
-          ls -lh dramacube-linux-v${{ inputs.version || '2.7.40' }}.tar.gz
+          tar -czf dramacube-linux-v${{ inputs.version || '2.7.41' }}.tar.gz -C build/linux/x64/release/bundle .
+          ls -lh dramacube-linux-v${{ inputs.version || '2.7.41' }}.tar.gz
 
       - name: 整理 Android
         if: matrix.platform == 'android'
         shell: bash
         run: |
-          cp build/app/outputs/flutter-apk/app-release.apk dramacube-android-v${{ inputs.version || '2.7.40' }}.apk
-          ls -lh dramacube-android-v${{ inputs.version || '2.7.40' }}.apk
+          cp build/app/outputs/flutter-apk/app-release.apk dramacube-android-v${{ inputs.version || '2.7.41' }}.apk
+          ls -lh dramacube-android-v${{ inputs.version || '2.7.41' }}.apk
 
       - name: 注入 libtorrent + ffmpeg（macOS，下载引擎 + 封面截帧）
         if: matrix.platform == 'mac-arm64' || matrix.platform == 'mac-x64'
@@ -223,13 +223,13 @@ jobs:
           echo "APP=$APP"
           ARCH_SUFFIX=$([ "${{ matrix.platform }}" = "mac-arm64" ] && echo "arm64" || echo "x64")
           echo "ARCH_SUFFIX=$ARCH_SUFFIX" >> "$GITHUB_ENV"
-          hdiutil create -volname "剧立方" -srcfolder "$APP" -ov -format UDZO "dramacube-macOS-${ARCH_SUFFIX}-v${{ inputs.version || '2.7.40' }}.dmg"
+          hdiutil create -volname "剧立方" -srcfolder "$APP" -ov -format UDZO "dramacube-macOS-${ARCH_SUFFIX}-v${{ inputs.version || '2.7.41' }}.dmg"
           ls -lh dramacube-macOS-*.dmg
 
       - name: 上传 artifact
         uses: actions/upload-artifact@v4
         with:
-          name: dramacube-${{ matrix.platform }}-v${{ inputs.version || '2.7.40' }}
+          name: dramacube-${{ matrix.platform }}-v${{ inputs.version || '2.7.41' }}
           path: |
             apps/flutter/dramacube-*.zip
             apps/flutter/dramacube-*.tar.gz
@@ -245,11 +245,11 @@ jobs:
         run: |
           set -euo pipefail
           REPO="${{ github.repository }}"
-          TAG="v${{ inputs.version || '2.7.40' }}"
+          TAG="v${{ inputs.version || '2.7.41' }}"
           if ! gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
             gh release create "$TAG" --repo "$REPO" \
               --title "剧立方 DramaCube ${TAG}" \
-              --notes "Flutter 全平台构建（本仓 GitHub Actions）。源码：hongguo-desktop @ ${{ inputs.ref || 'f68ab37b1ce580d6c3e02639b146cc314f5ce766' }}"
+              --notes "Flutter 全平台构建（本仓 GitHub Actions）。源码：hongguo-desktop @ ${{ inputs.ref || '527374a3a391f94f13e6b04b904837164c6cec85' }}"
           fi
           shopt -s nullglob
           files=(dramacube-*.zip dramacube-*.tar.gz dramacube-*.apk dramacube-*.dmg)
