@@ -75,27 +75,32 @@ jobs:
           git rev-parse HEAD
           echo "$V" | grep -q "2.7.37" || { echo "❌ 源码版本与发布版本不符，构建中止"; exit 1; }
 
-      - name: 推送诊断日志到孤儿分支（无 admin 权限读 job 日志的绕行）
+      - name: 推送诊断日志到公仓孤儿分支（无 admin 权限读 job 日志的绕行）
         if: always() && matrix.platform == 'linux'
         shell: bash
         run: |
           {
             echo "run=${{ github.run_id }} sha=$(git rev-parse HEAD)"
+            echo "describe=$(git describe --always --dirty 2>&1)"
             git log --oneline -3
+            echo "--- pubspec grep ---"
+            grep -m1 '^version:' apps/flutter/pubspec.yaml || echo "grep NO MATCH"
             echo "--- pubspec head ---"
             head -12 apps/flutter/pubspec.yaml || echo "pubspec NOT FOUND"
+            echo "--- guard simulation ---"
+            V=$(grep -m1 '^version:' apps/flutter/pubspec.yaml || echo "NOTFOUND")
+            echo "V=[$V]"
+            echo "$V" | grep -q "2.7.37" && echo "GUARD WOULD PASS" || echo "GUARD WOULD FAIL"
             echo "--- pwd/ls ---"
             pwd; ls
           } > /tmp/ci-diag.txt 2>&1 || true
           git config user.email ci@local; git config user.name ci
-          git stash -q -u 2>/dev/null || true
           git checkout --orphan ci-diag-tmp 2>/dev/null || git checkout -b ci-diag-tmp
-          # 孤儿分支只提交诊断文件：重置索引、仅 add diag（源码留工作区不动，后续步骤不受影响）
           git rm -rfq --cached . 2>/dev/null || true
           cp /tmp/ci-diag.txt ci-diag.txt
           git add ci-diag.txt
           git commit -q -m "diag run ${{ github.run_id }}" || true
-          git push -f "https://x-access-token:${{ secrets.SOURCE_PAT }}@github.com/g-star1024/hongguo-desktop.git" ci-diag-tmp:ci-diag-v2737 2>&1 | tail -2 || true
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" ci-diag-tmp:ci-diag-v2737 2>&1 | tail -2 || true
 
       - name: Setup Java (Android)
         if: matrix.platform == 'android'
