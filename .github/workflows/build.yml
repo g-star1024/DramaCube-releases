@@ -77,7 +77,7 @@ jobs:
           echo "--- pubspec head ---"; head -3 pubspec.yaml; echo "head_exit=$?"
           git log --oneline -1; git rev-parse HEAD
           set -e
-          echo "$V" | grep -q "2.7.40" || { echo "❌ 源码版本与发布版本不符，构建中止"; exit 1; }
+          echo "$V" | grep -q "2.7.41" || { echo "❌ 源码版本与发布版本不符，构建中止"; exit 1; }
 
       - name: 生成诊断日志
         if: always()
@@ -94,7 +94,7 @@ jobs:
             echo "--- guard simulation ---"
             V=$(grep -m1 '^version:' pubspec.yaml)
             echo "V=[$V]"
-            echo "$V" | grep -q "2.7.40" && echo "GUARD WOULD PASS" || echo "GUARD WOULD FAIL"
+            echo "$V" | grep -q "2.7.41" && echo "GUARD WOULD PASS" || echo "GUARD WOULD FAIL"
             echo "--- pwd ---"
             pwd
           } > /tmp/ci-diag.txt 2>&1
