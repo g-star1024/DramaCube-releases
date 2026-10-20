@@ -60,12 +60,12 @@ jobs:
         with:
           repository: g-star1024/hongguo-desktop
           # push 触发时 inputs 为空，用 force_ref 兜底钉死源码 commit，防 main 缓存漂移
-          ref: ${{ inputs.ref || inputs.force_ref || '1f80b7c318abcdb679072246bb1013c87bf1bca9' }}
+          ref: ${{ inputs.ref || inputs.force_ref || 'main' }}
           token: ${{ secrets.SOURCE_PAT }}
 
       - name: 核对源码版本（防 checkout 到旧代码，v2.7.37 事故教训）
         # 仅在发布构建（版本占位符被 bump 为真实版本号）时启用；dev 占位符状态跳过
-        if: ${{ 'dev' != '2.7.47' }}
+        if: ${{ 'dev' != 'dev' }}
         # 版本号写进校验串，与文件名占位符同步 bump/还原
         # 必须显式 shell: bash——defaults 只设 working-directory，Windows 默认 pwsh
         # run 块默认 set -e：诊断命令全部 || true，最后才做版本判断
@@ -77,7 +77,7 @@ jobs:
           echo "--- pubspec head ---"; head -3 pubspec.yaml; echo "head_exit=$?"
           git log --oneline -1; git rev-parse HEAD
           set -e
-          echo "$V" | grep -q "2.7.47" || { echo "❌ 源码版本与发布版本不符，构建中止"; exit 1; }
+          echo "$V" | grep -q "dev" || { echo "❌ 源码版本与发布版本不符，构建中止"; exit 1; }
 
       - name: 生成诊断日志
         if: always()
@@ -94,7 +94,7 @@ jobs:
             echo "--- guard simulation ---"
             V=$(grep -m1 '^version:' pubspec.yaml)
             echo "V=[$V]"
-            echo "$V" | grep -q "2.7.47" && echo "GUARD WOULD PASS" || echo "GUARD WOULD FAIL"
+            echo "$V" | grep -q "dev" && echo "GUARD WOULD PASS" || echo "GUARD WOULD FAIL"
             echo "--- pwd ---"
             pwd
           } > /tmp/ci-diag.txt 2>&1
@@ -162,22 +162,22 @@ jobs:
         if: matrix.platform == 'windows'
         shell: pwsh
         run: |
-          Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath dramacube-windows-v${{ inputs.version || '2.7.47' }}.zip
-          Get-Item dramacube-windows-v${{ inputs.version || '2.7.47' }}.zip | Select-Object Name, Length
+          Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath dramacube-windows-v${{ inputs.version || 'dev' }}.zip
+          Get-Item dramacube-windows-v${{ inputs.version || 'dev' }}.zip | Select-Object Name, Length
 
       - name: 打包 Linux
         if: matrix.platform == 'linux'
         shell: bash
         run: |
-          tar -czf dramacube-linux-v${{ inputs.version || '2.7.47' }}.tar.gz -C build/linux/x64/release/bundle .
-          ls -lh dramacube-linux-v${{ inputs.version || '2.7.47' }}.tar.gz
+          tar -czf dramacube-linux-v${{ inputs.version || 'dev' }}.tar.gz -C build/linux/x64/release/bundle .
+          ls -lh dramacube-linux-v${{ inputs.version || 'dev' }}.tar.gz
 
       - name: 整理 Android
         if: matrix.platform == 'android'
         shell: bash
         run: |
-          cp build/app/outputs/flutter-apk/app-release.apk dramacube-android-v${{ inputs.version || '2.7.47' }}.apk
-          ls -lh dramacube-android-v${{ inputs.version || '2.7.47' }}.apk
+          cp build/app/outputs/flutter-apk/app-release.apk dramacube-android-v${{ inputs.version || 'dev' }}.apk
+          ls -lh dramacube-android-v${{ inputs.version || 'dev' }}.apk
 
       - name: 注入 libtorrent + ffmpeg（macOS，下载引擎 + 封面截帧）
         if: matrix.platform == 'mac-arm64' || matrix.platform == 'mac-x64'
@@ -223,13 +223,13 @@ jobs:
           echo "APP=$APP"
           ARCH_SUFFIX=$([ "${{ matrix.platform }}" = "mac-arm64" ] && echo "arm64" || echo "x64")
           echo "ARCH_SUFFIX=$ARCH_SUFFIX" >> "$GITHUB_ENV"
-          hdiutil create -volname "剧立方" -srcfolder "$APP" -ov -format UDZO "dramacube-macOS-${ARCH_SUFFIX}-v${{ inputs.version || '2.7.47' }}.dmg"
+          hdiutil create -volname "剧立方" -srcfolder "$APP" -ov -format UDZO "dramacube-macOS-${ARCH_SUFFIX}-v${{ inputs.version || 'dev' }}.dmg"
           ls -lh dramacube-macOS-*.dmg
 
       - name: 上传 artifact
         uses: actions/upload-artifact@v4
         with:
-          name: dramacube-${{ matrix.platform }}-v${{ inputs.version || '2.7.47' }}
+          name: dramacube-${{ matrix.platform }}-v${{ inputs.version || 'dev' }}
           path: |
             apps/flutter/dramacube-*.zip
             apps/flutter/dramacube-*.tar.gz
@@ -245,7 +245,7 @@ jobs:
         run: |
           set -euo pipefail
           REPO="${{ github.repository }}"
-          TAG="v${{ inputs.version || '2.7.47' }}"
+          TAG="v${{ inputs.version || 'dev' }}"
           if ! gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
             gh release create "$TAG" --repo "$REPO" \
               --title "剧立方 DramaCube ${TAG}" \
