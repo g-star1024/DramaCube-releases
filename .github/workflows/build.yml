@@ -147,7 +147,8 @@ jobs:
         if: matrix.platform == 'linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libmpv-dev mpv
+          # tray_manager 需要 appindicator（ayatana 优先，fallback 到旧版）
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libmpv-dev mpv libayatana-appindicator3-dev
           flutter build linux --release
 
       - name: 构建 Android
