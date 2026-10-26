@@ -38,6 +38,12 @@ on:
 
 jobs:
   build:
+    # 发布态门禁（v2.7.64 起）：仅两种运行进入构建——
+    # ① workflow_dispatch 手动触发且传了 version；
+    # ② push 触发且提交为版本 bump（提交信息含 'five-platform release'，惯例见历史）。
+    # 其余 push（dev 占位符 restore、杂项提交）整 job 跳过：省 5 平台 CI 分钟，
+    # 也不再刷新 vdev 滚动发布。
+    if: ${{ inputs.version != '' || contains(github.event.head_commit.message, 'five-platform release') }}
     strategy:
       fail-fast: false
       matrix:
@@ -240,7 +246,6 @@ jobs:
           if-no-files-found: error
 
       - name: 发布到本仓 Release
-        if: ${{ inputs.version != '' && inputs.version != 'dev' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
