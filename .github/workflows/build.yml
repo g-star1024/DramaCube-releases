@@ -240,6 +240,7 @@ jobs:
           if-no-files-found: error
 
       - name: 发布到本仓 Release
+        if: ${{ inputs.version != '' && inputs.version != 'dev' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
