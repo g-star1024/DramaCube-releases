@@ -71,7 +71,7 @@ jobs:
 
       - name: 核对源码版本（防 checkout 到旧代码，v2.7.37 事故教训）
         # 仅在发布构建（版本占位符被 bump 为真实版本号）时启用；dev 占位符状态跳过
-        if: ${{ '2.7.74' != '2.7.74' }}
+        if: ${{ '2.7.74' != 'dev' }}
         # 版本号写进校验串，与文件名占位符同步 bump/还原
         # 必须显式 shell: bash——defaults 只设 working-directory，Windows 默认 pwsh
         # run 块默认 set -e：诊断命令全部 || true，最后才做版本判断
