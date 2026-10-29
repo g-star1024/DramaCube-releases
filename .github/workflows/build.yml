@@ -66,7 +66,7 @@ jobs:
         with:
           repository: g-star1024/hongguo-desktop
           # push 触发时 inputs 为空，用 force_ref 兜底钉死源码 commit，防 main 缓存漂移
-          ref: ${{ inputs.ref || inputs.force_ref || '49f4de24b9930397c16666ef25f9ec68e0b1c272' }}
+          ref: ${{ inputs.ref || inputs.force_ref || '1baaafbd6fa966662a6d626b6905f4fc6e396b47' }}
           token: ${{ secrets.SOURCE_PAT }}
 
       - name: 核对源码版本（防 checkout 到旧代码，v2.7.37 事故教训）
@@ -107,6 +107,23 @@ jobs:
           echo "diag_gen_exit=$?"
           cat /tmp/ci-diag.txt
 
+      - name: 保存构建失败日志
+        if: ${{ failure() }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          SOURCE_SHA=$(git rev-parse HEAD)
+          git switch --orphan "ci-logs-${{ github.run_id }}-${{ matrix.platform }}"
+          git rm -rf . >/dev/null 2>&1 || true
+          mkdir -p diagnostics
+          cp /tmp/flutter-*.log /tmp/ci-diag.txt diagnostics/ 2>/dev/null || true
+          echo "run=${{ github.run_id }} platform=${{ matrix.platform }} sha=${SOURCE_SHA}" > diagnostics/run.txt
+          git add diagnostics
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -m "ci: diagnostics for ${{ github.run_id }} ${{ matrix.platform }}"
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" "HEAD:refs/heads/ci-logs-${{ github.run_id }}-${{ matrix.platform }}"
+
       - name: 上传诊断 artifact
         if: always() && matrix.platform != 'windows'
         uses: actions/upload-artifact@v4
@@ -137,7 +154,10 @@ jobs:
 
       - name: 分析
         if: matrix.platform == 'windows'
-        run: flutter analyze
+        shell: bash
+        run: |
+          set -o pipefail
+          flutter analyze 2>&1 | tee /tmp/flutter-analyze.log
 
       - name: 构建 Windows（激活 VS DevShell，让 CMake 找到 VS2026 生成器）
         if: matrix.platform == 'windows'
@@ -147,23 +167,31 @@ jobs:
           $vsPath = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
           Write-Host "VS path: $vsPath"
           & "$vsPath\Common7\Tools\Launch-VsDevShell.ps1" -Arch amd64 -HostArch amd64
-          flutter build windows --release
+          flutter build windows --release *> /tmp/flutter-windows-build.log
+          $buildExit = $LASTEXITCODE
+          Get-Content /tmp/flutter-windows-build.log
+          exit $buildExit
 
       - name: 构建 Linux
         if: matrix.platform == 'linux'
         run: |
+          set -o pipefail
           sudo apt-get update
           # tray_manager 需要 appindicator（ayatana 优先，fallback 到旧版）
           sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libmpv-dev mpv libayatana-appindicator3-dev
-          flutter build linux --release
+          flutter build linux --release 2>&1 | tee /tmp/flutter-linux-build.log
 
       - name: 构建 Android
         if: matrix.platform == 'android'
-        run: flutter build apk --release
+        run: |
+          set -o pipefail
+          flutter build apk --release 2>&1 | tee /tmp/flutter-android-build.log
 
       - name: 构建 macOS
         if: matrix.platform == 'mac-arm64' || matrix.platform == 'mac-x64'
-        run: flutter build macos --release
+        run: |
+          set -o pipefail
+          flutter build macos --release 2>&1 | tee /tmp/flutter-macos-build.log
 
       - name: 打包 Windows
         if: matrix.platform == 'windows'
@@ -256,7 +284,7 @@ jobs:
           if ! gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
             gh release create "$TAG" --repo "$REPO" \
               --title "剧立方 DramaCube ${TAG}" \
-              --notes "Flutter 全平台构建（本仓 GitHub Actions）。源码：hongguo-desktop @ 49f4de24b9930397c16666ef25f9ec68e0b1c272"
+              --notes "Flutter 全平台构建（本仓 GitHub Actions）。源码：hongguo-desktop @ 1baaafbd6fa966662a6d626b6905f4fc6e396b47"
           fi
           shopt -s nullglob
           files=(dramacube-*.zip dramacube-*.tar.gz dramacube-*.apk dramacube-*.dmg)
