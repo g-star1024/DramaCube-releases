@@ -66,7 +66,7 @@ jobs:
         with:
           repository: g-star1024/hongguo-desktop
           # push 触发时 inputs 为空，用 force_ref 兜底钉死源码 commit，防 main 缓存漂移
-          ref: ${{ inputs.ref || inputs.force_ref || '1baaafbd6fa966662a6d626b6905f4fc6e396b47' }}
+          ref: ${{ inputs.ref || inputs.force_ref || '082fc08889dcf9efd7eb99dcd425f1fa0f51c64a' }}
           token: ${{ secrets.SOURCE_PAT }}
 
       - name: 核对源码版本（防 checkout 到旧代码，v2.7.37 事故教训）
@@ -139,9 +139,10 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Setup Flutter（3.39+ 才识别 VS2026 生成器，windows-latest 已装 VS2026）
+      - name: Setup Flutter（固定版本，避免 stable 升级引入 API 破坏性变更）
         uses: subosito/flutter-action@v2
         with:
+          flutter-version: 3.35.4
           channel: stable
           cache: true
 
@@ -177,8 +178,8 @@ jobs:
         run: |
           set -o pipefail
           sudo apt-get update
-          # tray_manager 需要 appindicator（ayatana 优先，fallback 到旧版）
-          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libmpv-dev mpv libayatana-appindicator3-dev
+          # tray_manager 需要 appindicator；flutter_secure_storage 需要 libsecret。
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libmpv-dev mpv libayatana-appindicator3-dev libsecret-1-dev
           flutter build linux --release 2>&1 | tee /tmp/flutter-linux-build.log
 
       - name: 构建 Android
@@ -284,7 +285,7 @@ jobs:
           if ! gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
             gh release create "$TAG" --repo "$REPO" \
               --title "剧立方 DramaCube ${TAG}" \
-              --notes "Flutter 全平台构建（本仓 GitHub Actions）。源码：hongguo-desktop @ 1baaafbd6fa966662a6d626b6905f4fc6e396b47"
+              --notes "Flutter 全平台构建（本仓 GitHub Actions）。源码：hongguo-desktop @ 082fc08889dcf9efd7eb99dcd425f1fa0f51c64a"
           fi
           shopt -s nullglob
           files=(dramacube-*.zip dramacube-*.tar.gz dramacube-*.apk dramacube-*.dmg)
