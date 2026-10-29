@@ -48,11 +48,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { platform: windows,   os: windows-latest }
-          - { platform: linux,     os: ubuntu-latest  }
-          - { platform: android,   os: ubuntu-latest  }
-          - { platform: mac-arm64, os: macos-14       }
-          - { platform: mac-x64,   os: macos-14       }
+          - { platform: windows,   os: windows-latest, flutter: 3.41.0 }
+          - { platform: linux,     os: ubuntu-latest,  flutter: 3.35.4 }
+          - { platform: android,   os: ubuntu-latest,  flutter: 3.35.4 }
+          - { platform: mac-arm64, os: macos-14,       flutter: 3.35.4 }
+          - { platform: mac-x64,   os: macos-14,       flutter: 3.35.4 }
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
     permissions:
@@ -114,10 +114,10 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Setup Flutter（固定版本，避免 stable 升级引入 API 破坏性变更）
+      - name: Setup Flutter（Windows 3.41 支持 VS2026；其他平台固定 3.35.4）
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: 3.35.4
+          flutter-version: ${{ matrix.flutter }}
           channel: stable
           cache: true
 
@@ -250,6 +250,30 @@ jobs:
           retention-days: 30
           if-no-files-found: error
 
+      - name: 保存构建失败日志
+        if: ${{ failure() }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          export GIT_DIR="$GITHUB_WORKSPACE/.git"
+          export GIT_WORK_TREE="$RUNNER_TEMP/ci-diagnostics"
+          SOURCE_SHA=$(git rev-parse HEAD)
+          BRANCH="ci-logs-${{ github.run_id }}-${{ matrix.platform }}"
+          if git ls-remote --exit-code --heads origin "$BRANCH"; then
+            git fetch origin "$BRANCH"
+            git switch --detach FETCH_HEAD
+          else
+            git switch --orphan "$BRANCH"
+          fi
+          mkdir -p "$GIT_WORK_TREE/diagnostics"
+          cp /tmp/flutter-*.log /tmp/ci-diag.txt "${RUNNER_TEMP}"/flutter-*.log "$GIT_WORK_TREE/diagnostics/" 2>/dev/null || true
+          echo "run=${{ github.run_id }} platform=${{ matrix.platform }} sha=${SOURCE_SHA}" > "$GIT_WORK_TREE/diagnostics/run.txt"
+          git add diagnostics
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -m "ci: diagnostics for ${{ github.run_id }} ${{ matrix.platform }}"
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" "HEAD:refs/heads/${BRANCH}"
+
       - name: 上传诊断 artifact
         if: always()
         uses: actions/upload-artifact@v4
@@ -260,23 +284,6 @@ jobs:
             /tmp/flutter-*.log
             ${{ runner.temp }}/flutter-*.log
           if-no-files-found: ignore
-
-      - name: 保存构建失败日志
-        if: ${{ failure() }}
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          SOURCE_SHA=$(git rev-parse HEAD)
-          git switch --orphan "ci-logs-${{ github.run_id }}-${{ matrix.platform }}"
-          git rm -rf . >/dev/null 2>&1 || true
-          mkdir -p diagnostics
-          cp /tmp/flutter-*.log /tmp/ci-diag.txt "${RUNNER_TEMP}"/flutter-*.log diagnostics/ 2>/dev/null || true
-          echo "run=${{ github.run_id }} platform=${{ matrix.platform }} sha=${SOURCE_SHA}" > diagnostics/run.txt
-          git add diagnostics
-          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -m "ci: diagnostics for ${{ github.run_id }} ${{ matrix.platform }}"
-          git push "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" "HEAD:refs/heads/ci-logs-${{ github.run_id }}-${{ matrix.platform }}"
 
       - name: 发布到本仓 Release
         env:
