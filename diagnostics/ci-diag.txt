@@ -1,0 +1,24 @@
+run=41145211671 platform=windows sha=3c0642fcf679fd2b0f84aeafeadd752cfba2f4d9
+3c0642f ci(build): 版本门禁归一化去 v 前缀，容忍 v2.7.78 / 2.7.78 两种入参
+--- pubspec grep ---
+version: 2.7.78+78
+grep_exit=0
+--- pubspec head ---
+name: dramacube
+description: "剧立方 DramaCube - 全平台视频聚合播放器（Windows/Linux/Android/Android TV/Docker）"
+# The following line prevents the package from being accidentally published to
+# pub.dev using `flutter pub publish`. This is preferred for private packages.
+publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+
+# The following defines the version and build number for your application.
+# A version number is three numbers separated by dots, like 1.2.43
+# followed by an optional build number separated by a +.
+# Both the version and the builder number may be overridden in flutter
+# build by specifying --build-name and --build-number, respectively.
+# In Android, build-name is used as versionName while build-number used as versionCode.
+head_exit=0
+--- guard simulation ---
+V=[version: 2.7.78+78]
+GUARD WOULD FAIL
+--- pwd ---
+/d/a/DramaCube-releases/DramaCube-releases/apps/flutter
