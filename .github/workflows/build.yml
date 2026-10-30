@@ -90,6 +90,9 @@ jobs:
           else
             EXPECT=$(echo "${{ github.event.head_commit.message }}" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
           fi
+          # 归一化：去掉可能的 v 前缀（v2.7.78 -> 2.7.78），避免门禁因前缀误判
+          PV=$(echo "$PV" | sed -E 's/^v//')
+          EXPECT=$(echo "$EXPECT" | sed -E 's/^v//')
           echo "pubspec_version=[$PV] expected=[$EXPECT]"
           set -e
           [ -n "$EXPECT" ] || { echo "❌ 无法确定期望版本，构建中止"; exit 1; }
