@@ -66,13 +66,12 @@ jobs:
         with:
           repository: g-star1024/hongguo-desktop
           # push 触发时 inputs 为空，用 force_ref 兜底钉死源码 commit，防 main 缓存漂移
-          ref: ${{ inputs.ref || inputs.force_ref || '082fc08889dcf9efd7eb99dcd425f1fa0f51c64a' }}
+          ref: ${{ inputs.ref || inputs.force_ref || '773894b3921ce5210cfa36e8e8110c275b4a7ade' }}
           token: ${{ secrets.SOURCE_PAT }}
 
       - name: 核对源码版本（防 checkout 到旧代码，v2.7.37 事故教训）
-        # 仅在发布构建（版本占位符被 bump 为真实版本号）时启用；dev 占位符状态跳过
-        if: ${{ '2.7.74' != 'dev' }}
-        # 版本号写进校验串，与文件名占位符同步 bump/还原
+        # 发布构建门禁：比对 pubspec 版本与 workflow 传入的 version，防止 checkout 到旧代码。
+        # 改用 inputs.version 动态比对，不再硬编码版本号（避免每次发版漏改导致误判失败）。
         # 必须显式 shell: bash——defaults 只设 working-directory，Windows 默认 pwsh
         # run 块默认 set -e：诊断命令全部 || true，最后才做版本判断
         shell: bash
@@ -82,8 +81,19 @@ jobs:
           echo "pwd: $(pwd)"
           echo "--- pubspec head ---"; head -3 pubspec.yaml; echo "head_exit=$?"
           git log --oneline -1; git rev-parse HEAD
+          # 抽取纯语义版本（去掉 +build 后缀，如 2.7.75+75 -> 2.7.75）
+          PV=$(echo "$V" | sed -E 's/^version:[[:space:]]*([0-9]+\.[0-9]+\.[0-9]+).*/\1/')
+          # 期望版本：优先取 dispatch 传入的 version；push 触发时从提交信息解析
+          # （如 "ci: build v2.7.75 five-platform release" -> 2.7.75），与 ref 默认值保持一致
+          if [ -n "${{ inputs.version }}" ]; then
+            EXPECT="${{ inputs.version }}"
+          else
+            EXPECT=$(echo "${{ github.event.head_commit.message }}" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+          fi
+          echo "pubspec_version=[$PV] expected=[$EXPECT]"
           set -e
-          echo "$V" | grep -q "2.7.74" || { echo "❌ 源码版本与发布版本不符，构建中止"; exit 1; }
+          [ -n "$EXPECT" ] || { echo "❌ 无法确定期望版本，构建中止"; exit 1; }
+          [ "$PV" = "$EXPECT" ] || { echo "❌ 源码版本($PV)与发布版本($EXPECT)不符，构建中止"; exit 1; }
 
       - name: 生成诊断日志
         if: always()
@@ -174,22 +184,22 @@ jobs:
         if: matrix.platform == 'windows'
         shell: pwsh
         run: |
-          Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath dramacube-windows-v${{ inputs.version || '2.7.74' }}.zip
-          Get-Item dramacube-windows-v${{ inputs.version || '2.7.74' }}.zip | Select-Object Name, Length
+          Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath dramacube-windows-v${{ inputs.version || '2.7.75' }}.zip
+          Get-Item dramacube-windows-v${{ inputs.version || '2.7.75' }}.zip | Select-Object Name, Length
 
       - name: 打包 Linux
         if: matrix.platform == 'linux'
         shell: bash
         run: |
-          tar -czf dramacube-linux-v${{ inputs.version || '2.7.74' }}.tar.gz -C build/linux/x64/release/bundle .
-          ls -lh dramacube-linux-v${{ inputs.version || '2.7.74' }}.tar.gz
+          tar -czf dramacube-linux-v${{ inputs.version || '2.7.75' }}.tar.gz -C build/linux/x64/release/bundle .
+          ls -lh dramacube-linux-v${{ inputs.version || '2.7.75' }}.tar.gz
 
       - name: 整理 Android
         if: matrix.platform == 'android'
         shell: bash
         run: |
-          cp build/app/outputs/flutter-apk/app-release.apk dramacube-android-v${{ inputs.version || '2.7.74' }}.apk
-          ls -lh dramacube-android-v${{ inputs.version || '2.7.74' }}.apk
+          cp build/app/outputs/flutter-apk/app-release.apk dramacube-android-v${{ inputs.version || '2.7.75' }}.apk
+          ls -lh dramacube-android-v${{ inputs.version || '2.7.75' }}.apk
 
       - name: 注入 libtorrent + ffmpeg（macOS，下载引擎 + 封面截帧）
         if: matrix.platform == 'mac-arm64' || matrix.platform == 'mac-x64'
@@ -235,13 +245,13 @@ jobs:
           echo "APP=$APP"
           ARCH_SUFFIX=$([ "${{ matrix.platform }}" = "mac-arm64" ] && echo "arm64" || echo "x64")
           echo "ARCH_SUFFIX=$ARCH_SUFFIX" >> "$GITHUB_ENV"
-          hdiutil create -volname "剧立方" -srcfolder "$APP" -ov -format UDZO "dramacube-macOS-${ARCH_SUFFIX}-v${{ inputs.version || '2.7.74' }}.dmg"
+          hdiutil create -volname "剧立方" -srcfolder "$APP" -ov -format UDZO "dramacube-macOS-${ARCH_SUFFIX}-v${{ inputs.version || '2.7.75' }}.dmg"
           ls -lh dramacube-macOS-*.dmg
 
       - name: 上传 artifact
         uses: actions/upload-artifact@v4
         with:
-          name: dramacube-${{ matrix.platform }}-v${{ inputs.version || '2.7.74' }}
+          name: dramacube-${{ matrix.platform }}-v${{ inputs.version || '2.7.75' }}
           path: |
             apps/flutter/dramacube-*.zip
             apps/flutter/dramacube-*.tar.gz
@@ -259,6 +269,8 @@ jobs:
           set -euo pipefail
           export GIT_DIR="$GITHUB_WORKSPACE/.git"
           export GIT_WORK_TREE="$RUNNER_TEMP/ci-diagnostics"
+          # 必须先建好工作树目录，否则 git switch 报 "must be run in a work tree"
+          mkdir -p "$GIT_WORK_TREE" "$GIT_WORK_TREE/diagnostics"
           SOURCE_SHA=$(git rev-parse HEAD)
           BRANCH="ci-logs-${{ github.run_id }}-${{ matrix.platform }}"
           if git ls-remote --exit-code --heads origin "$BRANCH"; then
@@ -267,7 +279,6 @@ jobs:
           else
             git switch --orphan "$BRANCH"
           fi
-          mkdir -p "$GIT_WORK_TREE/diagnostics"
           cp /tmp/flutter-*.log /tmp/ci-diag.txt "${RUNNER_TEMP}"/flutter-*.log "$GIT_WORK_TREE/diagnostics/" 2>/dev/null || true
           echo "run=${{ github.run_id }} platform=${{ matrix.platform }} sha=${SOURCE_SHA}" > "$GIT_WORK_TREE/diagnostics/run.txt"
           git add diagnostics
@@ -292,11 +303,11 @@ jobs:
         run: |
           set -euo pipefail
           REPO="${{ github.repository }}"
-          TAG="v${{ inputs.version || '2.7.74' }}"
+          TAG="v${{ inputs.version || '2.7.75' }}"
           if ! gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
             gh release create "$TAG" --repo "$REPO" \
               --title "剧立方 DramaCube ${TAG}" \
-              --notes "Flutter 全平台构建（本仓 GitHub Actions）。源码：hongguo-desktop @ 082fc08889dcf9efd7eb99dcd425f1fa0f51c64a"
+              --notes "Flutter 全平台构建（本仓 GitHub Actions）。源码：hongguo-desktop @ 773894b3921ce5210cfa36e8e8110c275b4a7ade"
           fi
           shopt -s nullglob
           files=(dramacube-*.zip dramacube-*.tar.gz dramacube-*.apk dramacube-*.dmg)
