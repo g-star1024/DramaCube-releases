@@ -15,8 +15,8 @@
 #   windows   windows-latest  → dramacube-windows-v<ver>.zip
 #   linux     ubuntu-latest   → dramacube-linux-v<ver>.tar.gz
 #   android   ubuntu-latest   → dramacube-android-v<ver>.apk
-#   mac-arm64 macos-14        → dramacube-macOS-arm64-v<ver>.dmg
-#   mac-x64   macos-14        → dramacube-macOS-x64-v<ver>.dmg
+#   mac-arm64 macos-15        → dramacube-macOS-arm64-v<ver>.dmg
+#   mac-x64   macos-15        → dramacube-macOS-x64-v<ver>.dmg
 
 name: build
 
@@ -51,8 +51,8 @@ jobs:
           - { platform: windows,   os: windows-latest, flutter: 3.41.0 }
           - { platform: linux,     os: ubuntu-latest,  flutter: 3.35.4 }
           - { platform: android,   os: ubuntu-latest,  flutter: 3.35.4 }
-          - { platform: mac-arm64, os: macos-14,       flutter: 3.35.4 }
-          - { platform: mac-x64,   os: macos-14,       flutter: 3.35.4 }
+          - { platform: mac-arm64, os: macos-15,       flutter: 3.35.4 }
+          - { platform: mac-x64,   os: macos-15,       flutter: 3.35.4 }
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
     permissions:
