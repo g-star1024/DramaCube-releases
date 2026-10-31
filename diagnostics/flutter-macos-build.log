@@ -1,0 +1,1766 @@
+Resolving dependencies...
+Downloading packages...
+  _fe_analyzer_shared 93.0.0 (111.0.0 available)
+  analyzer 10.0.1 (14.7.0 available)
+  archive 4.5.1 (4.5.2 available)
+  build 4.0.7 (5.0.0 available)
+  build_config 1.3.3 (1.4.0 available)
+  build_daemon 4.1.2 (4.1.7 available)
+  build_runner 2.15.1 (2.17.1 available)
+  built_collection 5.1.1 (6.0.0 available)
+  cached_network_image 3.4.1 (4.0.6 available)
+  cached_network_image_platform_interface 4.1.1 (5.0.3 available)
+  cached_network_image_web 1.3.1 (2.0.4 available)
+  characters 1.4.0 (1.4.1 available)
+  cli_util 0.4.2 (0.6.0 available)
+  clock 1.1.2 (1.1.3 available)
+  cross_file 0.3.5+2 (0.4.0 available)
+  crypto 3.0.7 (3.0.8 available)
+  cupertino_icons 1.0.9 (2.0.0 available)
+  dart_style 3.1.5 (3.1.14 available)
+  dbus 0.7.15 (0.8.0 available)
+  drift 2.31.0 (2.35.3 available)
+  drift_dev 2.31.0 (2.35.2 available)
+  drift_flutter 0.2.8 (0.3.1 available)
+  file_picker 8.3.7 (13.3.0 available)
+  flutter_cache_manager 3.4.5 (3.4.6 available)
+  flutter_lints 5.0.0 (6.0.0 available)
+  flutter_plugin_android_lifecycle 2.0.34 (2.0.35 available)
+  flutter_riverpod 2.6.1 (3.4.3 available)
+  flutter_secure_storage 10.3.4 (11.2.0 available)
+  flutter_secure_storage_darwin 0.3.2 (0.4.3 available)
+  flutter_secure_storage_windows 4.1.0 (4.2.2 available)
+  go_router 17.2.3 (18.1.2 available)
+  http_multi_server 3.2.2 (3.2.3 available)
+  lints 5.1.1 (6.1.0 available)
+  matcher 0.12.17 (0.12.20 available)
+  material_color_utilities 0.11.1 (0.13.1 available)
+  media_kit_video 1.3.1 (2.0.1 available)
+  meta 1.16.0 (1.19.0 available)
+  octo_image 2.1.2 (2.1.3 available)
+  package_config 2.2.0 (3.0.0 available)
+  package_info_plus 9.0.1 (10.2.2 available)
+  package_info_plus_platform_interface 3.2.1 (4.1.0 available)
+  path_provider 2.1.5 (2.1.6 available)
+  path_provider_android 2.2.23 (2.3.1 available)
+  path_provider_foundation 2.5.1 (2.6.0 available)
+  path_provider_linux 2.2.1 (2.2.2 available)
+  path_provider_platform_interface 2.1.2 (2.1.3 available)
+  petitparser 7.0.2 (7.1.0 available)
+  platform 3.1.6 (3.2.0 available)
+  posix 6.5.2 (6.5.4 available)
+  pubspec_parse 1.6.0 (1.7.0 available)
+  riverpod 2.6.1 (3.4.3 available)
+  safe_local_storage 2.0.6 (2.0.7 available)
+  screen_retriever 0.2.2 (0.3.0 available)
+  shared_preferences 2.5.5 (2.5.6 available)
+  shared_preferences_android 2.4.23 (2.5.4 available)
+  shared_preferences_foundation 2.5.6 (2.6.1 available)
+  shelf 1.4.2 (1.4.3 available)
+  shelf_router 1.1.4 (1.1.5 available)
+  source_gen 4.2.4 (4.3.1 available)
+  sqflite 2.4.2 (2.4.5 available)
+  sqflite_android 2.4.2+2 (2.4.5 available)
+  sqflite_common 2.5.6 (2.5.14 available)
+  sqflite_darwin 2.4.2 (2.4.4+1 available)
+  sqflite_platform_interface 2.4.0 (2.4.3 available)
+  sqlite3 2.9.4 (3.8.0 available)
+  sqlite3_flutter_libs 0.5.42 (0.6.0+eol available)
+  sqlparser 0.43.1 (0.45.1 available)
+  stack_trace 1.12.1 (1.12.2 available)
+  synchronized 3.4.0 (3.5.0 available)
+  test_api 0.7.6 (0.7.15 available)
+  tray_manager 0.5.3 (0.8.0 available)
+  url_launcher 6.3.2 (6.3.3 available)
+  url_launcher_android 6.3.29 (6.3.33 available)
+  url_launcher_ios 6.3.6 (6.4.2 available)
+  url_launcher_linux 3.2.2 (3.2.3 available)
+  url_launcher_macos 3.2.5 (3.2.6 available)
+  url_launcher_web 2.4.1 (2.4.3 available)
+  url_launcher_windows 3.1.5 (3.1.6 available)
+  vector_math 2.2.0 (2.4.4 available)
+  vm_service 15.3.0 (15.4.0 available)
+  volume_controller 3.4.4 (3.7.1 available)
+  wakelock_plus 1.4.0 (1.8.2 available)
+  wakelock_plus_platform_interface 1.3.0 (1.7.0 available)
+  web 1.1.1 (1.1.2 available)
+  win32 5.15.0 (6.4.0 available)
+  window_manager 0.4.3 (0.5.2 available)
+  xml 6.6.1 (7.1.0 available)
+Got dependencies!
+87 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+Running pod install...                                             23.8s
+Building macOS application...                                   
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:92009:22: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 92009 |           int nCmp = MIN(mem1.n, pRhs->n);
+       |                      ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:92037:22: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 92037 |           int nCmp = MIN(nStr, pRhs->n);
+       |                      ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:92245:12: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 92245 |     nCmp = MIN( pPKey2->n, nStr );
+       |            ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:94656:42: warning: implicit conversion loses integer precision: 'sqlite3_uint64' (aka 'unsigned long long') to 'int' [-Wshorten-64-to-32]
+ 94656 |     rc = sqlite3_bind_zeroblob(pStmt, i, n);
+       |          ~~~~~~~~~~~~~~~~~~~~~           ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:95497:19: warning: ambiguous expansion of macro 'MAX' [-Wambiguous-macro]
+ 95497 |       nextIndex = MAX(idx + 1, nextIndex);
+       |                   ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  218 | #define MAX(a, b) (((a)>(b))?(a):(b))
+      |         ^
+ 15576 | # define MAX(A,B) ((A)>(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:95475:41: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 95475 |       sqlite3_str_append(&out, zRawSql, n);
+       |       ~~~~~~~~~~~~~~~~~~                ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:95493:53: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 95493 |         idx = sqlite3VdbeParameterIndex(p, zRawSql, nToken);
+       |               ~~~~~~~~~~~~~~~~~~~~~~~~~             ^~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:96416:48: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'u32' (aka 'unsigned int') [-Wshorten-64-to-32]
+ 96416 |       rc = sqlite3BtreePayload(pC->uc.pCursor, iOffset, len, pBuf);
+       |            ~~~~~~~~~~~~~~~~~~~                 ^~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:96439:50: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'u32' (aka 'unsigned int') [-Wshorten-64-to-32]
+ 96439 |     rc = sqlite3VdbeMemFromBtree(pC->uc.pCursor, iOffset, len, pDest);
+       |          ~~~~~~~~~~~~~~~~~~~~~~~                 ^~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:99361:21: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 99361 |     pOut->u.nZero = nZero;
+       |                   ~ ^~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:106058:28: warning: ambiguous expansion of macro 'MAX' [-Wambiguous-macro]
+ 106058 |       sqlite3_int64 nNew = MAX(128, 2*(sqlite3_int64)p->nAlloc);
+        |                            ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  218 | #define MAX(a, b) (((a)>(b))?(a):(b))
+      |         ^
+ 15576 | # define MAX(A,B) ((A)>(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:106062:19: warning: implicit conversion loses integer precision: 'sqlite3_int64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 106062 |       p->nAlloc = nNew;
+        |                 ~ ^~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:106339:25: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 106339 |   res = memcmp(v1, v2, (MIN(n1, n2) - 13)/2);
+        |                         ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:106535:17: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 106535 |       mxCache = MIN(mxCache, SQLITE_MAX_PMASZ);
+        |                 ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:106536:28: warning: ambiguous expansion of macro 'MAX' [-Wambiguous-macro]
+ 106536 |       pSorter->mxPmaSize = MAX(pSorter->mnPmaSize, (int)mxCache);
+        |                            ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  218 | #define MAX(a, b) (((a)>(b))?(a):(b))
+      |         ^
+ 15576 | # define MAX(A,B) ((A)>(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:107372:26: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 107372 |     pSorter->mxKeysize = nPMA;
+        |                        ~ ^~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:107376:33: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 107376 |     int nMin = pSorter->iMemory + nReq;
+        |         ~~~~   ~~~~~~~~~~~~~~~~~^~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:107383:45: warning: implicit conversion loses integer precision: 'long' to 'int' [-Wshorten-64-to-32]
+ 107383 |         iListOff = (u8*)pSorter->list.pList - pSorter->list.aMemory;
+        |                  ~ ~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:107394:26: warning: implicit conversion loses integer precision: 'sqlite3_int64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 107394 |       pSorter->nMemory = nNew;
+        |                        ~ ^~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:107548:19: warning: ambiguous expansion of macro 'MAX' [-Wambiguous-macro]
+ 107548 |     pIncr->mxSz = MAX(pTask->pSorter->mxKeysize+9,pTask->pSorter->mxPmaSize/2);
+        |                   ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  218 | #define MAX(a, b) (((a)>(b))?(a):(b))
+      |         ^
+ 15576 | # define MAX(A,B) ((A)>(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:108002:21: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 108002 |           nReader = MIN(pTask->nPMA - i, SORTER_MAX_MERGE_COUNT);
+        |                     ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:108879:17: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 108879 |     int nCopy = MIN(nRead, (p->nChunkSize - iChunkOffset));
+        |                 ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:108919:40: warning: implicit conversion loses integer precision: 'sqlite_int64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 108919 |         nChunk = copy.endpoint.iOffset - iOff;
+        |                ~ ~~~~~~~~~~~~~~~~~~~~~~^~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:108986:22: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 108986 |         int iSpace = MIN(nWrite, p->nChunkSize - iChunkOffset);
+        |                      ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:109200:10: warning: ambiguous expansion of macro 'MAX' [-Wambiguous-macro]
+ 109200 |   return MAX(pVfs->szOsFile, (int)sizeof(MemJournal));
+        |          ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  218 | #define MAX(a, b) (((a)>(b))?(a):(b))
+      |         ^
+ 15576 | # define MAX(A,B) ((A)>(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:121896:13: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 121896 |     int n = sqlite3GetToken(&z[nRet], &t);
+        |         ~   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:122359:18: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 122359 |     int nToken = sqlite3GetToken(&zTmp[iOff], &t);
+        |         ~~~~~~   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:122401:72: warning: implicit conversion loses integer precision: 'long' to 'int' [-Wshorten-64-to-32]
+ 122401 |   nCons = alterRtrimConstraint(pParse->db, pCons, pParse->sLastToken.z - pCons);
+        |           ~~~~~~~~~~~~~~~~~~~~                    ~~~~~~~~~~~~~~~~~~~~~^~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:122521:72: warning: implicit conversion loses integer precision: 'long' to 'int' [-Wshorten-64-to-32]
+ 122521 |   nCons = alterRtrimConstraint(pParse->db, pCons, pParse->sLastToken.z - pCons);
+        |           ~~~~~~~~~~~~~~~~~~~~                    ~~~~~~~~~~~~~~~~~~~~~^~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:123609:18: warning: ambiguous expansion of macro 'MAX' [-Wambiguous-macro]
+ 123609 |   pParse->nTab = MAX(pParse->nTab, iTab);
+        |                  ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  218 | #define MAX(a, b) (((a)>(b))?(a):(b))
+      |         ^
+ 15576 | # define MAX(A,B) ((A)>(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:130012:15: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 130012 |   int nCopy = MIN(ArraySize(aVal), pIdx->nKeyCol);
+        |               ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:130279:20: warning: implicit conversion loses integer precision: 'sqlite3_int64' (aka 'long long') to 'u32' (aka 'unsigned int') [-Wshorten-64-to-32]
+ 130279 |     pSrc->nAlloc = nAlloc;
+        |                  ~ ^~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:133459:24: warning: implicit conversion loses integer precision: 'sqlite3_int64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 133459 |     sqlite3_randomness(n, p);
+        |     ~~~~~~~~~~~~~~~~~~ ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:133460:44: warning: implicit conversion loses integer precision: 'sqlite3_int64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 133460 |     sqlite3_result_blob(context, (char*)p, n, sqlite3_free);
+        |     ~~~~~~~~~~~~~~~~~~~                    ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:133997:31: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'u32' (aka 'unsigned int') [-Wshorten-64-to-32]
+ 133997 |         pStr->nChar = nBlob*2 + 3;
+        |                     ~ ~~~~~~~~^~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:134073:11: warning: implicit conversion loses integer precision: 'long' to 'int' [-Wshorten-64-to-32]
+ 134073 |     n = z - &zIn[i];
+        |       ~ ~~^~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:134310:39: warning: implicit conversion loses integer precision: 'long' to 'int' [-Wshorten-64-to-32]
+ 134310 |   sqlite3_result_blob(pCtx, pBlob, (p - pBlob), sqlite3_free);
+        |   ~~~~~~~~~~~~~~~~~~~               ~~^~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:137661:75: warning: possible misuse of comma operator here [-Wcomma]
+ 137661 |       pRaise = sqlite3Expr(db, TK_STRING, "FOREIGN KEY constraint failed"),
+        |                                                                           ^
+ 137661 |       pRaise = sqlite3Expr(db, TK_STRING, "FOREIGN KEY constraint failed"),
+        |       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        |       (void)(                                                             )
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:142782:36: warning: implicit conversion loses integer precision: 'u64' (aka 'unsigned long long') to 'int' [-Wshorten-64-to-32]
+ 142782 |         sqlite3OsDlError(pVfs, nMsg-1, zErrmsg);
+        |         ~~~~~~~~~~~~~~~~       ~~~~^~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:142823:34: warning: implicit conversion loses integer precision: 'u64' (aka 'unsigned long long') to 'int' [-Wshorten-64-to-32]
+ 142823 |       sqlite3OsDlError(pVfs, nMsg-1, zErrmsg);
+        |       ~~~~~~~~~~~~~~~~       ~~~~^~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:146025:28: warning: implicit conversion loses integer precision: 'const u64' (aka 'const unsigned long long') to 'int' [-Wshorten-64-to-32]
+ 146025 |     int iCookie = pPragma->iArg;  /* Which cookie to read or write */
+        |         ~~~~~~~   ~~~~~~~~~^~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:154021:29: warning: implicit conversion loses integer precision: 'u64' (aka 'unsigned long long') to 'int' [-Wshorten-64-to-32]
+ 154021 |     int flags = pParse->db->flags;
+        |         ~~~~~   ~~~~~~~~~~~~^~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:164719:19: warning: ambiguous expansion of macro 'MAX' [-Wambiguous-macro]
+ 164719 |       nExtraReg = MAX(nExtraReg, pLoop->u.btree.nBtm);
+        |                   ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  218 | #define MAX(a, b) (((a)>(b))?(a):(b))
+      |         ^
+ 15576 | # define MAX(A,B) ((A)>(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:164726:19: warning: ambiguous expansion of macro 'MAX' [-Wambiguous-macro]
+ 164726 |       nExtraReg = MAX(nExtraReg, pLoop->u.btree.nTop);
+        |                   ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  218 | #define MAX(a, b) (((a)>(b))?(a):(b))
+      |         ^
+ 15576 | # define MAX(A,B) ((A)>(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:168124:43: warning: possible misuse of comma operator here [-Wcomma]
+ 168124 |              && (pX = pTerm->pExpr->pRight, ALWAYS(pX!=0))
+        |                                           ^
+ 168124 |              && (pX = pTerm->pExpr->pRight, ALWAYS(pX!=0))
+        |                  ^~~~~~~~~~~~~~~~~~~~~~~~~
+        |                  (void)(                  )
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:168807:14: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 168807 |   mxBitCol = MIN(BMS-1,pTable->nCol);
+        |              ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:170416:25: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 170416 |       pTemplate->rRun = MIN(p->rRun, pTemplate->rRun);
+        |                         ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:170417:25: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 170417 |       pTemplate->nOut = MIN(p->nOut - 1, pTemplate->nOut);
+        |                         ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:170425:25: warning: ambiguous expansion of macro 'MAX' [-Wambiguous-macro]
+ 170425 |       pTemplate->rRun = MAX(p->rRun, pTemplate->rRun);
+        |                         ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  218 | #define MAX(a, b) (((a)>(b))?(a):(b))
+      |         ^
+ 15576 | # define MAX(A,B) ((A)>(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:170426:25: warning: ambiguous expansion of macro 'MAX' [-Wambiguous-macro]
+ 170426 |       pTemplate->nOut = MAX(p->nOut + 1, pTemplate->nOut);
+        |                         ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  218 | #define MAX(a, b) (((a)>(b))?(a):(b))
+      |         ^
+ 15576 | # define MAX(A,B) ((A)>(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:170856:10: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 170856 |   nCmp = MIN(nCmp, (pIdx->nColumn - nEq));
+        |          ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:173616:19: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 173616 |   aFrom[0].nRow = MIN(pParse->nQueryLoop, 48);  assert( 48==sqlite3LogEst(28) );
+        |                   ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:176049:28: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 176049 |     int nSize = (p->nTotal / p->nParam);
+        |         ~~~~~    ~~~~~~~~~~^~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:177598:12: warning: ambiguous expansion of macro 'MAX' [-Wambiguous-macro]
+ 177598 |     nArg = MAX(nArg, windowArgCount(pWin));
+        |            ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  218 | #define MAX(a, b) (((a)>(b))?(a):(b))
+      |         ^
+ 15576 | # define MAX(A,B) ((A)>(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:178886:64: warning: implicit conversion loses integer precision: 'sqlite3_uint64' (aka 'unsigned long long') to 'int' [-Wshorten-64-to-32]
+ 178886 |     void *p = sqlite3FaultSim(700) ? 0 : sqlite3_realloc(pOld, newSize);
+        |                                          ~~~~~~~~~~~~~~~       ^~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:183838:173: warning: implicit conversion loses integer precision: 'long' to 'int' [-Wshorten-64-to-32]
+ 183838 |   sqlite3AlterAddConstraint(pParse, yymsp[-8].minor.yy203, &yymsp[-6].minor.yy0, &yymsp[-5].minor.yy0, yymsp[-3].minor.yy0.z+1, (yymsp[-1].minor.yy0.z-yymsp[-3].minor.yy0.z-1));
+        |   ~~~~~~~~~~~~~~~~~~~~~~~~~                                                                                                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:183844:154: warning: implicit conversion loses integer precision: 'long' to 'int' [-Wshorten-64-to-32]
+ 183844 |   sqlite3AlterAddConstraint(pParse, yymsp[-6].minor.yy203, &yymsp[-4].minor.yy0, 0, yymsp[-3].minor.yy0.z+1, (yymsp[-1].minor.yy0.z-yymsp[-3].minor.yy0.z-1));
+        |   ~~~~~~~~~~~~~~~~~~~~~~~~~                                                                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:182506:9: warning: code will never be executed [-Wunreachable-code]
+ 182506 |         YYMINORTYPE yylhsminor;
+        |         ^~~~~~~~~~~~~~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:187039:19: warning: implicit conversion loses integer precision: 'sqlite3_int64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 187039 |     nBig = szAlloc/(3*LOOKASIDE_SMALL+sz);
+        |          ~ ~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:187040:40: warning: implicit conversion loses integer precision: 'sqlite_int64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 187040 |     nSm = (szAlloc - (i64)sz*(i64)nBig)/LOOKASIDE_SMALL;
+        |         ~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:187042:19: warning: implicit conversion loses integer precision: 'sqlite3_int64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 187042 |     nBig = szAlloc/(LOOKASIDE_SMALL+sz);
+        |          ~ ~~~~~~~^~~~~~~~~~~~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:187043:40: warning: implicit conversion loses integer precision: 'sqlite_int64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 187043 |     nSm = (szAlloc - (i64)sz*(i64)nBig)/LOOKASIDE_SMALL;
+        |         ~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:187047:19: warning: implicit conversion loses integer precision: 'sqlite3_int64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 187047 |     nBig = szAlloc/sz;
+        |          ~ ~~~~~~~^~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:212369:28: warning: implicit conversion loses integer precision: 'u64' (aka 'unsigned long long') to 'int' [-Wshorten-64-to-32]
+ 212369 |         pParse->nJson = p->nUsed;
+        |                       ~ ~~~^~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:213603:20: warning: implicit conversion loses integer precision: 'u64' (aka 'unsigned long long') to 'int' [-Wshorten-64-to-32]
+ 213603 |   px.nJson = pStr->nUsed;
+        |            ~ ~~~~~~^~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:214147:43: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'u32' (aka 'unsigned int') [-Wshorten-64-to-32]
+ 214147 |       jsonBlobExpand(pParse, pParse->nBlob+d);
+        |       ~~~~~~~~~~~~~~         ~~~~~~~~~~~~~^~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:216731:19: warning: implicit conversion loses integer precision: 'u64' (aka 'unsigned long long') to 'u32' (aka 'unsigned int') [-Wshorten-64-to-32]
+ 216731 |   u32 n = p->path.nUsed;
+        |       ~   ~~~~~~~~^~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:219319:26: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 219319 |       p1->aCoord[ii].f = MIN(p1->aCoord[ii].f, p2->aCoord[ii].f);
+        |                          ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:219320:28: warning: ambiguous expansion of macro 'MAX' [-Wambiguous-macro]
+ 219320 |       p1->aCoord[ii+1].f = MAX(p1->aCoord[ii+1].f, p2->aCoord[ii+1].f);
+        |                            ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  218 | #define MAX(a, b) (((a)>(b))?(a):(b))
+      |         ^
+ 15576 | # define MAX(A,B) ((A)>(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:219325:26: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 219325 |       p1->aCoord[ii].i = MIN(p1->aCoord[ii].i, p2->aCoord[ii].i);
+        |                          ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:219326:28: warning: ambiguous expansion of macro 'MAX' [-Wambiguous-macro]
+ 219326 |       p1->aCoord[ii+1].i = MAX(p1->aCoord[ii+1].i, p2->aCoord[ii+1].i);
+        |                            ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  218 | #define MAX(a, b) (((a)>(b))?(a):(b))
+      |         ^
+ 15576 | # define MAX(A,B) ((A)>(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:219367:12: warning: ambiguous expansion of macro 'MAX' [-Wambiguous-macro]
+ 219367 |       x1 = MAX(DCOORD(p->aCoord[jj]), DCOORD(aCell[ii].aCoord[jj]));
+        |            ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  218 | #define MAX(a, b) (((a)>(b))?(a):(b))
+      |         ^
+ 15576 | # define MAX(A,B) ((A)>(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:219368:12: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 219368 |       x2 = MIN(DCOORD(p->aCoord[jj+1]), DCOORD(aCell[ii].aCoord[jj+1]));
+        |            ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:220488:21: warning: ambiguous expansion of macro 'MAX' [-Wambiguous-macro]
+ 220488 |   pRtree->nRowEst = MAX(nRow, RTREE_MIN_ROWEST);
+        |                     ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  218 | #define MAX(a, b) (((a)>(b))?(a):(b))
+      |         ^
+ 15576 | # define MAX(A,B) ((A)>(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:220747:10: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 220747 |   return sqlite3GetToken((const unsigned char*)z,&dummy);
+        |   ~~~~~~ ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:223383:20: warning: implicit conversion loses integer precision: 'sqlite3_int64' (aka 'long long') to 'u32' (aka 'unsigned int') [-Wshorten-64-to-32]
+ 223383 |     pBlob->iSize = nBlob;
+        |                  ~ ^~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:233398:66: warning: implicit conversion loses integer precision: 'sqlite3_int64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 233398 |         int iHash = sessionChangeHash(pTab, bPkOnly, p->aRecord, nNew);
+        |                     ~~~~~~~~~~~~~~~~~                            ^~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:233406:21: warning: implicit conversion loses integer precision: 'sqlite3_int64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 233406 |     pTab->nChange = nNew;
+        |                   ~ ^~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:233840:19: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 233840 |       p->nAlloc = nNew;
+        |                 ~ ^~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:234094:22: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 234094 |     int nIncr = nNew - pC->nMaxSize;
+        |         ~~~~~   ~~~~~^~~~~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:234095:20: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 234095 |     pC->nMaxSize = nNew;
+        |                  ~ ^~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:234249:21: warning: implicit conversion loses integer precision: 'sqlite3_int64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 234249 |       pC->nRecord = nByte;
+        |                   ~ ^~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:238132:28: warning: implicit conversion loses integer precision: 'long' to 'int' [-Wshorten-64-to-32]
+ 238132 |       pNew->nRecord = pOut - pNew->aRecord;
+        |                     ~ ~~~~~^~~~~~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:238168:30: warning: implicit conversion loses integer precision: 'long' to 'int' [-Wshorten-64-to-32]
+ 238168 |         pNew->nRecord = pOut - pNew->aRecord;
+        |                       ~ ~~~~~^~~~~~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:238854:22: warning: implicit conversion loses integer precision: 'long' to 'int' [-Wshorten-64-to-32]
+ 238854 |     pBuf->nBuf = pOut-pBuf->aBuf;
+        |                ~ ~~~~^~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:238926:26: warning: implicit conversion loses integer precision: 'long' to 'int' [-Wshorten-64-to-32]
+ 238926 |       pBuf->nBuf = (pOut - pBuf->aBuf);
+        |                  ~  ~~~~~^~~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:239018:29: warning: implicit conversion loses integer precision: 'long' to 'int' [-Wshorten-64-to-32]
+ 239017 |               sessionAppendRecordMerge(&sOut, pIter->nCol,
+        |               ~~~~~~~~~~~~~~~~~~~~~~~~
+ 239018 |                   pCsr, nRec-(pCsr-aRec),
+        |                         ~~~~^~~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:242000:9: warning: code will never be executed [-Wunreachable-code]
+ 242000 |         fts5YYMINORTYPE fts5yylhsminor;
+        |         ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:244037:29: warning: implicit conversion loses integer precision: 'sqlite3_int64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 244037 |           pConfig->t.nArg = nArg;
+        |                           ~ ^~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:245078:23: warning: implicit conversion loses integer precision: 'long' to 'int' [-Wshorten-64-to-32]
+ 245078 |       pToken->n = (z2 - z);
+        |                 ~  ~~~^~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:245090:23: warning: implicit conversion loses integer precision: 'long' to 'int' [-Wshorten-64-to-32]
+ 245090 |       pToken->n = (z2 - z);
+        |                 ~  ~~~^~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:247128:18: warning: ambiguous expansion of macro 'MAX' [-Wambiguous-macro]
+ 247128 |     p->iHeight = MAX(p->iHeight, p->apChild[ii]->iHeight + 1);
+        |                  ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  218 | #define MAX(a, b) (((a)>(b))?(a):(b))
+      |         ^
+ 15576 | # define MAX(A,B) ((A)>(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:248538:18: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 248538 |       int nMin = MIN(p1->nKey, p2->nKey);
+        |                  ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:249522:10: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 249522 |   nCmp = MIN(pLeft->n, pRight->n);
+        |          ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:249597:20: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 249597 |         pRet->nn = nByte;
+        |                  ~ ^~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:249604:50: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 249604 |         rc = sqlite3_blob_read(p->pReader, aOut, nByte, 0);
+        |              ~~~~~~~~~~~~~~~~~                   ^~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:249904:27: warning: ambiguous expansion of macro 'MAX' [-Wambiguous-macro]
+ 249904 |             nOriginCntr = MAX(nOriginCntr, pSeg->iOrigin2);
+        |                           ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  218 | #define MAX(a, b) (((a)>(b))?(a):(b))
+      |         ^
+ 15576 | # define MAX(A,B) ((A)>(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:250595:18: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 250595 |       int iEod = MIN(pIter->iEndofDoclist, pIter->pLeaf->szLeaf);
+        |                  ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:250592:23: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 250592 |     int iOff = pIter->iLeafOffset;  /* Offset to read at */
+        |         ~~~~   ~~~~~~~^~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:250666:28: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 250666 |   pIter->iTermLeafOffset = iOff;
+        |                          ~ ^~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:250707:26: warning: implicit conversion loses integer precision: 'const i64' (aka 'const long long') to 'int' [-Wshorten-64-to-32]
+ 250707 |       pNew->nTombstone = nTomb;
+        |                        ~ ^~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:250777:18: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 250777 |   int i = pIter->iLeafOffset;
+        |       ~   ~~~~~~~^~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:250815:29: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 250815 |       pIter->nRowidOffset = nNew;
+        |                           ~ ^~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:250818:50: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 250818 |     pIter->aRowidOffset[iRowidOffset++] = pIter->iLeafOffset;
+        |                                         ~ ~~~~~~~^~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:250911:19: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 250911 |     iOff = pIter->iLeafOffset;
+        |          ~ ~~~~~~~^~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:250940:17: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 250940 |   iOff = pIter->iLeafOffset;
+        |        ~ ~~~~~~~^~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:251021:29: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 251021 |   iOff = pIter->iLeafOffset + pIter->nPos;
+        |        ~ ~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:251296:19: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 251296 |       nCmp = (u32)MIN(nNew, nTerm-nMatch);
+        |                   ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:251364:35: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 251364 |   pIter->iTermLeafOffset = pIter->iLeafOffset;
+        |                          ~ ~~~~~~~^~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:252171:18: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 252171 |     pNew->nSeg = nSlot;
+        |                ~ ^~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:252301:16: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 252301 |   int nChunk = MIN(nRem, pSeg->pLeaf->szLeaf - pSeg->iLeafOffset);
+        |                ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:252326:16: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 252326 |       nChunk = MIN(nRem, pData->szLeaf - 4);
+        |                ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:252301:46: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 252301 |   int nChunk = MIN(nRem, pSeg->pLeaf->szLeaf - pSeg->iLeafOffset);
+        |       ~~~~~~             ~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |                                   ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:252423:32: warning: implicit conversion loses integer precision: 'long' to 'int' [-Wshorten-64-to-32]
+ 252423 |           pIter->base.nData = p-aCopy;
+        |                             ~ ~^~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:252543:30: warning: implicit conversion loses integer precision: 'long' to 'int' [-Wshorten-64-to-32]
+ 252543 |     pIter->base.nData = aOut - pIter->poslist.p;
+        |                       ~ ~~~~~^~~~~~~~~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:252670:14: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 252670 |       nSeg = MIN(pStruct->aLevel[iLevel].nSeg, nSegment);
+        |              ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:253176:14: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 253176 |   int nMin = MIN(pPage->term.n, nTerm);
+        |              ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:253651:38: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 253651 |         int nPercent = (nTomb * 100) / nEntry;
+        |             ~~~~~~~~   ~~~~~~~~~~~~~~^~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:254128:17: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 254128 |       nPrefix = MIN(nPrefix, nPrefix2);
+        |                 ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:254185:51: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 254185 |           fts5DataWrite(p, iId, pTerm->p, iTermOff+nTermIdx);
+        |           ~~~~~~~~~~~~~                   ~~~~~~~~^~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:254574:20: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 254574 |     pNew->nLevel = MIN(pStruct->nLevel+1, FTS5_MAX_LEVEL);
+        |                    ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:255239:18: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 255239 |         int n1 = MIN(nHalf, pT->nMap-i1);
+        |                  ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:255240:18: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 255240 |         int n2 = MIN(nHalf, pT->nMap-i1-n1);
+        |                  ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:255239:22: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 255239 |         int n1 = MIN(nHalf, pT->nMap-i1);
+        |             ~~       ^~~~~
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |                               ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:255239:37: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 255239 |         int n1 = MIN(nHalf, pT->nMap-i1);
+        |             ~~              ~~~~~~~~^~~
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |                                   ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:255240:22: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 255240 |         int n2 = MIN(nHalf, pT->nMap-i1-n1);
+        |             ~~       ^~~~~
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |                               ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:255240:40: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 255240 |         int n2 = MIN(nHalf, pT->nMap-i1-n1);
+        |             ~~              ~~~~~~~~~~~^~~
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |                                   ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:256338:12: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 256338 |   i2 = pT->nMap;
+        |      ~ ~~~~^~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:256693:22: warning: ambiguous expansion of macro 'MAX' [-Wambiguous-macro]
+ 256693 |   int nSlotPerPage = MAX(MINSLOT, (p->pConfig->pgsz - 8) / szKey);
+        |                      ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  218 | #define MAX(a, b) (((a)>(b))?(a):(b))
+      |         ^
+ 15576 | # define MAX(A,B) ((A)>(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:256723:13: warning: ambiguous expansion of macro 'MAX' [-Wambiguous-macro]
+ 256723 |     nSlot = MAX(nElem*4, MINSLOT);
+        |             ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  218 | #define MAX(a, b) (((a)>(b))?(a):(b))
+      |         ^
+ 15576 | # define MAX(A,B) ((A)>(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:257241:53: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 257241 |         res = fts5Memcmp(&pLeaf->p[iOff], zIdxTerm, MIN(nTerm, nIdxTerm));
+        |                                                     ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:259152:40: warning: implicit conversion loses integer precision: 'long' to 'int' [-Wshorten-64-to-32]
+ 259152 |       pSorter->aIdx[i] = &aBlob[nBlob] - a;
+        |                        ~ ~~~~~~~~~~~~~~^~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:261897:38: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 261897 |     sqlite3_result_text(pCtx, zText, nText, SQLITE_TRANSIENT);
+        |     ~~~~~~~~~~~~~~~~~~~              ^~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:261920:38: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 261920 |     sqlite3_result_blob(pCtx, pBlob, nBlob, sqlite3_free);
+        |     ~~~~~~~~~~~~~~~~~~~              ^~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:264142:19: warning: implicit conversion loses integer precision: 'long' to 'int' [-Wshorten-64-to-32]
+ 264142 |         is = zCsr - (unsigned char*)pText;
+        |            ~ ~~~~~^~~~~~~~~~~~~~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:264149:21: warning: implicit conversion loses integer precision: 'long' to 'int' [-Wshorten-64-to-32]
+ 264149 |           is = zCsr - (unsigned char*)pText;
+        |              ~ ~~~~~^~~~~~~~~~~~~~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:264199:17: warning: implicit conversion loses integer precision: 'long' to 'int' [-Wshorten-64-to-32]
+ 264199 |       ie = zCsr - (unsigned char*)pText;
+        |          ~ ~~~~~^~~~~~~~~~~~~~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:264203:37: warning: implicit conversion loses integer precision: 'long' to 'int' [-Wshorten-64-to-32]
+ 264203 |     rc = xToken(pCtx, 0, aFold, zOut-aFold, is, ie);
+        |          ~~~~~~                 ~~~~^~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:265030:24: warning: implicit conversion loses integer precision: 'long' to 'int' [-Wshorten-64-to-32]
+ 265030 |       aStart[ii] = zIn - (const unsigned char*)pText;
+        |                  ~ ~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:265052:19: warning: implicit conversion loses integer precision: 'long' to 'int' [-Wshorten-64-to-32]
+ 265052 |       iNext = zIn - (const unsigned char*)pText;
+        |             ~ ~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:265062:36: warning: implicit conversion loses integer precision: 'long' to 'int' [-Wshorten-64-to-32]
+ 265062 |     rc = xToken(pCtx, 0, aBuf, zOut-aBuf, aStart[0], iNext);
+        |          ~~~~~~                ~~~~^~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:266727:18: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 266727 |       int nCmp = MIN(nTerm, pCsr->nLeTerm);
+        |                  ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:266801:20: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 266801 |         int nCmp = MIN(nTerm, pCsr->nLeTerm);
+        |                    ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+192 warnings generated.
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:32725:25: warning: ambiguous expansion of macro 'MAX' [-Wambiguous-macro]
+ 32725 |           szBufNeeded = MAX(e2,0)+(i64)precision+(i64)width+15;
+       |                         ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  218 | #define MAX(a, b) (((a)>(b))?(a):(b))
+      |         ^
+ 15576 | # define MAX(A,B) ((A)>(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:32858:60: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 32857 |             sqlite3_str_append(pAccum,
+       |             ~~~~~~~~~~~~~~~~~~
+ 32858 |                  &pAccum->zText[pAccum->nChar-nCopyBytes], nCopyBytes);
+       |                                                            ^~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:33023:18: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 33023 |         length = j;
+       |                ~ ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:38045:14: warning: implicit conversion loses integer precision: 'sqlite3_int64' (aka 'long long') to 'VList' (aka 'int') [-Wshorten-64-to-32]
+ 38045 |     pIn[0] = nAlloc;
+       |            ~ ^~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:41207:14: warning: implicit conversion loses integer precision: 'ssize_t' (aka 'long') to 'int' [-Wshorten-64-to-32]
+ 41207 |     do{ rc = osWrite(fd, "S", 1); }while( rc<0 && errno==EINTR );
+       |            ~ ^~~~~~~~~~~~~~~~~~~
+ 40124 | #define osWrite     ((ssize_t(*)(int,const void*,size_t))aSyscall[11].pCurrent)
+       |                     ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:42975:42: warning: implicit conversion loses integer precision: 'unsigned long long' to 'int' [-Wshorten-64-to-32]
+ 42975 |         int sharedLockByte = SHARED_FIRST+pInode->sharedByte;
+       |             ~~~~~~~~~~~~~~   ~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:43117:11: warning: implicit conversion loses integer precision: 'ssize_t' (aka 'long') to 'int' [-Wshorten-64-to-32]
+ 43117 |     got = osPread(id->h, pBuf, cnt, offset);
+       |         ~ ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 40114 | #define osPread     ((ssize_t(*)(int,void*,size_t,off_t))aSyscall[9].pCurrent)
+       |                     ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:43184:35: warning: implicit conversion loses integer precision: 'sqlite3_int64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 43184 |       int nCopy = pFile->mmapSize - offset;
+       |           ~~~~~   ~~~~~~~~~~~~~~~~^~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:44823:33: warning: implicit conversion loses integer precision: 'off_t' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 44823 |           for(iPg=(sStat.st_size/pgsz); iPg<(nByte/pgsz); iPg++){
+       |                  ~ ~~~~~~~~~~~~~^~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:46773:17: warning: implicit conversion loses integer precision: 'ssize_t' (aka 'long') to 'int' [-Wshorten-64-to-32]
+ 46773 |       do{ got = osRead(fd, zBuf, nBuf); }while( got<0 && errno==EINTR );
+       |               ~ ^~~~~~~~~~~~~~~~~~~~~~
+ 40107 | #define osRead      ((ssize_t(*)(int,void*,size_t))aSyscall[8].pCurrent)
+       |                     ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:47090:11: warning: implicit conversion loses integer precision: 'unsigned long' to 'int' [-Wshorten-64-to-32]
+ 47090 |     len = strlcat(lPath, "sqliteplocks", maxLen);
+       |         ~ ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In module '_string' imported from /Applications/Xcode_16.4.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk/usr/include/string.h:58:
+  119 |                 __builtin___strlcat_chk (dest, __VA_ARGS__, __darwin_obsz (dest))
+      |                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:47098:11: warning: implicit conversion loses integer precision: 'unsigned long' to 'int' [-Wshorten-64-to-32]
+ 47098 |     len = strlcat(lPath, "/", maxLen);
+       |         ~ ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+In module '_string' imported from /Applications/Xcode_16.4.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk/usr/include/string.h:58:
+  119 |                 __builtin___strlcat_chk (dest, __VA_ARGS__, __darwin_obsz (dest))
+      |                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:47391:19: warning: implicit conversion loses integer precision: 'ssize_t' (aka 'long') to 'int' [-Wshorten-64-to-32]
+ 47391 |         int len = osPread(conchFile->h, tBuf, PROXY_MAXCONCHLEN, 0);
+       |             ~~~   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 40114 | #define osPread     ((ssize_t(*)(int,void*,size_t,off_t))aSyscall[9].pCurrent)
+       |                     ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:47554:37: warning: implicit conversion loses integer precision: 'unsigned long' to 'int' [-Wshorten-64-to-32]
+ 47554 |         writeSize = PROXY_PATHINDEX + strlen(&writeBuffer[PROXY_PATHINDEX]);
+       |                   ~ ~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:47769:53: warning: implicit conversion loses integer precision: 'unsigned long' to 'int' [-Wshorten-64-to-32]
+ 47769 |     int len = strlen((char *)pFile->lockingContext) - strlen(DOTLOCK_SUFFIX);
+       |         ~~~   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:57678:16: warning: implicit conversion loses integer precision: 'u64' (aka 'unsigned long long') to 'unsigned int' [-Wshorten-64-to-32]
+ 57678 |     p->nHash = nNew;
+       |              ~ ^~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:60588:57: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'u32' (aka 'unsigned int') [-Wshorten-64-to-32]
+ 60588 |   put32bits(&zHeader[sizeof(aJournalMagic)+16], pPager->pageSize);
+       |   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~
+ 60174 | #define put32bits(A,B)  sqlite3Put4byte((u8*)A,B)
+       |                         ~~~~~~~~~~~~~~~        ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:60707:27: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'u32' (aka 'unsigned int') [-Wshorten-64-to-32]
+ 60707 |       iPageSize = pPager->pageSize;
+       |                 ~ ~~~~~~~~^~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:61305:27: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 61305 |   int i = pPager->pageSize-200;          /* Loop counter */
+       |       ~   ~~~~~~~~~~~~~~~~^~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:61391:47: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 61391 |   rc = sqlite3OsRead(jfd, (u8*)aData, pPager->pageSize, (*pOffset)+4);
+       |        ~~~~~~~~~~~~~                  ~~~~~~~~^~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:61493:58: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 61493 |     rc = sqlite3OsWrite(pPager->fd, (u8 *)aData, pPager->pageSize, ofst);
+       |          ~~~~~~~~~~~~~~                          ~~~~~~~~^~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:61729:26: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 61729 |     int szPage = pPager->pageSize;
+       |         ~~~~~~   ~~~~~~~~^~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:61875:31: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'u32' (aka 'unsigned int') [-Wshorten-64-to-32]
+ 61875 |   u32 savedPageSize = pPager->pageSize;
+       |       ~~~~~~~~~~~~~   ~~~~~~~~^~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:62099:59: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 62099 |     rc = sqlite3WalReadFrame(pPager->pWal, iFrame,pPager->pageSize,pPg->pData);
+       |          ~~~~~~~~~~~~~~~~~~~                      ~~~~~~~~^~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:62104:56: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 62104 |     rc = sqlite3OsRead(pPager->fd, pPg->pData, pPager->pageSize, iOffset);
+       |          ~~~~~~~~~~~~~                         ~~~~~~~~^~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:62283:15: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 62282 |   rc = sqlite3WalFrames(pPager->pWal,
+       |        ~~~~~~~~~~~~~~~~
+ 62283 |       pPager->pageSize, pList, nTruncate, isCommit, pPager->walSyncFlags
+       |       ~~~~~~~~^~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:62881:24: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'u32' (aka 'unsigned int') [-Wshorten-64-to-32]
+ 62881 |   *pPageSize = pPager->pageSize;
+       |              ~ ~~~~~~~~^~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:63257:69: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 63257 |     sqlite3WalClose(pPager->pWal, db, pPager->walSyncFlags, pPager->pageSize,a);
+       |     ~~~~~~~~~~~~~~~                                         ~~~~~~~~^~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:63544:54: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 63544 |       rc = sqlite3OsWrite(pPager->fd, pData, pPager->pageSize, offset);
+       |            ~~~~~~~~~~~~~~                    ~~~~~~~~^~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:63634:59: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 63634 |         rc = sqlite3OsWrite(pPager->sjfd, pData2, pPager->pageSize, offset+4);
+       |              ~~~~~~~~~~~~~~                       ~~~~~~~~^~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:64746:51: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 64745 |     rc = sqlite3OsFetch(pPager->fd,
+       |          ~~~~~~~~~~~~~~
+ 64746 |         (i64)(pgno-1) * pPager->pageSize, pPager->pageSize, &pData
+       |                                           ~~~~~~~~^~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:65081:52: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 65081 |   rc = sqlite3OsWrite(pPager->jfd, pData2, pPager->pageSize, iOff+4);
+       |        ~~~~~~~~~~~~~~                      ~~~~~~~~^~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:65900:5: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 65899 |   int perPageSize = pPager->pageSize + pPager->nExtra
+       |       ~~~~~~~~~~~   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 65900 |     + (int)(sizeof(PgHdr) + 5*sizeof(void*));
+       |     ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:65903:12: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 65901 |   return perPageSize*sqlite3PcachePagecount(pPager->pPCache)
+       |   ~~~~~~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 65902 |            + sqlite3MallocSize(pPager)
+       |            ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 65903 |            + pPager->pageSize;
+       |            ^~~~~~~~~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:65910:10: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 65910 |   return sqlite3PcachePageRefcount(pPage);
+       |   ~~~~~~ ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:66597:39: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 66594 |     rc = sqlite3WalCheckpoint(pPager->pWal, db, eMode,
+       |          ~~~~~~~~~~~~~~~~~~~~
+ 66595 |         (eMode<=SQLITE_CHECKPOINT_PASSIVE ? 0 : pPager->xBusyHandler),
+ 66596 |         pPager->pBusyHandlerArg,
+ 66597 |         pPager->walSyncFlags, pPager->pageSize, (u8 *)pPager->pTmpSpace,
+       |                               ~~~~~~~~^~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:66762:36: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 66761 |       rc = sqlite3WalClose(pPager->pWal, db, pPager->walSyncFlags,
+       |            ~~~~~~~~~~~~~~~
+ 66762 |                            pPager->pageSize, (u8*)pPager->pTmpSpace);
+       |                            ~~~~~~~~^~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:68387:19: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 68387 |       u32 iLast = MIN(iLastFrame, HASHTABLE_NPAGE_ONE+iPg*HASHTABLE_NPAGE);
+       |                   ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:68383:40: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'u32' (aka 'unsigned int') [-Wshorten-64-to-32]
+ 68383 |     iLastFrame = (nSize - WAL_HDRSIZE) / szFrame;
+       |                ~ ~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:74480:32: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 74480 |     rc = defragmentPage(pPage, MIN(4, pPage->nFree - (2+nByte)));
+       |                                ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:75189:43: warning: ambiguous expansion of macro 'MAX' [-Wambiguous-macro]
+ 75189 |       char *zFullPathname = sqlite3Malloc(MAX(nFullPathname,nFilename));
+       |                                           ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  218 | #define MAX(a, b) (((a)>(b))?(a):(b))
+      |         ^
+ 15576 | # define MAX(A,B) ((A)>(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:78002:11: warning: ambiguous expansion of macro 'MAX' [-Wambiguous-macro]
+ 78002 |     amt = MAX(0, (int)(pCur->pPage->aDataEnd - pCur->info.pPayload));
+       |           ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  218 | #define MAX(a, b) (((a)>(b))?(a):(b))
+      |         ^
+ 15576 | # define MAX(A,B) ((A)>(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:80495:16: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 80495 |     int nAdd = MIN(nNew,iOld-iNew);
+       |                ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:82359:23: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 82359 |           int nCopy = MIN(nOut, nIn);
+       |                       ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:82393:18: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 82393 |           nOut = MIN(pBt->usableSize - 4, nRem);
+       |                  ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:84401:21: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 84401 |   const int nCopy = MIN(nSrcPgsz, nDestPgsz);
+       |                     ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:84672:18: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 84672 |           iEnd = MIN(PENDING_BYTE + pgszDest, iSize);
+       |                  ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:86227:49: warning: ambiguous expansion of macro 'MAX' [-Wambiguous-macro]
+ 86227 |     if( sqlite3VdbeMemClearAndResize(pMem, (int)MAX(nAlloc,32)) ){
+       |                                                 ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  218 | #define MAX(a, b) (((a)>(b))?(a):(b))
+      |         ^
+ 15576 | # define MAX(A,B) ((A)>(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:86309:49: warning: ambiguous expansion of macro 'MAX' [-Wambiguous-macro]
+ 86309 |     if( sqlite3VdbeMemClearAndResize(pMem, (int)MAX(nAlloc,32)) ){
+       |                                                 ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  218 | #define MAX(a, b) (((a)>(b))?(a):(b))
+      |         ^
+ 15576 | # define MAX(A,B) ((A)>(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:92009:22: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 92009 |           int nCmp = MIN(mem1.n, pRhs->n);
+       |                      ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:92037:22: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 92037 |           int nCmp = MIN(nStr, pRhs->n);
+       |                      ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:92245:12: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 92245 |     nCmp = MIN( pPKey2->n, nStr );
+       |            ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:94656:42: warning: implicit conversion loses integer precision: 'sqlite3_uint64' (aka 'unsigned long long') to 'int' [-Wshorten-64-to-32]
+ 94656 |     rc = sqlite3_bind_zeroblob(pStmt, i, n);
+       |          ~~~~~~~~~~~~~~~~~~~~~           ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:95497:19: warning: ambiguous expansion of macro 'MAX' [-Wambiguous-macro]
+ 95497 |       nextIndex = MAX(idx + 1, nextIndex);
+       |                   ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  218 | #define MAX(a, b) (((a)>(b))?(a):(b))
+      |         ^
+ 15576 | # define MAX(A,B) ((A)>(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:95475:41: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 95475 |       sqlite3_str_append(&out, zRawSql, n);
+       |       ~~~~~~~~~~~~~~~~~~                ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:95493:53: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 95493 |         idx = sqlite3VdbeParameterIndex(p, zRawSql, nToken);
+       |               ~~~~~~~~~~~~~~~~~~~~~~~~~             ^~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:96416:48: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'u32' (aka 'unsigned int') [-Wshorten-64-to-32]
+ 96416 |       rc = sqlite3BtreePayload(pC->uc.pCursor, iOffset, len, pBuf);
+       |            ~~~~~~~~~~~~~~~~~~~                 ^~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:96439:50: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'u32' (aka 'unsigned int') [-Wshorten-64-to-32]
+ 96439 |     rc = sqlite3VdbeMemFromBtree(pC->uc.pCursor, iOffset, len, pDest);
+       |          ~~~~~~~~~~~~~~~~~~~~~~~                 ^~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:99361:21: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 99361 |     pOut->u.nZero = nZero;
+       |                   ~ ^~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:106058:28: warning: ambiguous expansion of macro 'MAX' [-Wambiguous-macro]
+ 106058 |       sqlite3_int64 nNew = MAX(128, 2*(sqlite3_int64)p->nAlloc);
+        |                            ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  218 | #define MAX(a, b) (((a)>(b))?(a):(b))
+      |         ^
+ 15576 | # define MAX(A,B) ((A)>(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:106062:19: warning: implicit conversion loses integer precision: 'sqlite3_int64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 106062 |       p->nAlloc = nNew;
+        |                 ~ ^~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:106339:25: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 106339 |   res = memcmp(v1, v2, (MIN(n1, n2) - 13)/2);
+        |                         ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:106535:17: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 106535 |       mxCache = MIN(mxCache, SQLITE_MAX_PMASZ);
+        |                 ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:106536:28: warning: ambiguous expansion of macro 'MAX' [-Wambiguous-macro]
+ 106536 |       pSorter->mxPmaSize = MAX(pSorter->mnPmaSize, (int)mxCache);
+        |                            ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  218 | #define MAX(a, b) (((a)>(b))?(a):(b))
+      |         ^
+ 15576 | # define MAX(A,B) ((A)>(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:107372:26: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 107372 |     pSorter->mxKeysize = nPMA;
+        |                        ~ ^~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:107376:33: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 107376 |     int nMin = pSorter->iMemory + nReq;
+        |         ~~~~   ~~~~~~~~~~~~~~~~~^~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:107383:45: warning: implicit conversion loses integer precision: 'long' to 'int' [-Wshorten-64-to-32]
+ 107383 |         iListOff = (u8*)pSorter->list.pList - pSorter->list.aMemory;
+        |                  ~ ~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:107394:26: warning: implicit conversion loses integer precision: 'sqlite3_int64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 107394 |       pSorter->nMemory = nNew;
+        |                        ~ ^~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:107548:19: warning: ambiguous expansion of macro 'MAX' [-Wambiguous-macro]
+ 107548 |     pIncr->mxSz = MAX(pTask->pSorter->mxKeysize+9,pTask->pSorter->mxPmaSize/2);
+        |                   ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  218 | #define MAX(a, b) (((a)>(b))?(a):(b))
+      |         ^
+ 15576 | # define MAX(A,B) ((A)>(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:108002:21: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 108002 |           nReader = MIN(pTask->nPMA - i, SORTER_MAX_MERGE_COUNT);
+        |                     ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:108879:17: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 108879 |     int nCopy = MIN(nRead, (p->nChunkSize - iChunkOffset));
+        |                 ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:108919:40: warning: implicit conversion loses integer precision: 'sqlite_int64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 108919 |         nChunk = copy.endpoint.iOffset - iOff;
+        |                ~ ~~~~~~~~~~~~~~~~~~~~~~^~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:108986:22: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 108986 |         int iSpace = MIN(nWrite, p->nChunkSize - iChunkOffset);
+        |                      ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:109200:10: warning: ambiguous expansion of macro 'MAX' [-Wambiguous-macro]
+ 109200 |   return MAX(pVfs->szOsFile, (int)sizeof(MemJournal));
+        |          ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  218 | #define MAX(a, b) (((a)>(b))?(a):(b))
+      |         ^
+ 15576 | # define MAX(A,B) ((A)>(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:121896:13: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 121896 |     int n = sqlite3GetToken(&z[nRet], &t);
+        |         ~   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:122359:18: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 122359 |     int nToken = sqlite3GetToken(&zTmp[iOff], &t);
+        |         ~~~~~~   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:122401:72: warning: implicit conversion loses integer precision: 'long' to 'int' [-Wshorten-64-to-32]
+ 122401 |   nCons = alterRtrimConstraint(pParse->db, pCons, pParse->sLastToken.z - pCons);
+        |           ~~~~~~~~~~~~~~~~~~~~                    ~~~~~~~~~~~~~~~~~~~~~^~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:122521:72: warning: implicit conversion loses integer precision: 'long' to 'int' [-Wshorten-64-to-32]
+ 122521 |   nCons = alterRtrimConstraint(pParse->db, pCons, pParse->sLastToken.z - pCons);
+        |           ~~~~~~~~~~~~~~~~~~~~                    ~~~~~~~~~~~~~~~~~~~~~^~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:123609:18: warning: ambiguous expansion of macro 'MAX' [-Wambiguous-macro]
+ 123609 |   pParse->nTab = MAX(pParse->nTab, iTab);
+        |                  ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  218 | #define MAX(a, b) (((a)>(b))?(a):(b))
+      |         ^
+ 15576 | # define MAX(A,B) ((A)>(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:130012:15: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 130012 |   int nCopy = MIN(ArraySize(aVal), pIdx->nKeyCol);
+        |               ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:130279:20: warning: implicit conversion loses integer precision: 'sqlite3_int64' (aka 'long long') to 'u32' (aka 'unsigned int') [-Wshorten-64-to-32]
+ 130279 |     pSrc->nAlloc = nAlloc;
+        |                  ~ ^~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:133459:24: warning: implicit conversion loses integer precision: 'sqlite3_int64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 133459 |     sqlite3_randomness(n, p);
+        |     ~~~~~~~~~~~~~~~~~~ ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:133460:44: warning: implicit conversion loses integer precision: 'sqlite3_int64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 133460 |     sqlite3_result_blob(context, (char*)p, n, sqlite3_free);
+        |     ~~~~~~~~~~~~~~~~~~~                    ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:133997:31: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'u32' (aka 'unsigned int') [-Wshorten-64-to-32]
+ 133997 |         pStr->nChar = nBlob*2 + 3;
+        |                     ~ ~~~~~~~~^~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:134073:11: warning: implicit conversion loses integer precision: 'long' to 'int' [-Wshorten-64-to-32]
+ 134073 |     n = z - &zIn[i];
+        |       ~ ~~^~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:134310:39: warning: implicit conversion loses integer precision: 'long' to 'int' [-Wshorten-64-to-32]
+ 134310 |   sqlite3_result_blob(pCtx, pBlob, (p - pBlob), sqlite3_free);
+        |   ~~~~~~~~~~~~~~~~~~~               ~~^~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:137661:75: warning: possible misuse of comma operator here [-Wcomma]
+ 137661 |       pRaise = sqlite3Expr(db, TK_STRING, "FOREIGN KEY constraint failed"),
+        |                                                                           ^
+ 137661 |       pRaise = sqlite3Expr(db, TK_STRING, "FOREIGN KEY constraint failed"),
+        |       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        |       (void)(                                                             )
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:142782:36: warning: implicit conversion loses integer precision: 'u64' (aka 'unsigned long long') to 'int' [-Wshorten-64-to-32]
+ 142782 |         sqlite3OsDlError(pVfs, nMsg-1, zErrmsg);
+        |         ~~~~~~~~~~~~~~~~       ~~~~^~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:142823:34: warning: implicit conversion loses integer precision: 'u64' (aka 'unsigned long long') to 'int' [-Wshorten-64-to-32]
+ 142823 |       sqlite3OsDlError(pVfs, nMsg-1, zErrmsg);
+        |       ~~~~~~~~~~~~~~~~       ~~~~^~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:146025:28: warning: implicit conversion loses integer precision: 'const u64' (aka 'const unsigned long long') to 'int' [-Wshorten-64-to-32]
+ 146025 |     int iCookie = pPragma->iArg;  /* Which cookie to read or write */
+        |         ~~~~~~~   ~~~~~~~~~^~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:154021:29: warning: implicit conversion loses integer precision: 'u64' (aka 'unsigned long long') to 'int' [-Wshorten-64-to-32]
+ 154021 |     int flags = pParse->db->flags;
+        |         ~~~~~   ~~~~~~~~~~~~^~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:164719:19: warning: ambiguous expansion of macro 'MAX' [-Wambiguous-macro]
+ 164719 |       nExtraReg = MAX(nExtraReg, pLoop->u.btree.nBtm);
+        |                   ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  218 | #define MAX(a, b) (((a)>(b))?(a):(b))
+      |         ^
+ 15576 | # define MAX(A,B) ((A)>(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:164726:19: warning: ambiguous expansion of macro 'MAX' [-Wambiguous-macro]
+ 164726 |       nExtraReg = MAX(nExtraReg, pLoop->u.btree.nTop);
+        |                   ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  218 | #define MAX(a, b) (((a)>(b))?(a):(b))
+      |         ^
+ 15576 | # define MAX(A,B) ((A)>(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:168124:43: warning: possible misuse of comma operator here [-Wcomma]
+ 168124 |              && (pX = pTerm->pExpr->pRight, ALWAYS(pX!=0))
+        |                                           ^
+ 168124 |              && (pX = pTerm->pExpr->pRight, ALWAYS(pX!=0))
+        |                  ^~~~~~~~~~~~~~~~~~~~~~~~~
+        |                  (void)(                  )
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:168807:14: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 168807 |   mxBitCol = MIN(BMS-1,pTable->nCol);
+        |              ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:170416:25: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 170416 |       pTemplate->rRun = MIN(p->rRun, pTemplate->rRun);
+        |                         ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:170417:25: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 170417 |       pTemplate->nOut = MIN(p->nOut - 1, pTemplate->nOut);
+        |                         ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:170425:25: warning: ambiguous expansion of macro 'MAX' [-Wambiguous-macro]
+ 170425 |       pTemplate->rRun = MAX(p->rRun, pTemplate->rRun);
+        |                         ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  218 | #define MAX(a, b) (((a)>(b))?(a):(b))
+      |         ^
+ 15576 | # define MAX(A,B) ((A)>(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:170426:25: warning: ambiguous expansion of macro 'MAX' [-Wambiguous-macro]
+ 170426 |       pTemplate->nOut = MAX(p->nOut + 1, pTemplate->nOut);
+        |                         ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  218 | #define MAX(a, b) (((a)>(b))?(a):(b))
+      |         ^
+ 15576 | # define MAX(A,B) ((A)>(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:170856:10: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 170856 |   nCmp = MIN(nCmp, (pIdx->nColumn - nEq));
+        |          ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:173616:19: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 173616 |   aFrom[0].nRow = MIN(pParse->nQueryLoop, 48);  assert( 48==sqlite3LogEst(28) );
+        |                   ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:176049:28: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 176049 |     int nSize = (p->nTotal / p->nParam);
+        |         ~~~~~    ~~~~~~~~~~^~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:177598:12: warning: ambiguous expansion of macro 'MAX' [-Wambiguous-macro]
+ 177598 |     nArg = MAX(nArg, windowArgCount(pWin));
+        |            ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  218 | #define MAX(a, b) (((a)>(b))?(a):(b))
+      |         ^
+ 15576 | # define MAX(A,B) ((A)>(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:178886:64: warning: implicit conversion loses integer precision: 'sqlite3_uint64' (aka 'unsigned long long') to 'int' [-Wshorten-64-to-32]
+ 178886 |     void *p = sqlite3FaultSim(700) ? 0 : sqlite3_realloc(pOld, newSize);
+        |                                          ~~~~~~~~~~~~~~~       ^~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:183838:173: warning: implicit conversion loses integer precision: 'long' to 'int' [-Wshorten-64-to-32]
+ 183838 |   sqlite3AlterAddConstraint(pParse, yymsp[-8].minor.yy203, &yymsp[-6].minor.yy0, &yymsp[-5].minor.yy0, yymsp[-3].minor.yy0.z+1, (yymsp[-1].minor.yy0.z-yymsp[-3].minor.yy0.z-1));
+        |   ~~~~~~~~~~~~~~~~~~~~~~~~~                                                                                                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:183844:154: warning: implicit conversion loses integer precision: 'long' to 'int' [-Wshorten-64-to-32]
+ 183844 |   sqlite3AlterAddConstraint(pParse, yymsp[-6].minor.yy203, &yymsp[-4].minor.yy0, 0, yymsp[-3].minor.yy0.z+1, (yymsp[-1].minor.yy0.z-yymsp[-3].minor.yy0.z-1));
+        |   ~~~~~~~~~~~~~~~~~~~~~~~~~                                                                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:182506:9: warning: code will never be executed [-Wunreachable-code]
+ 182506 |         YYMINORTYPE yylhsminor;
+        |         ^~~~~~~~~~~~~~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:187039:19: warning: implicit conversion loses integer precision: 'sqlite3_int64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 187039 |     nBig = szAlloc/(3*LOOKASIDE_SMALL+sz);
+        |          ~ ~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:187040:40: warning: implicit conversion loses integer precision: 'sqlite_int64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 187040 |     nSm = (szAlloc - (i64)sz*(i64)nBig)/LOOKASIDE_SMALL;
+        |         ~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:187042:19: warning: implicit conversion loses integer precision: 'sqlite3_int64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 187042 |     nBig = szAlloc/(LOOKASIDE_SMALL+sz);
+        |          ~ ~~~~~~~^~~~~~~~~~~~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:187043:40: warning: implicit conversion loses integer precision: 'sqlite_int64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 187043 |     nSm = (szAlloc - (i64)sz*(i64)nBig)/LOOKASIDE_SMALL;
+        |         ~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:187047:19: warning: implicit conversion loses integer precision: 'sqlite3_int64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 187047 |     nBig = szAlloc/sz;
+        |          ~ ~~~~~~~^~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:212369:28: warning: implicit conversion loses integer precision: 'u64' (aka 'unsigned long long') to 'int' [-Wshorten-64-to-32]
+ 212369 |         pParse->nJson = p->nUsed;
+        |                       ~ ~~~^~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:213603:20: warning: implicit conversion loses integer precision: 'u64' (aka 'unsigned long long') to 'int' [-Wshorten-64-to-32]
+ 213603 |   px.nJson = pStr->nUsed;
+        |            ~ ~~~~~~^~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:214147:43: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'u32' (aka 'unsigned int') [-Wshorten-64-to-32]
+ 214147 |       jsonBlobExpand(pParse, pParse->nBlob+d);
+        |       ~~~~~~~~~~~~~~         ~~~~~~~~~~~~~^~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:216731:19: warning: implicit conversion loses integer precision: 'u64' (aka 'unsigned long long') to 'u32' (aka 'unsigned int') [-Wshorten-64-to-32]
+ 216731 |   u32 n = p->path.nUsed;
+        |       ~   ~~~~~~~~^~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:219319:26: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 219319 |       p1->aCoord[ii].f = MIN(p1->aCoord[ii].f, p2->aCoord[ii].f);
+        |                          ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:219320:28: warning: ambiguous expansion of macro 'MAX' [-Wambiguous-macro]
+ 219320 |       p1->aCoord[ii+1].f = MAX(p1->aCoord[ii+1].f, p2->aCoord[ii+1].f);
+        |                            ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  218 | #define MAX(a, b) (((a)>(b))?(a):(b))
+      |         ^
+ 15576 | # define MAX(A,B) ((A)>(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:219325:26: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 219325 |       p1->aCoord[ii].i = MIN(p1->aCoord[ii].i, p2->aCoord[ii].i);
+        |                          ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:219326:28: warning: ambiguous expansion of macro 'MAX' [-Wambiguous-macro]
+ 219326 |       p1->aCoord[ii+1].i = MAX(p1->aCoord[ii+1].i, p2->aCoord[ii+1].i);
+        |                            ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  218 | #define MAX(a, b) (((a)>(b))?(a):(b))
+      |         ^
+ 15576 | # define MAX(A,B) ((A)>(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:219367:12: warning: ambiguous expansion of macro 'MAX' [-Wambiguous-macro]
+ 219367 |       x1 = MAX(DCOORD(p->aCoord[jj]), DCOORD(aCell[ii].aCoord[jj]));
+        |            ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  218 | #define MAX(a, b) (((a)>(b))?(a):(b))
+      |         ^
+ 15576 | # define MAX(A,B) ((A)>(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:219368:12: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 219368 |       x2 = MIN(DCOORD(p->aCoord[jj+1]), DCOORD(aCell[ii].aCoord[jj+1]));
+        |            ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:220488:21: warning: ambiguous expansion of macro 'MAX' [-Wambiguous-macro]
+ 220488 |   pRtree->nRowEst = MAX(nRow, RTREE_MIN_ROWEST);
+        |                     ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  218 | #define MAX(a, b) (((a)>(b))?(a):(b))
+      |         ^
+ 15576 | # define MAX(A,B) ((A)>(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:220747:10: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 220747 |   return sqlite3GetToken((const unsigned char*)z,&dummy);
+        |   ~~~~~~ ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:223383:20: warning: implicit conversion loses integer precision: 'sqlite3_int64' (aka 'long long') to 'u32' (aka 'unsigned int') [-Wshorten-64-to-32]
+ 223383 |     pBlob->iSize = nBlob;
+        |                  ~ ^~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:233398:66: warning: implicit conversion loses integer precision: 'sqlite3_int64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 233398 |         int iHash = sessionChangeHash(pTab, bPkOnly, p->aRecord, nNew);
+        |                     ~~~~~~~~~~~~~~~~~                            ^~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:233406:21: warning: implicit conversion loses integer precision: 'sqlite3_int64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 233406 |     pTab->nChange = nNew;
+        |                   ~ ^~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:233840:19: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 233840 |       p->nAlloc = nNew;
+        |                 ~ ^~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:234094:22: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 234094 |     int nIncr = nNew - pC->nMaxSize;
+        |         ~~~~~   ~~~~~^~~~~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:234095:20: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 234095 |     pC->nMaxSize = nNew;
+        |                  ~ ^~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:234249:21: warning: implicit conversion loses integer precision: 'sqlite3_int64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 234249 |       pC->nRecord = nByte;
+        |                   ~ ^~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:238132:28: warning: implicit conversion loses integer precision: 'long' to 'int' [-Wshorten-64-to-32]
+ 238132 |       pNew->nRecord = pOut - pNew->aRecord;
+        |                     ~ ~~~~~^~~~~~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:238168:30: warning: implicit conversion loses integer precision: 'long' to 'int' [-Wshorten-64-to-32]
+ 238168 |         pNew->nRecord = pOut - pNew->aRecord;
+        |                       ~ ~~~~~^~~~~~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:238854:22: warning: implicit conversion loses integer precision: 'long' to 'int' [-Wshorten-64-to-32]
+ 238854 |     pBuf->nBuf = pOut-pBuf->aBuf;
+        |                ~ ~~~~^~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:238926:26: warning: implicit conversion loses integer precision: 'long' to 'int' [-Wshorten-64-to-32]
+ 238926 |       pBuf->nBuf = (pOut - pBuf->aBuf);
+        |                  ~  ~~~~~^~~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:239018:29: warning: implicit conversion loses integer precision: 'long' to 'int' [-Wshorten-64-to-32]
+ 239017 |               sessionAppendRecordMerge(&sOut, pIter->nCol,
+        |               ~~~~~~~~~~~~~~~~~~~~~~~~
+ 239018 |                   pCsr, nRec-(pCsr-aRec),
+        |                         ~~~~^~~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:242000:9: warning: code will never be executed [-Wunreachable-code]
+ 242000 |         fts5YYMINORTYPE fts5yylhsminor;
+        |         ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:244037:29: warning: implicit conversion loses integer precision: 'sqlite3_int64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 244037 |           pConfig->t.nArg = nArg;
+        |                           ~ ^~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:245078:23: warning: implicit conversion loses integer precision: 'long' to 'int' [-Wshorten-64-to-32]
+ 245078 |       pToken->n = (z2 - z);
+        |                 ~  ~~~^~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:245090:23: warning: implicit conversion loses integer precision: 'long' to 'int' [-Wshorten-64-to-32]
+ 245090 |       pToken->n = (z2 - z);
+        |                 ~  ~~~^~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:247128:18: warning: ambiguous expansion of macro 'MAX' [-Wambiguous-macro]
+ 247128 |     p->iHeight = MAX(p->iHeight, p->apChild[ii]->iHeight + 1);
+        |                  ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  218 | #define MAX(a, b) (((a)>(b))?(a):(b))
+      |         ^
+ 15576 | # define MAX(A,B) ((A)>(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:248538:18: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 248538 |       int nMin = MIN(p1->nKey, p2->nKey);
+        |                  ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:249522:10: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 249522 |   nCmp = MIN(pLeft->n, pRight->n);
+        |          ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:249597:20: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 249597 |         pRet->nn = nByte;
+        |                  ~ ^~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:249604:50: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 249604 |         rc = sqlite3_blob_read(p->pReader, aOut, nByte, 0);
+        |              ~~~~~~~~~~~~~~~~~                   ^~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:249904:27: warning: ambiguous expansion of macro 'MAX' [-Wambiguous-macro]
+ 249904 |             nOriginCntr = MAX(nOriginCntr, pSeg->iOrigin2);
+        |                           ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  218 | #define MAX(a, b) (((a)>(b))?(a):(b))
+      |         ^
+ 15576 | # define MAX(A,B) ((A)>(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:250595:18: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 250595 |       int iEod = MIN(pIter->iEndofDoclist, pIter->pLeaf->szLeaf);
+        |                  ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:250592:23: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 250592 |     int iOff = pIter->iLeafOffset;  /* Offset to read at */
+        |         ~~~~   ~~~~~~~^~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:250666:28: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 250666 |   pIter->iTermLeafOffset = iOff;
+        |                          ~ ^~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:250707:26: warning: implicit conversion loses integer precision: 'const i64' (aka 'const long long') to 'int' [-Wshorten-64-to-32]
+ 250707 |       pNew->nTombstone = nTomb;
+        |                        ~ ^~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:250777:18: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 250777 |   int i = pIter->iLeafOffset;
+        |       ~   ~~~~~~~^~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:250815:29: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 250815 |       pIter->nRowidOffset = nNew;
+        |                           ~ ^~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:250818:50: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 250818 |     pIter->aRowidOffset[iRowidOffset++] = pIter->iLeafOffset;
+        |                                         ~ ~~~~~~~^~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:250911:19: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 250911 |     iOff = pIter->iLeafOffset;
+        |          ~ ~~~~~~~^~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:250940:17: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 250940 |   iOff = pIter->iLeafOffset;
+        |        ~ ~~~~~~~^~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:251021:29: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 251021 |   iOff = pIter->iLeafOffset + pIter->nPos;
+        |        ~ ~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:251296:19: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 251296 |       nCmp = (u32)MIN(nNew, nTerm-nMatch);
+        |                   ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:251364:35: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 251364 |   pIter->iTermLeafOffset = pIter->iLeafOffset;
+        |                          ~ ~~~~~~~^~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:252171:18: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 252171 |     pNew->nSeg = nSlot;
+        |                ~ ^~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:252301:16: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 252301 |   int nChunk = MIN(nRem, pSeg->pLeaf->szLeaf - pSeg->iLeafOffset);
+        |                ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:252326:16: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 252326 |       nChunk = MIN(nRem, pData->szLeaf - 4);
+        |                ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:252301:46: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 252301 |   int nChunk = MIN(nRem, pSeg->pLeaf->szLeaf - pSeg->iLeafOffset);
+        |       ~~~~~~             ~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |                                   ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:252423:32: warning: implicit conversion loses integer precision: 'long' to 'int' [-Wshorten-64-to-32]
+ 252423 |           pIter->base.nData = p-aCopy;
+        |                             ~ ~^~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:252543:30: warning: implicit conversion loses integer precision: 'long' to 'int' [-Wshorten-64-to-32]
+ 252543 |     pIter->base.nData = aOut - pIter->poslist.p;
+        |                       ~ ~~~~~^~~~~~~~~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:252670:14: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 252670 |       nSeg = MIN(pStruct->aLevel[iLevel].nSeg, nSegment);
+        |              ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:253176:14: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 253176 |   int nMin = MIN(pPage->term.n, nTerm);
+        |              ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:253651:38: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 253651 |         int nPercent = (nTomb * 100) / nEntry;
+        |             ~~~~~~~~   ~~~~~~~~~~~~~~^~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:254128:17: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 254128 |       nPrefix = MIN(nPrefix, nPrefix2);
+        |                 ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:254185:51: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 254185 |           fts5DataWrite(p, iId, pTerm->p, iTermOff+nTermIdx);
+        |           ~~~~~~~~~~~~~                   ~~~~~~~~^~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:254574:20: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 254574 |     pNew->nLevel = MIN(pStruct->nLevel+1, FTS5_MAX_LEVEL);
+        |                    ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:255239:18: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 255239 |         int n1 = MIN(nHalf, pT->nMap-i1);
+        |                  ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:255240:18: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 255240 |         int n2 = MIN(nHalf, pT->nMap-i1-n1);
+        |                  ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:255239:22: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 255239 |         int n1 = MIN(nHalf, pT->nMap-i1);
+        |             ~~       ^~~~~
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |                               ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:255239:37: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 255239 |         int n1 = MIN(nHalf, pT->nMap-i1);
+        |             ~~              ~~~~~~~~^~~
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |                                   ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:255240:22: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 255240 |         int n2 = MIN(nHalf, pT->nMap-i1-n1);
+        |             ~~       ^~~~~
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |                               ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:255240:40: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 255240 |         int n2 = MIN(nHalf, pT->nMap-i1-n1);
+        |             ~~              ~~~~~~~~~~~^~~
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |                                   ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:256338:12: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 256338 |   i2 = pT->nMap;
+        |      ~ ~~~~^~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:256693:22: warning: ambiguous expansion of macro 'MAX' [-Wambiguous-macro]
+ 256693 |   int nSlotPerPage = MAX(MINSLOT, (p->pConfig->pgsz - 8) / szKey);
+        |                      ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  218 | #define MAX(a, b) (((a)>(b))?(a):(b))
+      |         ^
+ 15576 | # define MAX(A,B) ((A)>(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:256723:13: warning: ambiguous expansion of macro 'MAX' [-Wambiguous-macro]
+ 256723 |     nSlot = MAX(nElem*4, MINSLOT);
+        |             ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  218 | #define MAX(a, b) (((a)>(b))?(a):(b))
+      |         ^
+ 15576 | # define MAX(A,B) ((A)>(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:257241:53: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 257241 |         res = fts5Memcmp(&pLeaf->p[iOff], zIdxTerm, MIN(nTerm, nIdxTerm));
+        |                                                     ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:259152:40: warning: implicit conversion loses integer precision: 'long' to 'int' [-Wshorten-64-to-32]
+ 259152 |       pSorter->aIdx[i] = &aBlob[nBlob] - a;
+        |                        ~ ~~~~~~~~~~~~~~^~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:261897:38: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 261897 |     sqlite3_result_text(pCtx, zText, nText, SQLITE_TRANSIENT);
+        |     ~~~~~~~~~~~~~~~~~~~              ^~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:261920:38: warning: implicit conversion loses integer precision: 'i64' (aka 'long long') to 'int' [-Wshorten-64-to-32]
+ 261920 |     sqlite3_result_blob(pCtx, pBlob, nBlob, sqlite3_free);
+        |     ~~~~~~~~~~~~~~~~~~~              ^~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:264142:19: warning: implicit conversion loses integer precision: 'long' to 'int' [-Wshorten-64-to-32]
+ 264142 |         is = zCsr - (unsigned char*)pText;
+        |            ~ ~~~~~^~~~~~~~~~~~~~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:264149:21: warning: implicit conversion loses integer precision: 'long' to 'int' [-Wshorten-64-to-32]
+ 264149 |           is = zCsr - (unsigned char*)pText;
+        |              ~ ~~~~~^~~~~~~~~~~~~~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:264199:17: warning: implicit conversion loses integer precision: 'long' to 'int' [-Wshorten-64-to-32]
+ 264199 |       ie = zCsr - (unsigned char*)pText;
+        |          ~ ~~~~~^~~~~~~~~~~~~~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:264203:37: warning: implicit conversion loses integer precision: 'long' to 'int' [-Wshorten-64-to-32]
+ 264203 |     rc = xToken(pCtx, 0, aFold, zOut-aFold, is, ie);
+        |          ~~~~~~                 ~~~~^~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:265030:24: warning: implicit conversion loses integer precision: 'long' to 'int' [-Wshorten-64-to-32]
+ 265030 |       aStart[ii] = zIn - (const unsigned char*)pText;
+        |                  ~ ~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:265052:19: warning: implicit conversion loses integer precision: 'long' to 'int' [-Wshorten-64-to-32]
+ 265052 |       iNext = zIn - (const unsigned char*)pText;
+        |             ~ ~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:265062:36: warning: implicit conversion loses integer precision: 'long' to 'int' [-Wshorten-64-to-32]
+ 265062 |     rc = xToken(pCtx, 0, aBuf, zOut-aBuf, aStart[0], iNext);
+        |          ~~~~~~                ~~~~^~~~~
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:266727:18: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 266727 |       int nCmp = MIN(nTerm, pCsr->nLeTerm);
+        |                  ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+/Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:266801:20: warning: ambiguous expansion of macro 'MIN' [-Wambiguous-macro]
+ 266801 |         int nCmp = MIN(nTerm, pCsr->nLeTerm);
+        |                    ^
+In module 'Darwin' imported from /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter/macos/Pods/sqlite3/sqlite-src-3520000/sqlite3.c:27675:
+  215 | #define MIN(a, b) (((a)<(b))?(a):(b))
+      |         ^
+ 15573 | # define MIN(A,B) ((A)<(B)?(A):(B))
+       |          ^
+192 warnings generated.
+lib/features/tv/tv_scaffold.dart:86:23: Error: No named parameter with the name 'key'.
+                      key: ValueKey(i),
+                      ^^^
+lib/features/tv/tv_scaffold.dart:115:9: Context: Found this candidate, but the arguments don't match.
+  const _RailItem({
+        ^^^^^^^^^
+Target kernel_snapshot_program failed: Exception
+Failed to package /Users/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter.
+Command PhaseScriptExecution failed with a nonzero exit code
+warning: Run script build phase 'Run Script' will be run during every build because it does not specify any outputs. To address this issue, either add output dependencies to the script phase, or configure it to run in every build by unchecking "Based on dependency analysis" in the script phase. (in target 'Flutter Assemble' from project 'Runner')
+warning: no rule to process file '/Users/runner/.pub-cache/hosted/pub.dev/volume_controller-3.4.4/macos/volume_controller/Sources/volume_controller/PrivacyInfo.xcprivacy' of type 'text.xml' for architecture 'arm64' (in target 'volume_controller' from project 'Pods')
+warning: no rule to process file '/Users/runner/.pub-cache/hosted/pub.dev/volume_controller-3.4.4/macos/volume_controller/Sources/volume_controller/PrivacyInfo.xcprivacy' of type 'text.xml' for architecture 'x86_64' (in target 'volume_controller' from project 'Pods')
+** BUILD FAILED **
+
+Build process failed
