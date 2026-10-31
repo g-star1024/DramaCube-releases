@@ -37,7 +37,34 @@ on:
     branches: [main]
 
 jobs:
+  # 前置清理：push 触发发版时，删除旧的同名 Release（保留 git tag），
+  # 让下方 build 矩阵重建出「纯净 Release」——避免历史错名/旧源码资产残留
+  # （v2.7.78 事故：旧 v2.7.78 Release 混入了 v2.7.77 命名的正确二进制 +
+  # 53b61c1 旧源码打的错误 v2.7.78 二进制）。仅 push 发版路径执行。
+  cleanup:
+    if: ${{ contains(github.event.head_commit.message, 'five-platform release') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: 删除旧 Release（保留 tag），待重建
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          REPO="${{ github.repository }}"
+          TAG="v$(echo "${{ github.event.head_commit.message }}" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)"
+          [ -n "$TAG" ] || exit 0
+          if gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
+            gh release delete "$TAG" --repo "$REPO" --yes
+            echo "已删除旧 $TAG Release（含陈旧/错名资产），重建将重新创建纯净 Release"
+          else
+            echo "无 $TAG Release，跳过清理"
+          fi
+
   build:
+    needs: [cleanup]
     # 发布态门禁（v2.7.64 起）：仅两种运行进入构建——
     # ① workflow_dispatch 手动触发且传了 version；
     # ② push 触发且提交为版本 bump（提交信息含 'five-platform release'，惯例见历史）。
@@ -97,6 +124,10 @@ jobs:
           set -e
           [ -n "$EXPECT" ] || { echo "❌ 无法确定期望版本，构建中止"; exit 1; }
           [ "$PV" = "$EXPECT" ] || { echo "❌ 源码版本($PV)与发布版本($EXPECT)不符，构建中止"; exit 1; }
+          # 统一发布版本号：命名 / TAG / 门禁三处共用，杜绝 push 触发时
+          # 命名回退到默认 '2.7.77'（v2.7.78 事故：正确二进制被错名为 v2.7.77
+          # 传进 v2.7.78 Release，与旧错包并存）。
+          echo "RELEASE_VER=$EXPECT" >> "$GITHUB_ENV"
 
       - name: 生成诊断日志
         if: always()
@@ -187,22 +218,22 @@ jobs:
         if: matrix.platform == 'windows'
         shell: pwsh
         run: |
-          Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath dramacube-windows-v${{ inputs.version || '2.7.77' }}.zip
-          Get-Item dramacube-windows-v${{ inputs.version || '2.7.77' }}.zip | Select-Object Name, Length
+          Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath dramacube-windows-v${{ env.RELEASE_VER }}.zip
+          Get-Item dramacube-windows-v${{ env.RELEASE_VER }}.zip | Select-Object Name, Length
 
       - name: 打包 Linux
         if: matrix.platform == 'linux'
         shell: bash
         run: |
-          tar -czf dramacube-linux-v${{ inputs.version || '2.7.77' }}.tar.gz -C build/linux/x64/release/bundle .
-          ls -lh dramacube-linux-v${{ inputs.version || '2.7.77' }}.tar.gz
+          tar -czf dramacube-linux-v${{ env.RELEASE_VER }}.tar.gz -C build/linux/x64/release/bundle .
+          ls -lh dramacube-linux-v${{ env.RELEASE_VER }}.tar.gz
 
       - name: 整理 Android
         if: matrix.platform == 'android'
         shell: bash
         run: |
-          cp build/app/outputs/flutter-apk/app-release.apk dramacube-android-v${{ inputs.version || '2.7.77' }}.apk
-          ls -lh dramacube-android-v${{ inputs.version || '2.7.77' }}.apk
+          cp build/app/outputs/flutter-apk/app-release.apk dramacube-android-v${{ env.RELEASE_VER }}.apk
+          ls -lh dramacube-android-v${{ env.RELEASE_VER }}.apk
 
       - name: 注入 libtorrent + ffmpeg（macOS，下载引擎 + 封面截帧）
         if: matrix.platform == 'mac-arm64' || matrix.platform == 'mac-x64'
@@ -248,13 +279,13 @@ jobs:
           echo "APP=$APP"
           ARCH_SUFFIX=$([ "${{ matrix.platform }}" = "mac-arm64" ] && echo "arm64" || echo "x64")
           echo "ARCH_SUFFIX=$ARCH_SUFFIX" >> "$GITHUB_ENV"
-          hdiutil create -volname "剧立方" -srcfolder "$APP" -ov -format UDZO "dramacube-macOS-${ARCH_SUFFIX}-v${{ inputs.version || '2.7.77' }}.dmg"
+          hdiutil create -volname "剧立方" -srcfolder "$APP" -ov -format UDZO "dramacube-macOS-${ARCH_SUFFIX}-v${{ env.RELEASE_VER }}.dmg"
           ls -lh dramacube-macOS-*.dmg
 
       - name: 上传 artifact
         uses: actions/upload-artifact@v4
         with:
-          name: dramacube-${{ matrix.platform }}-v${{ inputs.version || '2.7.77' }}
+          name: dramacube-${{ matrix.platform }}-v${{ env.RELEASE_VER }}
           path: |
             apps/flutter/dramacube-*.zip
             apps/flutter/dramacube-*.tar.gz
@@ -306,16 +337,9 @@ jobs:
         run: |
           set -euo pipefail
           REPO="${{ github.repository }}"
-          # 版本号推导：
-          #   - workflow_dispatch 手动触发 → 用 inputs.version；
-          #   - push 触发（提交信息含 'five-platform release'）→ 从提交信息解析版本号，
-          #     与上方「核对源码版本」门禁保持一致，避免写死 '2.7.77' 导致产物传错 Release
-          #     （v2.7.78 事故：三次 push 修正构建全部误传到 v2.7.77 Release）。
-          if [ -n "${{ inputs.version }}" ]; then
-            TAG="v${{ inputs.version }}"
-          else
-            TAG="v$(echo "${{ github.event.head_commit.message }}" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)"
-          fi
+          # 版本号统一取自门禁步骤写入的 RELEASE_VER（命名/TAG/门禁三处同源），
+          # 不再此处单独解析，避免与命名不一致。
+          TAG="v${{ env.RELEASE_VER }}"
           [ -n "$TAG" ] || { echo "❌ 无法确定发布版本，中止"; exit 1; }
           if ! gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
             gh release create "$TAG" --repo "$REPO" \
