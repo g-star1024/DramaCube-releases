@@ -1,0 +1,5 @@
+Analyzing flutter...                                            
+
+warning - The receiver can't be null, so the null-aware operator '?.' is unnecessary - lib\features\tv\tv_pages.dart:291:41 - invalid_null_aware_operator
+
+1 issue found. (ran in 21.4s)
