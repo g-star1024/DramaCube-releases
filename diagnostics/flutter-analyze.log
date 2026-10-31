@@ -1,0 +1,9 @@
+Analyzing flutter...                                            
+
+   info - Statements in a for should be enclosed in a block - lib\features\tv\tv_pages.dart:177:32 - curly_braces_in_flow_control_structures
+   info - Statements in an if should be enclosed in a block - lib\features\tv\tv_pages.dart:190:7 - curly_braces_in_flow_control_structures
+   info - Statements in an if should be enclosed in a block - lib\features\tv\tv_pages.dart:212:7 - curly_braces_in_flow_control_structures
+   info - Statements in a for should be enclosed in a block - lib\features\tv\tv_pages.dart:236:7 - curly_braces_in_flow_control_structures
+warning - The '!' will have no effect because the receiver can't be null - lib\features\tv\tv_pages.dart:282:40 - unnecessary_non_null_assertion
+
+5 issues found. (ran in 27.7s)
