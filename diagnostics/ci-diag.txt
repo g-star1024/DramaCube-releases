@@ -1,0 +1,24 @@
+run=41405797543 platform=linux sha=82bcc0c42bbd5156fcb0aab0f1e0e1a10eee2c60
+82bcc0c fix(flutter): 封面截帧子系统防紧循环（指数退避+全局熔断+远程超时放宽+stderr 定位 exit=183）+ 视频源超时放宽（connect 12s/receive 25s）+ TV 源页慢源提示「当前加载速度较慢，建议选择其他视频源或者频道」，发版 2.7.79
+--- pubspec grep ---
+version: 2.7.79+79
+grep_exit=0
+--- pubspec head ---
+name: dramacube
+description: "剧立方 DramaCube - 全平台视频聚合播放器（Windows/Linux/Android/Android TV/Docker）"
+# The following line prevents the package from being accidentally published to
+# pub.dev using `flutter pub publish`. This is preferred for private packages.
+publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+
+# The following defines the version and build number for your application.
+# A version number is three numbers separated by dots, like 1.2.43
+# followed by an optional build number separated by a +.
+# Both the version and the builder number may be overridden in flutter
+# build by specifying --build-name and --build-number, respectively.
+# In Android, build-name is used as versionName while build-number used as versionCode.
+head_exit=0
+--- guard simulation ---
+V=[version: 2.7.79+79]
+GUARD WOULD FAIL
+--- pwd ---
+/home/runner/work/DramaCube-releases/DramaCube-releases/apps/flutter
