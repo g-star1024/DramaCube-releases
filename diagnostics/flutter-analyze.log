@@ -1,0 +1,8 @@
+Analyzing flutter...                                            
+
+   info - Unnecessary braces in a string interpolation - lib\features\catalog\catalog_page.dart:77:27 - unnecessary_brace_in_string_interps
+   info - Unnecessary braces in a string interpolation - lib\features\catalog\catalog_page.dart:80:25 - unnecessary_brace_in_string_interps
+warning - Dead code - lib\features\catalog\catalog_page.dart:197:83 - dead_code
+warning - The left operand can't be null, so the right operand is never executed - lib\features\catalog\catalog_page.dart:197:86 - dead_null_aware_expression
+
+4 issues found. (ran in 28.2s)
