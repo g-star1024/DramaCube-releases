@@ -1,0 +1,10 @@
+Analyzing flutter...                                            
+
+   info - Statements in a for should be enclosed in a block - lib\features\tv\tv_source_page.dart:75:39 - curly_braces_in_flow_control_structures
+   info - Statements in a for should be enclosed in a block - lib\features\tv\tv_source_page.dart:76:39 - curly_braces_in_flow_control_structures
+  error - Invalid constant value - lib\features\tv\tv_source_page.dart:366:62 - invalid_constant
+  error - The values in a const list literal must be constants - lib\features\tv\tv_source_page.dart:366:62 - non_constant_list_element
+  error - Invalid constant value - lib\features\tv\tv_source_page.dart:371:36 - invalid_constant
+  error - The values in a const list literal must be constants - lib\features\tv\tv_source_page.dart:371:36 - non_constant_list_element
+
+6 issues found. (ran in 27.7s)
