@@ -3,7 +3,7 @@
 > 一个内容世界，三端体验：移动暖阳 / 桌面影院 / TV 焦点引擎。
 > 聚合用户自行配置的视频源、直播源、NAS 资源与磁力资源，本地播放、离线下载、零账号依赖。
 
-当前版本：**v2.7.50** ｜ 安装包下载：[DramaCube-releases Releases](https://github.com/g-star1024/DramaCube-releases/releases)
+当前版本：**v2.7.82** ｜ 安装包下载：[DramaCube-releases Releases](https://github.com/g-star1024/DramaCube-releases/releases)
 
 ---
 
@@ -115,6 +115,11 @@ gh workflow run build.yml -R g-star1024/DramaCube-releases -f ref=main -f versio
 
 | 版本 | 要点 |
 |------|------|
+| **v2.7.82** | Docker 一键部署版发布（ghcr.io 镜像，浏览器即用，功能 100%）；TV 模式改纯手动开关——默认安装普通模式，设置中心「电视模式」切换 |
+| **v2.7.81** | 清缓存同清图片索引 DB——修复全站封面永久裂（视频源 + 资源库同源，永不重下根因） |
+| **v2.7.80** | 慢源提示移入空态区域（普通模式 + TV 双端同步） |
+| **v2.7.79** | 视频源页空频道致导航条消失修复 + 封面截帧退避/熔断 + 超时放宽 |
+| **v2.7.78** | TV 侧栏遥控修复 + 五平台发版链路加固（RELEASE_VER 唯一真源 + cleanup 前置） |
 | **v2.7.50** | mpv 退出崩溃修复（macOS 拦截 terminate 异步 dispose Player）；历史收藏标题居中 |
 | **v2.7.49** | 详情页源切换卡死修复——聚合无结果时重试原源（api_29 间歇性失效场景） |
 | **v2.7.47** | 继续观看点进去空白真修复——切新源后重置续播状态 + 剧名匹配历史（不再依赖 dramaId） |

@@ -289,7 +289,7 @@ footer p.disclaimer { max-width: 640px; margin: 0 auto; font-size: 13px; opacity
   <div class="container">
     <div class="hero-badge">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-      当前版本 <em>v2.7.50</em> ｜ 五平台同步发布
+      当前版本 <em>v2.7.82</em> ｜ 五平台 + Docker 同步发布
     </div>
     <h1>剧立方 DramaCube</h1>
     <p class="tagline">一个内容世界，三端体验：移动暖阳 / 桌面影院 / TV 焦点引擎。<br>聚合视频源、直播源、NAS 资源与磁力资源，本地播放、离线下载、零账号依赖。</p>
@@ -397,7 +397,7 @@ footer p.disclaimer { max-width: 640px; margin: 0 auto; font-size: 13px; opacity
 <section id="download">
   <div class="container">
     <h2 class="section-title">平台矩阵</h2>
-    <p class="section-sub">五平台同步构建，从 Releases 下载对应安装包。</p>
+    <p class="section-sub">五平台同步构建 + Docker 镜像随版发布，从 Releases 下载安装包或直接拉取镜像。</p>
     <div class="platforms">
       <table class="platform-table">
         <thead>
@@ -440,6 +440,12 @@ footer p.disclaimer { max-width: 640px; margin: 0 auto; font-size: 13px; opacity
             <td><span class="tag tv">TV 独立版</span></td>
             <td><a class="dl-link" href="https://github.com/g-star1024/DramaCube-releases/releases" target="_blank" rel="noopener">下载 →</a></td>
           </tr>
+          <tr>
+            <td><strong>Docker / NAS（飞牛 fnOS 等）</strong></td>
+            <td><code>ghcr.io/g-star1024/dramacube-releases/dramacube</code></td>
+            <td><span class="tag cinema">桌面 Cinema</span></td>
+            <td><a class="dl-link" href="https://github.com/g-star1024/DramaCube-releases#docker-一键部署" target="_blank" rel="noopener">部署 →</a></td>
+          </tr>
         </tbody>
       </table>
     </div>
@@ -452,6 +458,18 @@ footer p.disclaimer { max-width: 640px; margin: 0 auto; font-size: 13px; opacity
     <h2 class="section-title">近期版本亮点</h2>
     <p class="section-sub">持续迭代，稳定为先。完整历史见 Releases。</p>
     <div class="version-list">
+      <div class="version-item">
+        <span class="version-num">v2.7.82</span>
+        <span class="version-desc">Docker 一键部署版发布——浏览器即用功能 100%（NAS/磁力全保留）；TV 模式改纯手动开关，默认安装普通模式</span>
+      </div>
+      <div class="version-item">
+        <span class="version-num">v2.7.81</span>
+        <span class="version-desc">清缓存同清图片索引 DB——修复全站封面永久裂（视频源 + 资源库同源）</span>
+      </div>
+      <div class="version-item">
+        <span class="version-num">v2.7.80</span>
+        <span class="version-desc">慢源提示移入空态区域（普通模式 + TV 双端）</span>
+      </div>
       <div class="version-item">
         <span class="version-num">v2.7.50</span>
         <span class="version-desc">mpv 退出崩溃修复（macOS 拦截 terminate 异步 dispose Player）；历史收藏标题居中</span>
