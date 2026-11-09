@@ -16,6 +16,22 @@
 | macOS 13+（Intel / Apple Silicon） | `dramacube-macOS-x64/arm64-v*.dmg` | 桌面 Cinema |
 | Android 8+ | `dramacube-android-v*.apk` | 移动暖阳 |
 | Android TV / 电视模式 | 设置内开启「电视模式」 | TV 独立版（Cinema Dark） |
+| Docker（浏览器即用） | `ghcr.io` 镜像 | 桌面 Cinema（noVNC 远程桌面，功能 100%） |
+
+## Docker 一键部署
+
+Linux 桌面版跑在容器内虚拟显示上，浏览器打开即用，全部功能（含 NAS、磁力下载）与桌面版一致：
+
+```bash
+docker run -d --name dramacube -p 3000:3000 -v dramacube-data:/data \
+  ghcr.io/g-star1024/dramacube-releases/dramacube:latest
+```
+
+启动后浏览器访问 **http://localhost:3000/vnc.html**（页面里点 Connect 即连入桌面）。
+
+- `-v dramacube-data:/data`：配置 / 数据库 / 图片缓存全部持久化在 `dramacube-data` 卷，容器升级重建不丢数据
+- 版本钉版：`ghcr.io/g-star1024/dramacube-releases/dramacube:v2.7.82`（每版随 Release 同步发布，另有滚动 `latest`）
+- 硬件建议：1 核 1GB 起步（mpv 软解，高码率影片建议 2 核 2GB）
 
 ## 功能总览
 

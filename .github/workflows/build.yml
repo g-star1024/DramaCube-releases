@@ -351,3 +351,105 @@ jobs:
           if [ ${#files[@]} -eq 0 ]; then echo "无构建产物可上传"; exit 1; fi
           gh release upload "$TAG" "${files[@]}" --repo "$REPO" --clobber
           echo "已发布： https://github.com/${REPO}/releases/tag/${TAG}"
+
+  # Docker 一键部署版（路线 A：Linux 桌面版 + Xvfb + noVNC，浏览器即用，功能 100%）。
+  # 依赖 build 矩阵（取 linux 产物）→ 构建镜像 → 容器冒烟测试 → 推 GHCR。
+  # 镜像：ghcr.io/g-star1024/dramacube-releases/dramacube（GHCR 命名必须含仓库名段）。
+  docker:
+    needs: [cleanup, build]
+    if: ${{ inputs.version != '' || contains(github.event.head_commit.message, 'five-platform release') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout 本仓（Dockerfile / 入口脚本）
+        uses: actions/checkout@v4
+
+      - name: 解析版本号（与门禁同源：优先 dispatch version，push 触发取提交信息）
+        shell: bash
+        run: |
+          set -euo pipefail
+          V=$(echo "${{ github.event.head_commit.message }}" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+          [ -n "$V" ] || V="${{ inputs.version }}"
+          [ -n "$V" ] || { echo "❌ 无法确定发布版本，中止"; exit 1; }
+          echo "RELEASE_VER=$V" >> "$GITHUB_ENV"
+          echo "Docker 版本: v$V"
+
+      - name: 下载 Linux 产物
+        uses: actions/download-artifact@v4
+        with:
+          name: dramacube-linux-v${{ env.RELEASE_VER }}
+          path: /tmp/linux-artifact
+
+      - name: 解包 bundle 注入构建上下文
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p docker/bundle
+          tar -xzf "/tmp/linux-artifact/dramacube-linux-v${{ env.RELEASE_VER }}.tar.gz" -C docker/bundle
+          [ -x docker/bundle/dramacube ] || { echo "❌ bundle 中找不到 dramacube 可执行文件"; ls docker/bundle; exit 1; }
+          ls -lh docker/bundle | head -8
+
+      - name: 登录 GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 构建 Docker 镜像
+        shell: bash
+        run: |
+          set -o pipefail
+          docker build -t "ghcr.io/${{ github.repository }}/dramacube:v${{ env.RELEASE_VER }}" docker/ 2>&1 | tee /tmp/docker-build.log
+
+      - name: 冒烟测试（容器启动 + noVNC 可达 + App 进程存活）
+        shell: bash
+        run: |
+          set -euo pipefail
+          IMAGE="ghcr.io/${{ github.repository }}/dramacube:v${{ env.RELEASE_VER }}"
+          docker run -d --name smoke -p 13000:3000 "$IMAGE"
+          sleep 15
+          curl -sf -o /dev/null "http://localhost:13000/vnc.html" \
+            || { echo "❌ noVNC 页面不可达"; docker logs smoke --tail 50; exit 1; }
+          echo "✅ noVNC 页面可达"
+          docker exec smoke pgrep -f "dramacube" >/dev/null \
+            || { echo "❌ App 进程未存活"; docker logs smoke --tail 80; exit 1; }
+          echo "✅ App 进程存活"
+          docker logs smoke 2>&1 | tail -20
+          docker rm -f smoke >/dev/null
+
+      - name: 推送镜像（版本 tag + latest）
+        shell: bash
+        run: |
+          set -euo pipefail
+          IMAGE="ghcr.io/${{ github.repository }}/dramacube"
+          docker tag "$IMAGE:v${{ env.RELEASE_VER }}" "$IMAGE:latest"
+          docker push "$IMAGE:v${{ env.RELEASE_VER }}"
+          docker push "$IMAGE:latest"
+          echo "✅ 已推送 $IMAGE:v${{ env.RELEASE_VER }} 与 :latest"
+
+      - name: 保存 Docker 构建失败日志
+        if: ${{ failure() }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          BRANCH="ci-logs-${{ github.run_id }}-docker"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git ls-remote --exit-code --heads origin "$BRANCH" 2>/dev/null; then
+            git fetch origin "$BRANCH"
+            git switch --detach FETCH_HEAD
+          else
+            git switch --orphan "$BRANCH"
+          fi
+          mkdir -p diagnostics
+          cp /tmp/docker-build.log diagnostics/ 2>/dev/null || true
+          echo "run=${{ github.run_id }} ver=v${{ env.RELEASE_VER }}" > diagnostics/run.txt
+          git add diagnostics
+          git commit -m "ci: docker diagnostics for ${{ github.run_id }}"
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" "HEAD:refs/heads/${BRANCH}"
