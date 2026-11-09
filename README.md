@@ -31,6 +31,7 @@ docker run -d --name dramacube -p 3000:3000 -v dramacube-data:/data \
 
 - `-v dramacube-data:/data`：配置 / 数据库 / 图片缓存全部持久化在 `dramacube-data` 卷，容器升级重建不丢数据
 - 版本钉版：`ghcr.io/g-star1024/dramacube-releases/dramacube:v2.7.82`（每版随 Release 同步发布，另有滚动 `latest`）
+- 镜像已瘦身：中文字体由 noto-cjk 换为文泉驿正黑（单 apt 层从 300MB+ 降到约 60MB），弱网下拉取更稳；去掉 mpv CLI 仅保留 libmpv2 运行库。**改完 `docker/` 下的 Dockerfile / entrypoint.sh 后，用 Actions 里的 `docker (rebuild)` 工作流（填版本号，如 2.7.82）即可只重发镜像，不触发五平台全量构建。**
 - 硬件建议：1 核 1GB 起步（mpv 软解，高码率影片建议 2 核 2GB）
 
 **NAS（飞牛 fnOS 等）Compose 部署**：参见 [`docker/docker-compose.example.yml`](docker/docker-compose.example.yml)——飞牛操作路径：Docker → Compose → 新增 → 粘贴 → 部署，访问 `http://NAS的IP:3000/vnc.html`。
