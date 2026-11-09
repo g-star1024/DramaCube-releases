@@ -33,6 +33,8 @@ docker run -d --name dramacube -p 3000:3000 -v dramacube-data:/data \
 - 版本钉版：`ghcr.io/g-star1024/dramacube-releases/dramacube:v2.7.82`（每版随 Release 同步发布，另有滚动 `latest`）
 - 硬件建议：1 核 1GB 起步（mpv 软解，高码率影片建议 2 核 2GB）
 
+**NAS（飞牛 fnOS 等）Compose 部署**：参见 [`docker/docker-compose.example.yml`](docker/docker-compose.example.yml)——飞牛操作路径：Docker → Compose → 新增 → 粘贴 → 部署，访问 `http://NAS的IP:3000/vnc.html`。
+
 ## 功能总览
 
 **内容聚合**
