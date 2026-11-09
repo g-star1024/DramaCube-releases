@@ -375,7 +375,10 @@ jobs:
           [ -n "$V" ] || V="${{ inputs.version }}"
           [ -n "$V" ] || { echo "❌ 无法确定发布版本，中止"; exit 1; }
           echo "RELEASE_VER=$V" >> "$GITHUB_ENV"
-          echo "Docker 版本: v$V"
+          # GHCR 镜像名强制小写（42593818050 教训：仓库名含大写 → invalid tag）
+          IMG="ghcr.io/$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')/dramacube"
+          echo "IMAGE=$IMG" >> "$GITHUB_ENV"
+          echo "Docker 版本: v$V → $IMG:v$V"
 
       - name: 下载 Linux 产物
         uses: actions/download-artifact@v4
@@ -403,7 +406,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          if ! docker build -t "ghcr.io/${{ github.repository }}/dramacube:v${{ env.RELEASE_VER }}" docker/ 2>&1 | tee /tmp/docker-build.log; then
+          if ! docker build -t "${{ env.IMAGE }}:v${{ env.RELEASE_VER }}" docker/ 2>&1 | tee /tmp/docker-build.log; then
             echo "::group::❌ docker build 失败——日志尾部 60 行"
             tail -60 /tmp/docker-build.log || true
             echo "::endgroup::"
@@ -414,7 +417,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          IMAGE="ghcr.io/${{ github.repository }}/dramacube:v${{ env.RELEASE_VER }}"
+          IMAGE="${{ env.IMAGE }}:v${{ env.RELEASE_VER }}"
           docker run -d --name smoke -p 13000:3000 "$IMAGE"
           sleep 15
           curl -sf -o /dev/null "http://localhost:13000/vnc.html" \
@@ -430,7 +433,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          IMAGE="ghcr.io/${{ github.repository }}/dramacube"
+          IMAGE="${{ env.IMAGE }}"
           docker tag "$IMAGE:v${{ env.RELEASE_VER }}" "$IMAGE:latest"
           docker push "$IMAGE:v${{ env.RELEASE_VER }}"
           docker push "$IMAGE:latest"
