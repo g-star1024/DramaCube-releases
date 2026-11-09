@@ -9,11 +9,12 @@ export HOME=/data
 mkdir -p "$HOME"
 
 # ---- 虚拟显示 ----
+# 默认 1920x1080（16:9，适配 NAS 接电视/大屏）；配合 noVNC ?resize=scale 缩放填充视口。
 export DISPLAY=:99
 rm -f /tmp/.X99-lock /tmp/.X11-unix/X99 2>/dev/null || true
 mkdir -p /tmp/.X11-unix
 
-Xvfb :99 -screen 0 1280x720x24 -nolisten tcp &
+Xvfb :99 -screen 0 1920x1080x24 -nolisten tcp &
 XVFB_PID=$!
 
 # 等 X server 就绪（最多 10s）
@@ -28,8 +29,20 @@ x11vnc -display :99 -forever -shared -rfbport 5900 -nopw -quiet &
 echo "[entrypoint] x11vnc 已启动 (:99 → :5900)"
 
 # ---- noVNC Web（对外唯一端口 3000）----
+# 根路径 / 直接重定向到「自动连接 + 缩放填充」页，避免目录列表 / 手动 Connect / 扩展报错。
+cat > /usr/share/novnc/index.html <<'EOF'
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="refresh" content="0; url=vnc_lite.html?autoconnect=true&resize=scale">
+  <title>剧立方 DramaCube</title>
+</head>
+<body></body>
+</html>
+EOF
 websockify --web /usr/share/novnc 3000 localhost:5900 &
-echo "[entrypoint] noVNC 已启动 → http://localhost:3000/vnc.html"
+echo "[entrypoint] noVNC 已启动 → http://localhost:3000/ （自动全屏连接）"
 
 # ---- 应用本体 ----
 cd /app

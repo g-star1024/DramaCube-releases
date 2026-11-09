@@ -3,7 +3,7 @@
 # 用法：
 #   docker run -d --name dramacube -p 3000:3000 -v dramacube-data:/data \
 #     ghcr.io/g-star1024/dramacube-releases/dramacube:latest
-#   浏览器打开 http://localhost:3000/vnc.html
+#   浏览器打开 http://localhost:3000/ （自动全屏连接；如需手动控制用 /vnc.html）
 #
 # 镜像由 DramaCube-releases CI 的 docker job 构建：
 #   - bundle/  由 linux job 的 dramacube-linux-v<ver>.tar.gz 解包注入（不提交到 git）
