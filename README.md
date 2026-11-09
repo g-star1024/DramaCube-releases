@@ -30,7 +30,7 @@ docker run -d --name dramacube -p 3000:3000 -v dramacube-data:/data \
 启动后浏览器访问 **http://localhost:3000/vnc.html**（页面里点 Connect 即连入桌面）。
 
 - `-v dramacube-data:/data`：配置 / 数据库 / 图片缓存全部持久化在 `dramacube-data` 卷，容器升级重建不丢数据
-- 版本钉版：`ghcr.io/g-star1024/dramacube-releases/dramacube:v2.7.82`（每版随 Release 同步发布，另有滚动 `latest`）
+- 版本钉版：`ghcr.io/g-star1024/dramacube-releases/dramacube:v2.7.82`（发版后通过 Actions 的 `docker (rebuild)` 工作流单独构建推送，另有滚动 `latest`）
 - 镜像已瘦身：中文字体由 noto-cjk 换为文泉驿正黑（单 apt 层从 300MB+ 降到约 60MB），弱网下拉取更稳；去掉 mpv CLI 仅保留 libmpv2 运行库。**改完 `docker/` 下的 Dockerfile / entrypoint.sh 后，用 Actions 里的 `docker (rebuild)` 工作流（填版本号，如 2.7.82）即可只重发镜像，不触发五平台全量构建。**
 - 硬件建议：1 核 1GB 起步（mpv 软解，高码率影片建议 2 核 2GB）
 
