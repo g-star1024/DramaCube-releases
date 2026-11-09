@@ -403,7 +403,12 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          docker build -t "ghcr.io/${{ github.repository }}/dramacube:v${{ env.RELEASE_VER }}" docker/ 2>&1 | tee /tmp/docker-build.log
+          if ! docker build -t "ghcr.io/${{ github.repository }}/dramacube:v${{ env.RELEASE_VER }}" docker/ 2>&1 | tee /tmp/docker-build.log; then
+            echo "::group::❌ docker build 失败——日志尾部 60 行"
+            tail -60 /tmp/docker-build.log || true
+            echo "::endgroup::"
+            exit 1
+          fi
 
       - name: 冒烟测试（容器启动 + noVNC 可达 + App 进程存活）
         shell: bash
@@ -437,19 +442,20 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          set -euo pipefail
+          set -uo pipefail
           BRANCH="ci-logs-${{ github.run_id }}-docker"
+          # 干净克隆到临时目录再推孤儿分支（工作区含解包 bundle 未跟踪文件，
+          # git switch --orphan 会被干扰——首轮 42590519600 教训）
+          rm -rf "$RUNNER_TEMP/diag-repo"
+          git clone --depth 1 "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" "$RUNNER_TEMP/diag-repo" || { echo "❌ 克隆失败"; exit 0; }
+          cd "$RUNNER_TEMP/diag-repo"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if git ls-remote --exit-code --heads origin "$BRANCH" 2>/dev/null; then
-            git fetch origin "$BRANCH"
-            git switch --detach FETCH_HEAD
-          else
-            git switch --orphan "$BRANCH"
-          fi
+          git switch --orphan "$BRANCH" || { echo "❌ 孤儿分支创建失败"; exit 0; }
           mkdir -p diagnostics
           cp /tmp/docker-build.log diagnostics/ 2>/dev/null || true
           echo "run=${{ github.run_id }} ver=v${{ env.RELEASE_VER }}" > diagnostics/run.txt
           git add diagnostics
-          git commit -m "ci: docker diagnostics for ${{ github.run_id }}"
-          git push "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" "HEAD:refs/heads/${BRANCH}"
+          git commit -m "ci: docker diagnostics for ${{ github.run_id }}" || { echo "❌ 提交失败"; exit 0; }
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" "HEAD:refs/heads/${BRANCH}" || { echo "❌ 日志分支推送失败"; exit 0; }
+          echo "✅ 诊断日志已推至分支 $BRANCH"
