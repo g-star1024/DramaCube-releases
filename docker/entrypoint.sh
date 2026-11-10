@@ -30,6 +30,11 @@ XDG_TEMPLATES_DIR="$HOME/Templates"
 XDG_PUBLICSHARE_DIR="$HOME/Public"
 UDL
 
+# ---- 窗口铺满（无窗口管理器）----
+# 容器不启动 WM：Flutter 桌面应用以默认窗口尺寸打开，由下方后台循环用 xdotool 将其
+# resize 到 1920x1080 并移至 (0,0)，实现像素级铺满虚拟桌面（无 WM 即无标题栏/边框留边）。
+# 同时 windowfocus 确保应用持有输入焦点（利于遥控/键盘导航）。
+
 # ---- 虚拟显示 ----
 # 默认 1920x1080（16:9，适配 NAS 接电视/大屏）；配合 noVNC ?resize=scale 缩放填充视口。
 export DISPLAY=:99
@@ -69,4 +74,22 @@ echo "[entrypoint] noVNC 已启动 → http://localhost:3000/ （自动全屏连
 # ---- 应用本体 ----
 cd /app
 echo "[entrypoint] 启动剧立方 /app/dramacube"
+
+# 后台：待应用窗口出现后将其 resize 到 1920x1080 并移至 (0,0)、强制聚焦，实现像素级铺满。
+# 不依赖窗口管理器（容器未启动 WM）：无 WM 即无标题栏/边框，resize 后正好填满桌面。
+( for i in $(seq 1 90); do
+    id=$(xdotool search --class dramacube 2>/dev/null | while read w; do
+      g=$(xdotool getwindowgeometry "$w" 2>/dev/null | grep -oE '[0-9]+x[0-9]+' | tail -1)
+      [ "$g" != "10x10" ] && { echo "$w"; break; }
+    done)
+    if [ -n "$id" ]; then
+      xdotool windowmove "$id" 0 0
+      xdotool windowsize "$id" 1920 1080
+      xdotool windowfocus "$id" 2>/dev/null || true
+      echo "[entrypoint] 已将应用窗口($id)铺满 1920x1080 并聚焦"
+      break
+    fi
+    sleep 1
+  done ) &
+
 exec ./dramacube

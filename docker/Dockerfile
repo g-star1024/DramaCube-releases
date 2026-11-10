@@ -33,6 +33,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         # 容器无桌面环境必须安装此包，否则抛 MissingPlatformDirectoryException
         # （drift 数据库/下载记录等无法持久化）。
         xdg-user-dirs \
+        # 窗口控制：容器不启动 WM，由 entrypoint 用 xdotool 将应用窗口 resize 到 1920x1080
+        # 并移至 (0,0)、强制聚焦，实现像素级铺满虚拟桌面（无 WM 即无标题栏/边框留边）。
+        xdotool \
         # PID 1 僵尸回收（Xvfb/x11vnc 子进程清理）
         tini \
     && apt-get clean \
