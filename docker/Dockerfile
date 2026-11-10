@@ -29,6 +29,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         ffmpeg \
         # 中文字体：文泉驿正黑（轻量）+ DejaVu（Latin/UI 兜底）
         fonts-wqy-zenhei fonts-dejavu-core \
+        # path_provider 在 Linux 上默认调用 xdg-user-dir 解析应用目录；
+        # 容器无桌面环境必须安装此包，否则抛 MissingPlatformDirectoryException
+        # （drift 数据库/下载记录等无法持久化）。
+        xdg-user-dirs \
         # PID 1 僵尸回收（Xvfb/x11vnc 子进程清理）
         tini \
     && apt-get clean \
