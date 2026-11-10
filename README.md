@@ -16,25 +16,7 @@
 | macOS 13+（Intel / Apple Silicon） | `dramacube-macOS-x64/arm64-v*.dmg` | 桌面 Cinema |
 | Android 8+ | `dramacube-android-v*.apk` | 移动暖阳 |
 | Android TV / 电视模式 | 设置内开启「电视模式」 | TV 独立版（Cinema Dark） |
-| Docker（浏览器即用） | `ghcr.io` 镜像 | 桌面 Cinema（noVNC 远程桌面，功能 100%） |
 
-## Docker 一键部署
-
-Linux 桌面版跑在容器内虚拟显示上，浏览器打开即用，全部功能（含 NAS、磁力下载）与桌面版一致：
-
-```bash
-docker run -d --name dramacube -p 3000:3000 -v dramacube-data:/data \
-  ghcr.io/g-star1024/dramacube-releases/dramacube:latest
-```
-
-启动后浏览器访问 **http://localhost:3000/vnc.html**（页面里点 Connect 即连入桌面）。
-
-- `-v dramacube-data:/data`：配置 / 数据库 / 图片缓存全部持久化在 `dramacube-data` 卷，容器升级重建不丢数据
-- 版本钉版：`ghcr.io/g-star1024/dramacube-releases/dramacube:v2.7.82`（每版随 Release 同步发布，另有滚动 `latest`；改 `docker/` 后可用 Actions 的 `docker (rebuild)` 单独重发，无需全量发版）
-- 镜像已瘦身：中文字体由 noto-cjk 换为文泉驿正黑（单 apt 层从 300MB+ 降到约 60MB），弱网下拉取更稳；去掉 mpv CLI 仅保留 libmpv2 运行库。**改完 `docker/` 下的 Dockerfile / entrypoint.sh 后，用 Actions 里的 `docker (rebuild)` 工作流（填版本号，如 2.7.82）即可只重发镜像，不触发五平台全量构建。**
-- 硬件建议：1 核 1GB 起步（mpv 软解，高码率影片建议 2 核 2GB）
-
-**NAS（飞牛 fnOS 等）Compose 部署**：参见 [`docker/docker-compose.example.yml`](docker/docker-compose.example.yml)——飞牛操作路径：Docker → Compose → 新增 → 粘贴 → 部署，访问 `http://NAS的IP:3000/vnc.html`。
 
 ## 功能总览
 
@@ -116,7 +98,7 @@ gh workflow run build.yml -R g-star1024/DramaCube-releases -f ref=main -f versio
 
 | 版本 | 要点 |
 |------|------|
-| **v2.7.82** | Docker 一键部署版发布（ghcr.io 镜像，浏览器即用，功能 100%）；TV 模式改纯手动开关——默认安装普通模式，设置中心「电视模式」切换 |
+| **v2.7.82** | 路线 A（noVNC Docker 一键部署）已废弃，转向 Flutter Web 轻量部署（见 [dramaCube-docker](https://github.com/g-star1024/dramaCube-docker)）；TV 模式改纯手动开关——默认安装普通模式，设置中心「电视模式」切换 |
 | **v2.7.81** | 清缓存同清图片索引 DB——修复全站封面永久裂（视频源 + 资源库同源，永不重下根因） |
 | **v2.7.80** | 慢源提示移入空态区域（普通模式 + TV 双端同步） |
 | **v2.7.79** | 视频源页空频道致导航条消失修复 + 封面截帧退避/熔断 + 超时放宽 |
