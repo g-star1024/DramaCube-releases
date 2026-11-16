@@ -1,0 +1,31 @@
+Analyzing flutter...                                            
+
+   info - 'dart:html' is deprecated and shouldn't be used. Use package:web and dart:js_interop instead - lib\app\web_store.dart:5:1 - deprecated_member_use
+   info - Don't use web-only libraries outside Flutter web plugins - lib\app\web_store.dart:5:1 - avoid_web_libraries_in_flutter
+   info - The import of 'package:flutter/foundation.dart' is unnecessary because all of the used elements are also provided by the import of 'package:flutter/material.dart' - lib\app\web_store.dart:7:8 - unnecessary_import
+   info - Constructors in '@immutable' classes should be declared as 'const' - lib\app\web_store.dart:234:3 - prefer_const_constructors_in_immutables
+   info - Parameter 'child' could be a super parameter - lib\app\web_store.dart:234:3 - use_super_parameters
+   info - 'background' is deprecated and shouldn't be used. Use surface instead. This feature was deprecated after v3.18.0-0.1.pre - lib\app\web_theme.dart:38:9 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\app\web_widgets.dart:41:62 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\app\web_widgets.dart:47:58 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\app\web_widgets.dart:74:39 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\app\web_widgets.dart:143:45 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\app\web_widgets.dart:319:57 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\app\web_widgets.dart:343:24 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\app\web_widgets.dart:345:43 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\app\web_widgets.dart:370:33 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\app\web_widgets.dart:372:52 - deprecated_member_use
+   info - 'groupValue' is deprecated and shouldn't be used. Use a RadioGroup ancestor to manage group value instead. This feature was deprecated after v3.32.0-0.0.pre - lib\features\shortdrama\shortdrama_source_page.dart:200:21 - deprecated_member_use
+   info - 'onChanged' is deprecated and shouldn't be used. Use RadioGroup to handle value change instead. This feature was deprecated after v3.32.0-0.0.pre - lib\features\shortdrama\shortdrama_source_page.dart:201:21 - deprecated_member_use
+   info - 'groupValue' is deprecated and shouldn't be used. Use a RadioGroup ancestor to manage group value instead. This feature was deprecated after v3.32.0-0.0.pre - lib\features\shortdrama\shortdrama_source_page.dart:207:21 - deprecated_member_use
+   info - 'onChanged' is deprecated and shouldn't be used. Use RadioGroup to handle value change instead. This feature was deprecated after v3.32.0-0.0.pre - lib\features\shortdrama\shortdrama_source_page.dart:208:21 - deprecated_member_use
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\web_library\web_collection_page.dart:491:28 - use_build_context_synchronously
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\web_library\web_detail_page.dart:289:24 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\web_library\web_detail_page.dart:291:43 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\web_library\web_live_page.dart:189:33 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\web_library\web_live_page.dart:191:52 - deprecated_member_use
+   info - 'dart:html' is deprecated and shouldn't be used. Use package:web and dart:js_interop instead - lib\features\web_player\web_video_player.dart:10:1 - deprecated_member_use
+   info - Don't use web-only libraries outside Flutter web plugins - lib\features\web_player\web_video_player.dart:10:1 - avoid_web_libraries_in_flutter
+   info - Unnecessary braces in a string interpolation - test\shortdrama_spider_test.dart:98:47 - unnecessary_brace_in_string_interps
+
+27 issues found. (ran in 25.7s)
