@@ -93,7 +93,7 @@ jobs:
         with:
           repository: g-star1024/hongguo-desktop
           # push 触发时 inputs 为空，用 force_ref 兜底钉死源码 commit，防 main 缓存漂移
-          ref: ${{ inputs.ref || inputs.force_ref || 'b372c770496cec2552a90226f774482891f8f695' }}
+          ref: ${{ inputs.ref || inputs.force_ref || '9c650465fb1c7d2d8497c938d37a02bd15f9d504' }}
           token: ${{ secrets.SOURCE_PAT }}
 
       - name: 核对源码版本（防 checkout 到旧代码，v2.7.37 事故教训）
