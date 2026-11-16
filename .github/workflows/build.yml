@@ -192,6 +192,30 @@ jobs:
           Get-Content "$env:TEMP\flutter-windows-build.log"
           exit $buildExit
 
+      # 短剧 JS 源引擎（QuickJS）原生桥：编译并注入 <Release>/libquickjs_bridge.so。
+      # Windows 需要 mingw-w64 gcc（windows-latest 未预装时从 MSYS2/choco 找）。
+      # 注入失败不阻断构建（仅该平台发布版 JS 源不可用，降级告警）。
+      - name: 注入 QuickJS .so（Windows，短剧 JS 源引擎）
+        if: matrix.platform == 'windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v gcc >/dev/null 2>&1; then
+            if [ -x /c/msys64/ucrt64/bin/gcc.exe ]; then
+              export PATH="/c/msys64/ucrt64/bin:$PATH"
+            elif [ -x /c/msys64/mingw64/bin/gcc.exe ]; then
+              export PATH="/c/msys64/mingw64/bin:$PATH"
+            elif command -v choco >/dev/null 2>&1; then
+              echo "尝试安装 mingw（choco）..."
+              choco install mingw -y --no-progress >/dev/null 2>&1 || true
+            fi
+          fi
+          if command -v gcc >/dev/null 2>&1; then
+            ./tool/inject_quickjs_so.sh windows build/windows/x64/runner/Release
+          else
+            echo "::warning::Windows 未找到 mingw gcc，跳过 QuickJS .so 注入（该平台 JS 源不可用）"
+          fi
+
       - name: 构建 Linux
         if: matrix.platform == 'linux'
         run: |
@@ -201,6 +225,14 @@ jobs:
           # local_notifier 需要 libnotify。
           sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libmpv-dev mpv libayatana-appindicator3-dev libsecret-1-dev libnotify-dev
           flutter build linux --release 2>&1 | tee /tmp/flutter-linux-build.log
+
+      # 短剧 JS 源引擎（QuickJS）原生桥：编译并注入 <bundle>/libquickjs_bridge.so。
+      - name: 注入 QuickJS .so（Linux，短剧 JS 源引擎）
+        if: matrix.platform == 'linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./tool/inject_quickjs_so.sh linux build/linux/x64/release/bundle
 
       - name: 构建 Android
         if: matrix.platform == 'android'
@@ -213,6 +245,20 @@ jobs:
         run: |
           set -o pipefail
           flutter build macos --release 2>&1 | tee /tmp/flutter-macos-build.log
+
+      # 短剧 JS 源引擎（QuickJS）原生桥：编译 libquickjs_bridge.so 并注入
+      # <App.app>/Contents/MacOS/。main.dart 的 _bootstrapQuickjsLibrary() 按
+      # Platform.resolvedExecutable 定位并重定向 QuickjsFfi.libraryPath。
+      # 注：在「注入 libtorrent + ffmpeg」步骤之前执行，让该步骤末尾的
+      # deep re-sign 一并重签本 .so（ad-hoc，含 disable-library-validation）。
+      - name: 注入 QuickJS .so（macOS，短剧 JS 源引擎）
+        if: matrix.platform == 'mac-arm64' || matrix.platform == 'mac-x64'
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP=$(find build/macos/Build/Products/Release -maxdepth 1 -name "*.app" | head -1)
+          [ -n "$APP" ] || { echo "::error::未找到 macOS .app"; exit 1; }
+          ./tool/inject_quickjs_so.sh macos "$APP"
 
       - name: 打包 Windows
         if: matrix.platform == 'windows'
