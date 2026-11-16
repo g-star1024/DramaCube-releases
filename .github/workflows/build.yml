@@ -177,7 +177,8 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          flutter analyze 2>&1 | tee /tmp/flutter-analyze.log
+          # 门禁：warnings/errors 仍致命，info 级弃用提示不阻塞发版（Flutter 3.41 升级引入大量 deprecation info）
+          flutter analyze --no-fatal-infos 2>&1 | tee /tmp/flutter-analyze.log
 
       - name: 构建 Windows（激活 VS DevShell，让 CMake 找到 VS2026 生成器）
         if: matrix.platform == 'windows'
