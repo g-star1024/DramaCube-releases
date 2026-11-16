@@ -93,7 +93,7 @@ jobs:
         with:
           repository: g-star1024/hongguo-desktop
           # push 触发时 inputs 为空，用 force_ref 兜底钉死源码 commit，防 main 缓存漂移
-          ref: ${{ inputs.ref || inputs.force_ref || '576856f361e2deb54b339461c0f5ad6ca66337e2' }}
+          ref: ${{ inputs.ref || inputs.force_ref || '2581ea434f0326ea3007febf500f97c42168d889' }}
           token: ${{ secrets.SOURCE_PAT }}
 
       - name: 核对源码版本（防 checkout 到旧代码，v2.7.37 事故教训）
@@ -212,7 +212,10 @@ jobs:
             fi
           fi
           if command -v gcc >/dev/null 2>&1; then
-            ./tool/inject_quickjs_so.sh windows build/windows/x64/runner/Release
+            # 注入失败不阻断构建：仅该平台发布版 JS 源引擎降级（对齐本步骤注释意图），
+            # 但仍打印告警便于排查（2026-11-16 windows 注入首次暴露包定位在 Windows 失败）。
+            ./tool/inject_quickjs_so.sh windows build/windows/x64/runner/Release \
+              || echo "::warning::Windows QuickJS .so 注入失败，该平台 JS 源引擎降级（不阻断发版）"
           else
             echo "::warning::Windows 未找到 mingw gcc，跳过 QuickJS .so 注入（该平台 JS 源不可用）"
           fi
