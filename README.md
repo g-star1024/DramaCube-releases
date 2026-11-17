@@ -2,8 +2,9 @@
 
 > 一个内容世界，三端体验：移动暖阳 / 桌面影院 / TV 焦点引擎。
 > 聚合用户自行配置的视频源、直播源、NAS 资源与磁力资源，本地播放、离线下载、零账号依赖。
+> **v2.8.0 起不内置任何数据源**：视频源 / 短剧源均由本仓 `sources/` 导入链接提供，用户自行导入。
 
-当前版本：**v2.7.82** ｜ 安装包下载：[DramaCube-releases Releases](https://github.com/g-star1024/DramaCube-releases/releases)
+当前版本：**v2.8.0** ｜ 安装包下载：[DramaCube-releases Releases](https://github.com/g-star1024/DramaCube-releases/releases) ｜ 数据源导入：[sources/README.md](sources/README.md)
 
 ---
 
@@ -98,6 +99,9 @@ gh workflow run build.yml -R g-star1024/DramaCube-releases -f ref=main -f versio
 
 | 版本 | 要点 |
 |------|------|
+| **v2.8.0** | 第一版正式对外——app 改为「不内置数据」：移除全部内置短剧源，改由本仓 sources/ 导入链接提供（视频 11 源 / 短剧 7 源）；订阅导入支持 JS 源批量并入 |
+| **v2.7.92** | 路由 ShellRoute→StatefulShellRoute.indexedStack——切 tab 不再重新加载（页面 State / 滚动位置 / 分页全保留） |
+| **v2.7.91** | 移除牛牛源；新增非凡 / 暴风 / 电影天堂 / 极速短剧采集源；量子资源（liangzi）转正 |
 | **v2.7.82** | 路线 A（noVNC Docker 一键部署）已废弃，转向 Flutter Web 轻量部署（见 [dramaCube-docker](https://github.com/g-star1024/dramaCube-docker)）；TV 模式改纯手动开关——默认安装普通模式，设置中心「电视模式」切换 |
 | **v2.7.81** | 清缓存同清图片索引 DB——修复全站封面永久裂（视频源 + 资源库同源，永不重下根因） |
 | **v2.7.80** | 慢源提示移入空态区域（普通模式 + TV 双端同步） |
