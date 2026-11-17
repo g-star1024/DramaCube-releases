@@ -1,0 +1,81 @@
+{
+  "sites": [
+    {
+      "key": "api_3",
+      "name": "360资源",
+      "api": "https://360zy.com/api.php/provide/vod",
+      "type": "tvbox",
+      "tag": "Ordinary"
+    },
+    {
+      "key": "api_23",
+      "name": "暴风资源",
+      "api": "https://bfzyapi.com/api.php/provide/vod",
+      "type": "tvbox",
+      "tag": "Ordinary"
+    },
+    {
+      "key": "api_25",
+      "name": "最大资源",
+      "api": "https://api.zuidapi.com/api.php/provide/vod",
+      "type": "tvbox",
+      "tag": "Ordinary"
+    },
+    {
+      "key": "api_29",
+      "name": "电影天堂资源",
+      "api": "http://caiji.dyttzyapi.com/api.php/provide/vod",
+      "type": "tvbox",
+      "tag": "Ordinary"
+    },
+    {
+      "key": "api_34",
+      "name": "红牛资源",
+      "api": "https://www.hongniuzy2.com/api.php/provide/vod",
+      "type": "tvbox",
+      "tag": "Ordinary"
+    },
+    {
+      "key": "api_41",
+      "name": "量子资源",
+      "api": "https://cj.lziapi.com/api.php/provide/vod",
+      "type": "tvbox",
+      "tag": "Ordinary"
+    },
+    {
+      "key": "api_45",
+      "name": "非凡资源",
+      "api": "https://cj.ffzyapi.com/api.php/provide/vod",
+      "type": "tvbox",
+      "tag": "Ordinary"
+    },
+    {
+      "key": "api_49",
+      "name": "魔都资源",
+      "api": "https://www.mdzyapi.com/api.php/provide/vod",
+      "type": "tvbox",
+      "tag": "Ordinary"
+    },
+    {
+      "key": "api_18",
+      "name": "无尽资源",
+      "api": "https://api.wujinapi.com/api.php/provide/vod",
+      "type": "tvbox",
+      "tag": "Ordinary"
+    },
+    {
+      "key": "api_17",
+      "name": "新浪点播",
+      "api": "https://api.xinlangapi.com/xinlangapi.php/provide/vod",
+      "type": "tvbox",
+      "tag": "Ordinary"
+    },
+    {
+      "key": "iqiyi",
+      "name": "iQiyi资源",
+      "api": "https://www.iqiyizyapi.com/api.php/provide/vod",
+      "type": "tvbox",
+      "tag": "Ordinary"
+    }
+  ]
+}

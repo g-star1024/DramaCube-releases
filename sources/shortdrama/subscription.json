@@ -1,0 +1,53 @@
+{
+  "sites": [
+    {
+      "key": "js_xifan",
+      "name": "西饭短剧",
+      "api": "js://url/aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL2ctc3RhcjEwMjQvRHJhbWFDdWJlLXJlbGVhc2VzL21haW4vc291cmNlcy9zaG9ydGRyYW1hL3hpZmFuLmpz",
+      "type": "js",
+      "tag": "Ordinary"
+    },
+    {
+      "key": "js_xingya",
+      "name": "星芽短剧",
+      "api": "js://url/aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL2ctc3RhcjEwMjQvRHJhbWFDdWJlLXJlbGVhc2VzL21haW4vc291cmNlcy9zaG9ydGRyYW1hL3hpbmd5YS5qcw==",
+      "type": "js",
+      "tag": "Ordinary"
+    },
+    {
+      "key": "js_liangzi",
+      "name": "量子资源",
+      "api": "js://url/aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL2ctc3RhcjEwMjQvRHJhbWFDdWJlLXJlbGVhc2VzL21haW4vc291cmNlcy9zaG9ydGRyYW1hL2xpYW5nemkuanM=",
+      "type": "js",
+      "tag": "Ordinary"
+    },
+    {
+      "key": "js_feifan",
+      "name": "非凡短剧",
+      "api": "js://url/aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL2ctc3RhcjEwMjQvRHJhbWFDdWJlLXJlbGVhc2VzL21haW4vc291cmNlcy9zaG9ydGRyYW1hL2ZlaWZhbi5qcw==",
+      "type": "js",
+      "tag": "Ordinary"
+    },
+    {
+      "key": "js_baofeng",
+      "name": "暴风短剧",
+      "api": "js://url/aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL2ctc3RhcjEwMjQvRHJhbWFDdWJlLXJlbGVhc2VzL21haW4vc291cmNlcy9zaG9ydGRyYW1hL2Jhb2ZlbmcuanM=",
+      "type": "js",
+      "tag": "Ordinary"
+    },
+    {
+      "key": "js_dytt",
+      "name": "电影天堂短剧",
+      "api": "js://url/aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL2ctc3RhcjEwMjQvRHJhbWFDdWJlLXJlbGVhc2VzL21haW4vc291cmNlcy9zaG9ydGRyYW1hL2R5dHQuanM=",
+      "type": "js",
+      "tag": "Ordinary"
+    },
+    {
+      "key": "js_jisu",
+      "name": "极速短剧",
+      "api": "js://url/aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL2ctc3RhcjEwMjQvRHJhbWFDdWJlLXJlbGVhc2VzL21haW4vc291cmNlcy9zaG9ydGRyYW1hL2ppc3UuanM=",
+      "type": "js",
+      "tag": "Ordinary"
+    }
+  ]
+}
