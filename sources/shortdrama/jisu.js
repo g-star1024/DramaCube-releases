@@ -51,27 +51,24 @@ function buildUrl(params) {
   return base + (base.charAt(base.length - 1) === '?' ? '' : '&') + parts.join('&');
 }
 
-// 网络抖动重试一次；非 JSON 不重试（重试也是同样的结果）。
+// 单次请求，不重试（v2.8.4 用户实测：采集站慢/502 时重试把 20s×2=40s
+// 放大超过 app 30s 页面超时→「列表加载超时」。单次=20s 内返回结果或失败，
+// 配合 app 侧超时上限不再翻倍干等。间歇慢站（如极速 3-25s）单次可救回。）
 async function getJson(params) {
   var url = buildUrl(params);
-  var lastError = null;
-  for (var attempt = 0; attempt < 2; attempt++) {
-    try {
-      var res = await fetch(url, { headers: { 'User-Agent': __CFG.ua, 'Accept': 'application/json' }, timeoutMs: 15000 });
-      var text = await res.text();
-      if (!res.ok) throw failure('接口返回 HTTP ' + res.status, 'HTTP_' + res.status);
-      var data;
-      try { data = JSON.parse(text); } catch (e) { throw failure('接口返回的不是 JSON（前 120 字）：' + text.slice(0, 120), 'INVALID_RESPONSE'); }
-      if (data && data.code !== undefined && Number(data.code) !== 1) {
-        throw failure('接口返回 code=' + data.code + ' msg=' + (data.msg || ''), 'REJECTED');
-      }
-      return data || {};
-    } catch (err) {
-      lastError = err;
-      if (err && err.code === 'INVALID_RESPONSE') break;
+  try {
+    var res = await fetch(url, { headers: { 'User-Agent': __CFG.ua, 'Accept': 'application/json' }, timeoutMs: 15000 });
+    var text = await res.text();
+    if (!res.ok) throw failure('接口返回 HTTP ' + res.status, 'HTTP_' + res.status);
+    var data;
+    try { data = JSON.parse(text); } catch (e) { throw failure('接口返回的不是 JSON（前 120 字）：' + text.slice(0, 120), 'INVALID_RESPONSE'); }
+    if (data && data.code !== undefined && Number(data.code) !== 1) {
+      throw failure('接口返回 code=' + data.code + ' msg=' + (data.msg || ''), 'REJECTED');
     }
+    return data || {};
+  } catch (err) {
+    throw err || failure('接口请求失败', 'REQUEST_FAILED');
   }
-  throw lastError || failure('接口请求失败', 'REQUEST_FAILED');
 }
 
 // MacCMS 的 total/limit/pagecount 不一定都有，按能拿到的推算还有没有下一页。
